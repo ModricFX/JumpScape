@@ -21,5 +21,3 @@ OPTIONAL:
 - Add platform graphics
 - Make door graphics a little darker
 - Sort/make folders (mostly done)
-
-.
