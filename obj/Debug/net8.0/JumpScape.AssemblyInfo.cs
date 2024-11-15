@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("JumpScape")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4236e5cff26680ea55717a8eb3908ec548c7454")]
 [assembly: System.Reflection.AssemblyProductAttribute("JumpScape")]
 [assembly: System.Reflection.AssemblyTitleAttribute("JumpScape")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

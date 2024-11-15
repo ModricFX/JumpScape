@@ -69,7 +69,7 @@ namespace JumpScape
             Texture2D heartHalfTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_half.png"));
             Texture2D heartEmptyTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_empty.png"));
 
-            Texture2D inventoryTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Player", "inventory.png"));
+            Texture2D inventoryTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory.png"));
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
 

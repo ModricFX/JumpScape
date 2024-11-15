@@ -5,8 +5,7 @@ NEEDED:
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 
 CAN DO LATER:
-- Better hearts graphics
-- Better inventory graphics (add numbers to it as well) + selected item should be highlighted
+- LEVELS ARE NOT BIGGER SCREEN FRIENDLY!!! FIND A DIFFERENT WAY TO BUILD THEM
 
 TESTING:
 - Have 2 keys in inventory, unlock door -> it should take 1 key from the inventory
@@ -21,3 +20,4 @@ OPTIONAL:
 - Add platform graphics
 - Make door graphics a little darker
 - Sort/make folders (mostly done)
+- Better inventory graphics

@@ -238,19 +238,19 @@
     ]
   },
   "packageFolders": {
-    "/Users/zigamodric/.nuget/packages/": {}
+    "C:\\Users\\Modric\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/zigamodric/Desktop/FRI VŠS/3. letnik/1. semester/TINR/JumpScape/JumpScape.csproj",
+      "projectUniqueName": "C:\\Users\\Modric\\Documents\\GitHub\\JumpScape\\JumpScape.csproj",
       "projectName": "JumpScape",
-      "projectPath": "/Users/zigamodric/Desktop/FRI VŠS/3. letnik/1. semester/TINR/JumpScape/JumpScape.csproj",
-      "packagesPath": "/Users/zigamodric/.nuget/packages/",
-      "outputPath": "/Users/zigamodric/Desktop/FRI VŠS/3. letnik/1. semester/TINR/JumpScape/obj/",
+      "projectPath": "C:\\Users\\Modric\\Documents\\GitHub\\JumpScape\\JumpScape.csproj",
+      "packagesPath": "C:\\Users\\Modric\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Modric\\Documents\\GitHub\\JumpScape\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/zigamodric/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Modric\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -304,7 +304,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.403/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.404/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
