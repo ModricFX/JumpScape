@@ -21,3 +21,4 @@ OPTIONAL:
 - Make door graphics a little darker
 - Sort/make folders (mostly done)
 - Better inventory graphics
+- Better empty heart graphic
