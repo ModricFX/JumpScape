@@ -21,6 +21,8 @@ TESTING:
 OPTIONAL:
 - bug, if players goes up, so camera changes, the hearts have a moving animation (fixed itself??)
 - bug, if moving right, i press left, it moves left. if i move left, and i move right, it keeps going left
+- add NPC of player, can interact, say some stuff? (starting level/tutorial can show things and explain)
+- race level? side by side competition (like a boss level every 10 levels?)
 - Player running animation?
 - Add platform graphics
 - Make door graphics a little darker
