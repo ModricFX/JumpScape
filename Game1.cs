@@ -127,10 +127,9 @@ namespace JumpScape
             var keyboardState = Keyboard.GetState();
             Vector2 previousPosition = player.Position; // Store the previous position for collision correction
 
-            
+
             // Update player movement
             player.Update(gameTime, keyboardState, cameraPosition, GraphicsDevice.Viewport.Width);
-
 
             // Limit the player so they can't go out of the left or right bounds
             if (player.Position.X < 0)
@@ -153,16 +152,33 @@ namespace JumpScape
 
                     if (!player.IsInvincible)
                     {
+                        int monsterDirection = 0;
+
+                        // Determine the direction the monster is facing
+                        if (monster.Direction == Monster.FacingDirection.Right)
+                        {
+                            monsterDirection = 1;  // Monster is facing right
+                        }
+                        else if (monster.Direction == Monster.FacingDirection.Left)
+                        {
+                            monsterDirection = -1;  // Monster is facing left
+                        }
+
+                        // Apply damage and knockback
                         if (isMonsterFacingPlayer)
-                            player.LoseHeart(1);
+                        {
+                            // If the monster is facing the player, apply knockback based on the direction the monster is facing
+                            player.LoseHeart(1, monsterDirection);
+                        }
                         else
-                            player.LoseHeart(0.5f);
+                        {
+                            // If the monster is not facing the player, apply lesser damage
+                            player.LoseHeart(0.5f, monsterDirection);
+                        }
                     }
                 }
+
             }
-
-
-
 
             // ---- Key Animation Update ----
             if (key is AnimatedItem animatedKey)
@@ -228,10 +244,16 @@ namespace JumpScape
             player.ApplyGravity(gravity);
             bool isOnPlatform = false;
 
+            // check if player on ground or platform isOnPlatform
+
             foreach (var platform in platforms)
             {
                 playerRect = player.BoundingBox;
                 Rectangle platformRect = platform.BoundingBox;
+                if (!player.playerOnGround)
+                {
+                    player.playerOnGround = player.Position.Y >= groundLevel - player.BoundingBox.Height || isOnPlatform;
+                }
 
                 if (playerRect.Intersects(platformRect))
                 {
@@ -370,7 +392,7 @@ namespace JumpScape
 
             // Draw the player
             float topLeftScreenY = cameraPosition.Y + 20;
-            player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, topLeftScreenY);
+            player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, topLeftScreenY, gameTime);
 
 
             _spriteBatch.End();

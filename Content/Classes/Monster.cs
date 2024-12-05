@@ -19,7 +19,17 @@ namespace JumpScape.Classes
         private const float Scale = 0.06f;  // Reduced scale for smaller monster size
 
         // Bounding Box Adjustments
-        private const float BoundingBoxScale = 0.057f;  // Adjust the bounding box size relative to the monster's scale
+        private const float BoundingBoxScale = 0.06f;  // Adjust the bounding box size relative to the monster's scale
+
+        // Enum for Facing Direction
+        public enum FacingDirection
+        {
+            Left,
+            Right
+        }
+
+        // The current facing direction of the monster
+        public FacingDirection Direction { get; private set; }
 
         public Monster(Texture2D textureLeft, Texture2D textureRight, Texture2D textureLeftYellow, Texture2D textureRightYellow, Vector2 position, Rectangle platformBounds)
         {
@@ -32,18 +42,30 @@ namespace JumpScape.Classes
             _platformBounds = platformBounds;
             _speed = 1.0f;
             _movingLeft = false;
+
+            Direction = FacingDirection.Right; // Initially facing right
         }
 
         // Adjusted Bounding Box to be smaller than the texture
         public Rectangle BoundingBox => new Rectangle(
-            (int)_position.X + 10, // Offset horizontally to center the box
-            (int)_position.Y + 10, // Offset vertically to center the box
+            (int)(_position.X + _currentTexture.Width * Scale / 2), // Offset horizontally to center the box
+            (int)(_position.Y + _currentTexture.Height * Scale / 2), // Offset vertically to center the box
             (int)(_currentTexture.Width * Scale * BoundingBoxScale),  // Smaller width
             (int)(_currentTexture.Height * Scale * BoundingBoxScale)  // Smaller height
         );
 
         public void Update(GameTime gameTime, Vector2 playerPosition)
         {
+            // Update the facing direction based on the player's position
+            if (playerPosition.X < _position.X)
+            {
+                Direction = FacingDirection.Left;
+            }
+            else
+            {
+                Direction = FacingDirection.Right;
+            }
+
             // Move the monster
             if (_movingLeft)
             {
@@ -52,11 +74,11 @@ namespace JumpScape.Classes
                 // Check if player is on the same platform and to the left
                 if (IsPlayerInSight(playerPosition) && playerPosition.X < _position.X)
                 {
-                    _currentTexture = _textureLeftYellow;
+                    _currentTexture = _textureLeftYellow;  // Change texture when facing the player
                 }
                 else
                 {
-                    _currentTexture = _textureLeft;
+                    _currentTexture = _textureLeft; // Default texture when not facing the player
                 }
 
                 if (_position.X <= _platformBounds.Left)
@@ -71,11 +93,11 @@ namespace JumpScape.Classes
                 // Check if player is on the same platform and to the right
                 if (IsPlayerInSight(playerPosition) && playerPosition.X > _position.X)
                 {
-                    _currentTexture = _textureRightYellow;
+                    _currentTexture = _textureRightYellow;  // Change texture when facing the player
                 }
                 else
                 {
-                    _currentTexture = _textureRight;
+                    _currentTexture = _textureRight; // Default texture when not facing the player
                 }
 
                 if (_position.X + _currentTexture.Width * Scale >= _platformBounds.Right)
@@ -104,7 +126,7 @@ namespace JumpScape.Classes
         }
 
         public bool IsFacingPlayer(Vector2 playerPosition)
-        {
+         {
             if (_movingLeft && playerPosition.X < _position.X)
                 return true;
             else if (!_movingLeft && playerPosition.X > _position.X)
@@ -117,6 +139,5 @@ namespace JumpScape.Classes
             // Apply scale factor to make the texture appear smaller
             spriteBatch.Draw(_currentTexture, _position, null, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
         }
-
     }
 }

@@ -17,16 +17,18 @@ namespace JumpScape.Classes
         public bool IsJumping { get; set; }
 
         // Heart System Variables
-        private const int MaxHearts = 3;
+        private const int MaxHearts = 1;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
         private readonly Texture2D _heartEmptyTexture;
+        private float _rotation = 0f; // Rotation angle for the player
+
 
         // Damage Cooldown and Flashing Variables
         public bool IsInvincible { get; private set; }
         private float _invincibilityTimer;
-        private const float InvincibilityDuration = 5f;
+        private const float InvincibilityDuration = 1.4f;
         private bool _isFlashing;
         private float _flashTimer;
         private const float FlashInterval = 0.2f;
@@ -34,6 +36,23 @@ namespace JumpScape.Classes
         // Inventory System
         private Inventory _inventory;
         private Texture2D _keyTexture; // Texture for the key
+
+        // Knockback variables
+        private float knockbackTimer = 0f; // Timer for controlling knockback duration
+        private const float knockbackDuration = 0.4f; // Time duration for knockback in seconds
+
+        private const float knockbackStrengthX = 5f; // Knockback strength in the X direction
+
+        private const float knockbackStrengthY = -8f; // Knockback strength in the Y direction
+
+        public bool playerOnGround = true; // Check if the player is on the ground
+
+        private bool isDead = false;
+        private float deathRotationSpeed = 1f; // Speed at which the player rotates after death
+
+
+
+
 
         public Player(Texture2D textureRight, Texture2D textureLeft, Vector2 startPosition,
                       Texture2D heartFull, Texture2D heartHalf, Texture2D heartEmpty,
@@ -57,6 +76,17 @@ namespace JumpScape.Classes
 
         public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, int screenWidth)
         {
+
+            // Decrease the knockback timer if it's active
+            if (knockbackTimer > 0)
+            {
+                knockbackTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+            }
+            else if (playerOnGround)
+            {
+                // If knockback duration is over, stop moving the player
+                Velocity = new Vector2(0, Velocity.Y);  // Stop the horizontal knockback effect (keep vertical velocity)
+            }
             // Calculate the screen Y position for hearts and inventory
             float topLeftScreenY = cameraPosition.Y + 20;
 
@@ -99,11 +129,13 @@ namespace JumpScape.Classes
             {
                 Position = new Vector2(Position.X - 3f, Position.Y);
                 _currentTexture = _textureLeft;
+                playerOnGround = true;
             }
             else if (keyboardState.IsKeyDown(Keys.Right))
             {
                 Position = new Vector2(Position.X + 3f, Position.Y);
                 _currentTexture = _textureRight;
+                playerOnGround = true;
             }
         }
 
@@ -119,15 +151,62 @@ namespace JumpScape.Classes
             IsJumping = true;
         }
 
-        public void LoseHeart(float amount)
+        public void ApplyKnockback(Vector2 knockbackDirection)
+        {
+            // Apply a small knockback force in the X direction only for a short duration
+            Velocity = new Vector2(knockbackDirection.X * knockbackStrengthX, Velocity.Y);  // Move player a little bit horizontally, no Y-axis knockback
+            Velocity = new Vector2(Velocity.X, knockbackStrengthY);  // Apply vertical knockback
+            // Start the knockback timer
+            knockbackTimer = knockbackDuration;
+        }
+
+        public void LoseHeart(float amount, int damageDirection)
         {
             if (IsInvincible) return;
 
             _currentHearts -= amount * 2;
             if (_currentHearts < 0) _currentHearts = 0;
 
+            // Define the knockback direction based on the monster's facing direction
+            Vector2 knockbackDirection = (damageDirection == 1) ? new Vector2(1, 0) : new Vector2(-1, 0);
+
+            // Apply the knockback only once (i.e., when the player takes damage)
+            ApplyKnockback(knockbackDirection);
+
+            // Trigger invincibility to prevent further damage for a short time
             TriggerInvincibility();
+
+            if (_currentHearts <= 0)
+            {
+                isDead = true;
+            }
         }
+
+        private void deathAnimation(GameTime gameTime)
+        {
+            // Log to see when the function is called
+            Console.WriteLine("Player is dead");
+
+            if (isDead)
+            {
+                // Log the time step per frame
+                Console.WriteLine("Time since last frame: " + gameTime.ElapsedGameTime.TotalSeconds);
+
+                // Reverse the direction of rotation (rotating counterclockwise)
+                if (_rotation > -Math.PI / 2) // Ensure it rotates counterclockwise towards downward position
+                {
+                    _rotation -= deathRotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds; // Negative increment for counterclockwise rotation
+                    Console.WriteLine("Player rotation: " + _rotation);
+
+                    // Clamp the rotation to stop at -Math.PI / 2 (downwards position)
+                    if (_rotation < -Math.PI / 2)
+                    {
+                        _rotation = -(float)Math.PI / 2; // Clamp at -90 degrees (downwards)
+                    }
+                }
+            }
+        }
+
 
         private void TriggerInvincibility()
         {
@@ -156,17 +235,23 @@ namespace JumpScape.Classes
             }
         }
 
-        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, float topLeftScreenY)
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, float topLeftScreenY, GameTime gameTime)
         {
+            if (isDead)
+            {
+                deathAnimation(gameTime);
+            }
+
             // Use semi-transparent color for flashing effect
-            Color drawColor = IsInvincible && _isFlashing ? Color.White * 0.5f : Color.White;
+            Color drawColor = IsInvincible && _isFlashing ? Color.Orange : Color.White;
 
             spriteBatch.Draw(
                 _currentTexture,
                 Position,
                 null,
                 drawColor,
-                0f,
+                _rotation,
                 Vector2.Zero,
                 0.1f,
                 SpriteEffects.None,
