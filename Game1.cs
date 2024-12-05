@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
 using System.IO;
 using JumpScape.Classes;
+using System;
 
 namespace JumpScape
 {
@@ -12,6 +13,12 @@ namespace JumpScape
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private Texture2D groundTexture;
+        private Texture2D fadeTexture; // For the fade effect
+        private bool isFadingOut = false;
+
+        // Fade control variables
+        private float fadeAlpha = 1f; // Start with full opacity
+        private float fadeSpeed = 0.01f; // Speed of fading in
         private Player player;
         private Door door;
         private Item key;
@@ -51,6 +58,8 @@ namespace JumpScape
 
             // Load textures
             groundTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "grass.png"));
+            fadeTexture = new Texture2D(GraphicsDevice, 1, 1); // Create a 1x1 texture for fade
+            fadeTexture.SetData(new[] { Color.Black }); // Set its color to black
 
             Texture2D platformTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "grass.png"));
             Texture2D frogTextureLeft = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_left.png"));
@@ -230,6 +239,7 @@ namespace JumpScape
                     else if (door.IsOpened)
                     {
                         System.Diagnostics.Debug.WriteLine("Entering the door...");
+                        isFadingOut = true; // Start fading out
                         player.Position = new Vector2(-100, -100); // Move the player out of view to simulate entering
                     }
                 }
@@ -309,6 +319,15 @@ namespace JumpScape
             }
             cameraTransform = Matrix.CreateTranslation(new Vector3(0, -cameraPosition.Y, 0));
 
+            if (fadeAlpha > 0f && !isFadingOut)
+            {
+                fadeAlpha -= fadeSpeed; // Decrease alpha to fade out
+                if (fadeAlpha < 0f) fadeAlpha = 0f; // Make sure it doesn't go below 0
+            } else if (fadeAlpha >= 0f && isFadingOut)
+            {
+                fadeAlpha += fadeSpeed*2; // Increase alpha to fade in
+                if (fadeAlpha > 1f) fadeAlpha = 1f; // Make sure it doesn't go above 1
+            }
             base.Update(gameTime);
         }
 
@@ -393,6 +412,8 @@ namespace JumpScape
             // Draw the player
             float topLeftScreenY = cameraPosition.Y + 20;
             player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, topLeftScreenY, gameTime);
+
+            _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
 
 
             _spriteBatch.End();
