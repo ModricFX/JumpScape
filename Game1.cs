@@ -82,12 +82,15 @@ namespace JumpScape
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
 
-            // Set the ground level
-            groundLevel = GraphicsDevice.Viewport.Height - groundTexture.Height - 150;
-
             // Load the level data
             LevelLoader levelLoader = new LevelLoader();
-            levelLoader.LoadLevel(Path.Combine("Levels", "Level1.txt"));
+            int windowHeight = GraphicsDevice.Viewport.Height;
+            int windowWidth = GraphicsDevice.Viewport.Width;
+            levelLoader.LoadLevel(Path.Combine("Levels", "Level1.txt"), windowHeight,windowWidth);
+
+            // Set the ground level based on the level loader
+            groundLevel = LevelLoader.GroundY;
+            Console.WriteLine("Ground level GAME1.CS: " + groundLevel);
 
             // Initialize player, door, and key
             player = new Player(playerRightTexture, playerLeftTexture, levelLoader.PlayerSpawn, heartFullTexture, heartHalfTexture, heartEmptyTexture, inventoryTexture, keyTextureInventory);
@@ -138,12 +141,15 @@ namespace JumpScape
 
 
             // Update player movement
-            player.Update(gameTime, keyboardState, cameraPosition, GraphicsDevice.Viewport.Width);
+            player.Update(gameTime, keyboardState, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel);
 
             // Limit the player so they can't go out of the left or right bounds
             if (player.Position.X < 0)
             {
                 player.Position = new Vector2(0, player.Position.Y); // Limit the left bound
+            } else if (player.Position.X > GraphicsDevice.Viewport.Width - player.BoundingBox.Width)
+            {
+                player.Position = new Vector2(GraphicsDevice.Viewport.Width - player.BoundingBox.Width, player.Position.Y); // Limit the right bound
             }
 
             // Update each monster
@@ -263,6 +269,10 @@ namespace JumpScape
                 if (!player.playerOnGround)
                 {
                     player.playerOnGround = player.Position.Y >= groundLevel - player.BoundingBox.Height || isOnPlatform;
+                    if (player.Position.Y >= groundLevel - player.BoundingBox.Height)
+                    {
+                        player.isOnPlatform = false;
+                    }
                 }
 
                 if (playerRect.Intersects(platformRect))
@@ -274,6 +284,7 @@ namespace JumpScape
                         player.Velocity = new Vector2(player.Velocity.X, 0);
                         player.IsJumping = false;
                         isOnPlatform = true;
+                        player.isOnPlatform  = true;
                     }
                     // Ensure the player doesn't pass through the platform from below
                     else if (player.Velocity.Y < 0 && playerRect.Top <= platformRect.Bottom && previousPosition.Y >= platformRect.Bottom)
@@ -296,10 +307,12 @@ namespace JumpScape
             // Check if the player is on the ground if not on a platform
             if (!isOnPlatform && player.Position.Y >= groundLevel - player.BoundingBox.Height)
             {
+                if (!player.isDead) {
                 player.Position = new Vector2(player.Position.X, groundLevel - player.BoundingBox.Height);
                 player.Velocity = new Vector2(player.Velocity.X, 0);
                 player.IsJumping = false;
                 isOnPlatform = true;
+                }
             }
 
             // Update jump logic to ensure player can only jump when on ground or platform
@@ -339,10 +352,10 @@ namespace JumpScape
             _spriteBatch.Begin(transformMatrix: cameraTransform);
 
             // Draw the ground
-            for (int i = 0; i < GraphicsDevice.Viewport.Width * 2; i += groundTexture.Width)
-            {
-                _spriteBatch.Draw(groundTexture, new Vector2(i, groundLevel), Color.White);
-            }
+            // for (int i = 0; i < GraphicsDevice.Viewport.Width * 2; i += groundTexture.Width)
+            // {
+            //     _spriteBatch.Draw(groundTexture, new Vector2(i, groundLevel), Color.White);
+            // }
 
             // Draw platforms
             foreach (var platform in platforms)
@@ -411,7 +424,7 @@ namespace JumpScape
 
             // Draw the player
             float topLeftScreenY = cameraPosition.Y + 20;
-            player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, topLeftScreenY, gameTime);
+            player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, topLeftScreenY, gameTime);
 
             _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
 

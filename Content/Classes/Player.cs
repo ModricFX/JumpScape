@@ -47,12 +47,12 @@ namespace JumpScape.Classes
 
         public bool playerOnGround = true; // Check if the player is on the ground
 
-        private bool isDead = false;
-        private float deathRotationSpeed = 1f; // Speed at which the player rotates after death
+        public bool isOnPlatform = false; // Check if the player is on a platform
 
+        public bool isDead = false;
+        private float deathRotationSpeed = 4f; // Speed at which the player rotates after death
 
-
-
+        private bool gravityStop = false;
 
         public Player(Texture2D textureRight, Texture2D textureLeft, Vector2 startPosition,
                       Texture2D heartFull, Texture2D heartHalf, Texture2D heartEmpty,
@@ -74,8 +74,25 @@ namespace JumpScape.Classes
 
         public Rectangle BoundingBox => new Rectangle((int)Position.X, (int)Position.Y, (int)(_currentTexture.Width * 0.1f), (int)(_currentTexture.Height * 0.1f));
 
-        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, int screenWidth)
+        private float previousYUpdateTimer = 0f; // Timer for controlling the delay
+        private const float previousYUpdateDelay = 0.2f; // 0.2 seconds delay
+
+        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, int screenWidth, float groundLevel)
         {
+            // IS FALLING FUNCTION
+            // Accumulate elapsed time
+            previousYUpdateTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Check if enough time has passed (0.2 seconds)
+            if (previousYUpdateTimer >= previousYUpdateDelay)
+            {
+                previousY = Position.Y; // Update previousY after 0.2 seconds
+                previousYUpdateTimer = 0f; // Reset the timer
+            }
+            playerOnGround = isFalling();
+            // Console.WriteLine("Player is falling: " + isFalling());
+            // Console.WriteLine("Player on ground: " + playerOnGround);
+            // Console.WriteLine("Player on platform: " + isOnPlatform);
 
             // Decrease the knockback timer if it's active
             if (knockbackTimer > 0)
@@ -113,6 +130,34 @@ namespace JumpScape.Classes
                     ResetInvincibility();
                 }
             }
+
+            if (isDead)
+            {
+                //deathAnimation(gameTime);
+
+                // Console.WriteLine("Is on platform: " + isOnPlatform);
+                // Console.WriteLine("Is on ground: " + playerOnGround);
+
+                if (knockbackTimer <= 0) // Ensure knockback is finished
+                {
+                    // Check if the player is not falling and not on any platform/ground
+                    if ((!isFalling() && !isOnPlatform) || (!isFalling() && !playerOnGround))
+                    {
+                        // add logic to move player slowly downwards (increase Position.Y slowly) until he reaches the ground. math: GroundLevel - (boundingBox.Height/2)
+                        //Console.WriteLine("Position Y: " + Position.Y + " Ground Level: " + (groundLevel - (BoundingBox.Height / 20)));
+                        if (Position.Y + BoundingBox.Height / 2 <= groundLevel)
+                        {
+                            deathAnimation(gameTime);
+                            if (!isDead)
+                            {
+                                Position = new Vector2(Position.X, Position.Y + 2);
+                            }
+                            isDeadAnimation = true;
+                        }
+
+                    }
+                }
+            }
         }
 
         private void ResetInvincibility()
@@ -125,6 +170,7 @@ namespace JumpScape.Classes
 
         public void UpdateMovement(KeyboardState keyboardState)
         {
+            if (isDead) return;
             if (keyboardState.IsKeyDown(Keys.Left))
             {
                 Position = new Vector2(Position.X - 3f, Position.Y);
@@ -141,14 +187,19 @@ namespace JumpScape.Classes
 
         public void ApplyGravity(float gravity)
         {
-            Velocity = new Vector2(Velocity.X, Velocity.Y + gravity);
-            Position += Velocity;
+            if (!gravityStop)
+            {
+                Velocity = new Vector2(Velocity.X, Velocity.Y + gravity);
+                Position += Velocity;
+            }
         }
 
         public void Jump(float jumpStrength)
         {
+            if (isDead) return;
             Velocity = new Vector2(Velocity.X, jumpStrength);
             IsJumping = true;
+            isOnPlatform = false;
         }
 
         public void ApplyKnockback(Vector2 knockbackDirection)
@@ -158,6 +209,8 @@ namespace JumpScape.Classes
             Velocity = new Vector2(Velocity.X, knockbackStrengthY);  // Apply vertical knockback
             // Start the knockback timer
             knockbackTimer = knockbackDuration;
+            isOnPlatform = false;
+            playerOnGround = false;
         }
 
         public void LoseHeart(float amount, int damageDirection)
@@ -184,19 +237,12 @@ namespace JumpScape.Classes
 
         private void deathAnimation(GameTime gameTime)
         {
-            // Log to see when the function is called
-            Console.WriteLine("Player is dead");
-
             if (isDead)
             {
-                // Log the time step per frame
-                Console.WriteLine("Time since last frame: " + gameTime.ElapsedGameTime.TotalSeconds);
-
-                // Reverse the direction of rotation (rotating counterclockwise)
+                //Reverse the direction of rotation (rotating counterclockwise)
                 if (_rotation > -Math.PI / 2) // Ensure it rotates counterclockwise towards downward position
                 {
                     _rotation -= deathRotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds; // Negative increment for counterclockwise rotation
-                    Console.WriteLine("Player rotation: " + _rotation);
 
                     // Clamp the rotation to stop at -Math.PI / 2 (downwards position)
                     if (_rotation < -Math.PI / 2)
@@ -206,7 +252,6 @@ namespace JumpScape.Classes
                 }
             }
         }
-
 
         private void TriggerInvincibility()
         {
@@ -235,28 +280,57 @@ namespace JumpScape.Classes
             }
         }
 
-
-        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, float topLeftScreenY, GameTime gameTime)
+        // function to check if y is bigger than previous y
+        private float previousY = 0;
+        public bool isFalling()
         {
-            if (isDead)
-            {
-                deathAnimation(gameTime);
-            }
+            //Console.WriteLine("Current Y: " + (int)Position.Y + " Previous Y: " + (int)previousY);
+            return (int)Position.Y > (int)previousY;
+        }
+
+        private bool isDeadAnimation = false;
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, float groundLevel, float topLeftScreenY, GameTime gameTime)
+        {
+            // Console.WriteLine("Ground level " + groundLevel );
+            // Console.WriteLine("Player Y: " + Position.Y);
 
             // Use semi-transparent color for flashing effect
             Color drawColor = IsInvincible && _isFlashing ? Color.Orange : Color.White;
 
-            spriteBatch.Draw(
-                _currentTexture,
-                Position,
-                null,
-                drawColor,
-                _rotation,
-                Vector2.Zero,
-                0.1f,
-                SpriteEffects.None,
-                0f
-            );
+            Vector2 origin = new Vector2(0, _currentTexture.Height); // Set origin to the bottom-left corner (scaled)
+
+            // Adjust the player's position so the rotation occurs around the bottom-left corner
+            Vector2 adjustedPosition = new Vector2(Position.X, Position.Y + _currentTexture.Height * 0.1f);
+
+            if (isDeadAnimation)
+            {
+                spriteBatch.Draw(
+               _currentTexture,
+               adjustedPosition,
+               null,
+               drawColor,
+               _rotation,
+               origin,
+               0.1f,
+               SpriteEffects.None,
+               0f
+           );
+            }
+            else
+            {
+                spriteBatch.Draw(
+                    _currentTexture,
+                    Position,
+                    null,
+                    drawColor,
+                    _rotation,
+                    Vector2.Zero,
+                    0.1f,
+                    SpriteEffects.None,
+                    0f
+                );
+            }
 
             // Draw hearts at the top left of the screen
             float heartScale = 0.1f;
