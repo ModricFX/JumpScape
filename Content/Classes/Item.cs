@@ -9,10 +9,14 @@ namespace JumpScape.Classes
         public Vector2 Position { get; }
         public bool Collected { get; private set; } = false;
 
-        public Item(Texture2D texture, Vector2 position)
+        // Add a Name property
+        public string Name { get; }
+
+        public Item(Texture2D texture, Vector2 position, string name)
         {
             _texture = texture;
             Position = position;
+            Name = name;  // Set the item name
         }
 
         public virtual Rectangle BoundingBox => new Rectangle((int)Position.X, (int)Position.Y, (int)(_texture.Width * 0.1f), (int)(_texture.Height * 0.1f));

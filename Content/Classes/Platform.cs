@@ -17,26 +17,29 @@ namespace JumpScape
             Length = length;
         }
 
+        
         public void Draw(SpriteBatch spriteBatch)
         {
-            // Get the width of the texture
+            // Texture width
             int textureWidth = Texture.Width;
 
-            // Calculate how many times to repeat the texture
+            // Calculate how many times the texture needs to be drawn fully
             int numRepeats = Length / textureWidth;
             int remainder = Length % textureWidth;
 
             // Draw the repeated textures
             for (int i = 0; i < numRepeats; i++)
             {
-                // Draw each texture at the appropriate position
                 spriteBatch.Draw(Texture, new Vector2(Position.X + i * textureWidth, Position.Y), Color.White);
             }
 
-            // If there's a remainder, draw the leftover part of the texture
+            // Draw the remaining portion only if necessary
             if (remainder > 0)
             {
-                spriteBatch.Draw(Texture, new Rectangle((int)(Position.X + numRepeats * textureWidth), (int)Position.Y, remainder, Texture.Height), Color.White);
+                Rectangle sourceRectangle = new Rectangle(0, 0, remainder, Texture.Height);
+                Vector2 drawPosition = new Vector2(Position.X + numRepeats * textureWidth, Position.Y);
+
+                spriteBatch.Draw(Texture, drawPosition, sourceRectangle, Color.White);
             }
         }
     }

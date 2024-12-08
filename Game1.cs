@@ -79,6 +79,12 @@ namespace JumpScape
             Texture2D heartEmptyTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_empty.png"));
 
             Texture2D inventoryTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory.png"));
+            Texture2D inventorySelect1 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_1.png"));
+            Texture2D inventorySelect2 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_2.png"));
+            Texture2D inventorySelect3 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_3.png"));
+
+
+
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
 
@@ -86,20 +92,19 @@ namespace JumpScape
             LevelLoader levelLoader = new LevelLoader();
             int windowHeight = GraphicsDevice.Viewport.Height;
             int windowWidth = GraphicsDevice.Viewport.Width;
-            levelLoader.LoadLevel(Path.Combine("Levels", "Level1.txt"), windowHeight,windowWidth);
+            levelLoader.LoadLevel(Path.Combine("Levels", "Level1.txt"), windowHeight, windowWidth);
 
             // Set the ground level based on the level loader
             groundLevel = LevelLoader.GroundY;
-            Console.WriteLine("Ground level GAME1.CS: " + groundLevel);
 
             // Initialize player, door, and key
-            player = new Player(playerRightTexture, playerLeftTexture, levelLoader.PlayerSpawn, heartFullTexture, heartHalfTexture, heartEmptyTexture, inventoryTexture, keyTextureInventory);
+            player = new Player(playerRightTexture, playerLeftTexture, levelLoader.PlayerSpawn, heartFullTexture, heartHalfTexture, heartEmptyTexture, inventoryTexture, keyTextureInventory, inventorySelect1, inventorySelect2, inventorySelect3);
             door = new Door(lockedDoorTexture, doorUnlockedTexture, doorOpenedTexture, levelLoader.DoorData.Item1, levelLoader.DoorData.Item2);
 
             // Check if there's a valid key position before creating the key
             if (levelLoader.KeyPosition != Vector2.Zero) // Assuming Vector2.Zero means no key in the level
             {
-                key = new AnimatedItem(keyTexture, levelLoader.KeyPosition, totalFrames: 16, frameTime: 0.1f);
+                key = new AnimatedItem(keyTexture, levelLoader.KeyPosition, totalFrames: 16, frameTime: 0.1f, "Key");
             }
             else
             {
@@ -147,7 +152,8 @@ namespace JumpScape
             if (player.Position.X < 0)
             {
                 player.Position = new Vector2(0, player.Position.Y); // Limit the left bound
-            } else if (player.Position.X > GraphicsDevice.Viewport.Width - player.BoundingBox.Width)
+            }
+            else if (player.Position.X > GraphicsDevice.Viewport.Width - player.BoundingBox.Width)
             {
                 player.Position = new Vector2(GraphicsDevice.Viewport.Width - player.BoundingBox.Width, player.Position.Y); // Limit the right bound
             }
@@ -284,7 +290,7 @@ namespace JumpScape
                         player.Velocity = new Vector2(player.Velocity.X, 0);
                         player.IsJumping = false;
                         isOnPlatform = true;
-                        player.isOnPlatform  = true;
+                        player.isOnPlatform = true;
                     }
                     // Ensure the player doesn't pass through the platform from below
                     else if (player.Velocity.Y < 0 && playerRect.Top <= platformRect.Bottom && previousPosition.Y >= platformRect.Bottom)
@@ -307,11 +313,12 @@ namespace JumpScape
             // Check if the player is on the ground if not on a platform
             if (!isOnPlatform && player.Position.Y >= groundLevel - player.BoundingBox.Height)
             {
-                if (!player.isDead) {
-                player.Position = new Vector2(player.Position.X, groundLevel - player.BoundingBox.Height);
-                player.Velocity = new Vector2(player.Velocity.X, 0);
-                player.IsJumping = false;
-                isOnPlatform = true;
+                if (!player.isDead)
+                {
+                    player.Position = new Vector2(player.Position.X, groundLevel - player.BoundingBox.Height);
+                    player.Velocity = new Vector2(player.Velocity.X, 0);
+                    player.IsJumping = false;
+                    isOnPlatform = true;
                 }
             }
 
@@ -336,9 +343,10 @@ namespace JumpScape
             {
                 fadeAlpha -= fadeSpeed; // Decrease alpha to fade out
                 if (fadeAlpha < 0f) fadeAlpha = 0f; // Make sure it doesn't go below 0
-            } else if (fadeAlpha >= 0f && isFadingOut)
+            }
+            else if (fadeAlpha >= 0f && isFadingOut)
             {
-                fadeAlpha += fadeSpeed*2; // Increase alpha to fade in
+                fadeAlpha += fadeSpeed * 2; // Increase alpha to fade in
                 if (fadeAlpha > 1f) fadeAlpha = 1f; // Make sure it doesn't go above 1
             }
             base.Update(gameTime);

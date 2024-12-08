@@ -12,8 +12,8 @@ namespace JumpScape.Classes
         private int _frameWidth;
         private int _frameHeight;
 
-        public AnimatedItem(Texture2D texture, Vector2 position, int totalFrames, float frameTime) 
-            : base(texture, position)
+        public AnimatedItem(Texture2D texture, Vector2 position, int totalFrames, float frameTime, string name) 
+            : base(texture, position, name)
         {
             _totalFrames = totalFrames;
             _frameTime = frameTime;

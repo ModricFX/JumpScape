@@ -1,9 +1,9 @@
 TODO:
 NEEDED:
-- Player goes through ground if he jumps from enough
 - PRESS Q TO DROP ITEM (if player has an item in inventory), let player select item by pressing combination Q + 1, Q + 2, Q + 3. If player has no item, do nothing OR player selects item by pressing 1, 2 or 3, and then presses Q to drop
-- Add weapons for player, attack by clicking mouse button in direction
 - Add ghost that follows player in path finding way
+- Player goes through ground if he jumps from enough
+- Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 
 CAN DO LATER:

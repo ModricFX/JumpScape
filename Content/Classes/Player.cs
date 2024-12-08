@@ -35,7 +35,8 @@ namespace JumpScape.Classes
 
         // Inventory System
         private Inventory _inventory;
-        private Texture2D _keyTexture; // Texture for the key
+
+        private int selectedIndex = 0; // The currently selected inventory item (0, 1, or 2)
 
         // Knockback variables
         private float knockbackTimer = 0f; // Timer for controlling knockback duration
@@ -56,7 +57,7 @@ namespace JumpScape.Classes
 
         public Player(Texture2D textureRight, Texture2D textureLeft, Vector2 startPosition,
                       Texture2D heartFull, Texture2D heartHalf, Texture2D heartEmpty,
-                      Texture2D inventoryTexture, Texture2D keyTexture)
+                      Texture2D inventoryTexture, Texture2D keyTexture, Texture2D inventorySelect1, Texture2D inventorySelect2, Texture2D inventorySelect3)
         {
             _textureRight = textureRight;
             _textureLeft = textureLeft;
@@ -68,8 +69,7 @@ namespace JumpScape.Classes
             _heartFullTexture = heartFull;
             _heartHalfTexture = heartHalf;
             _heartEmptyTexture = heartEmpty;
-            _inventory = new Inventory(inventoryTexture, keyTexture);  // Create an inventory
-            _keyTexture = keyTexture; // Set the key texture
+            _inventory = new Inventory(inventoryTexture, keyTexture, inventorySelect1, inventorySelect2, inventorySelect3);  // Create an inventory
         }
 
         public Rectangle BoundingBox => new Rectangle((int)Position.X, (int)Position.Y, (int)(_currentTexture.Width * 0.1f), (int)(_currentTexture.Height * 0.1f));
@@ -108,11 +108,11 @@ namespace JumpScape.Classes
             float topLeftScreenY = cameraPosition.Y + 20;
 
             // Calculate the X position for inventory (right-aligned)
-            int TopRightScreenX = (int)(cameraPosition.X + screenWidth - _inventory.InventoryTexture.Width * 0.7f - 20);
-
-            _inventory.Update(gameTime, TopRightScreenX); // Update the inventory (no need for cameraPosition and screenWidth here)
+            int TopRightScreenX = (int)(cameraPosition.X + screenWidth - _inventory._selectTextures[selectedIndex].Width * 0.7f - 20);
 
             UpdateMovement(keyboardState);
+
+            _inventory.Update(gameTime, TopRightScreenX, selectedIndex); // Update the inventory (no need for cameraPosition and screenWidth here)
 
             if (IsInvincible)
             {
@@ -182,6 +182,18 @@ namespace JumpScape.Classes
                 Position = new Vector2(Position.X + 3f, Position.Y);
                 _currentTexture = _textureRight;
                 playerOnGround = true;
+            }
+            if (keyboardState.IsKeyDown(Keys.D1))
+            {
+                selectedIndex = 0;
+            }
+            else if (keyboardState.IsKeyDown(Keys.D2))
+            {
+                selectedIndex = 1;
+            }
+            else if (keyboardState.IsKeyDown(Keys.D3))
+            {
+                selectedIndex = 2;
             }
         }
 
@@ -272,11 +284,23 @@ namespace JumpScape.Classes
         {
             if (door.IsLocked && HasKey)
             {
-                // Unlock the door and remove the key from inventory
-                door.Unlock();
-                _inventory.RemoveFirstKey();
-                HasKey = false;
-                Console.WriteLine("Key removed from inventory.");
+                // check if key is selected
+                int keyIndex;
+                for (keyIndex = 0; keyIndex < _inventory.MaxInventoryItems; keyIndex++)
+                {
+                    if (_inventory._inventory[keyIndex] == "Key")
+                    {
+                        break;
+                    }
+                }
+                if (selectedIndex == keyIndex)
+                {
+                    // Unlock the door and remove the key from inventory
+                    door.Unlock();
+                    _inventory.RemoveFirstKey();
+                    HasKey = false;
+                    Console.WriteLine("Key removed from inventory.");
+                }
             }
         }
 
@@ -292,30 +316,25 @@ namespace JumpScape.Classes
 
         public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, float groundLevel, float topLeftScreenY, GameTime gameTime)
         {
-            // Console.WriteLine("Ground level " + groundLevel );
-            // Console.WriteLine("Player Y: " + Position.Y);
-
-            // Use semi-transparent color for flashing effect
+            // Player texture drawing logic
             Color drawColor = IsInvincible && _isFlashing ? Color.Orange : Color.White;
+            Vector2 origin = new Vector2(0, _currentTexture.Height);
 
-            Vector2 origin = new Vector2(0, _currentTexture.Height); // Set origin to the bottom-left corner (scaled)
-
-            // Adjust the player's position so the rotation occurs around the bottom-left corner
             Vector2 adjustedPosition = new Vector2(Position.X, Position.Y + _currentTexture.Height * 0.1f);
 
             if (isDeadAnimation)
             {
                 spriteBatch.Draw(
-               _currentTexture,
-               adjustedPosition,
-               null,
-               drawColor,
-               _rotation,
-               origin,
-               0.1f,
-               SpriteEffects.None,
-               0f
-           );
+                    _currentTexture,
+                    adjustedPosition,
+                    null,
+                    drawColor,
+                    _rotation,
+                    origin,
+                    0.1f,
+                    SpriteEffects.None,
+                    0f
+                );
             }
             else
             {
@@ -332,13 +351,13 @@ namespace JumpScape.Classes
                 );
             }
 
-            // Draw hearts at the top left of the screen
+            // Draw hearts
             float heartScale = 0.1f;
             for (int i = 0; i < MaxHearts; i++)
             {
                 Texture2D heartTexture = _currentHearts >= (i + 1) * 2 ? _heartFullTexture
-                                            : _currentHearts >= (i * 2) + 1 ? _heartHalfTexture
-                                            : _heartEmptyTexture;
+                                        : _currentHearts >= (i * 2) + 1 ? _heartHalfTexture
+                                        : _heartEmptyTexture;
 
                 spriteBatch.Draw(
                     heartTexture,
@@ -354,7 +373,8 @@ namespace JumpScape.Classes
             }
 
             // Draw the inventory
-            _inventory.Draw(spriteBatch, topLeftScreenY); // Use passed parameters
+            _inventory.Draw(spriteBatch, topLeftScreenY);
         }
+
     }
 }
