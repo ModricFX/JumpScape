@@ -114,9 +114,9 @@ namespace JumpScape
             // Initialize platforms and monsters
             platforms = new List<Platform>();
             monsters = new List<Monster>();
-            foreach (var (position, length, hasMonster) in levelLoader.PlatformData)
+            foreach (var (position, length, hasMonster, isDisappearing) in levelLoader.PlatformData)
             {
-                Platform platform = new Platform(platformTexture, position, length);
+                Platform platform = new Platform(platformTexture, position, length, isDisappearing);
                 platforms.Add(platform);
 
                 if (hasMonster)
@@ -263,13 +263,14 @@ namespace JumpScape
             }
 
             // Platform collision logic
-            player.ApplyGravity(gravity);
             bool isOnPlatform = false;
 
             // check if player on ground or platform isOnPlatform
+            player.ApplyGravity(gravity);
 
             foreach (var platform in platforms)
             {
+                if (!platform.isVisible) continue;
                 playerRect = player.BoundingBox;
                 Rectangle platformRect = platform.BoundingBox;
                 if (!player.playerOnGround)
@@ -291,6 +292,9 @@ namespace JumpScape
                         player.IsJumping = false;
                         isOnPlatform = true;
                         player.isOnPlatform = true;
+                        if (platform.IsDisappearing) {
+                            platform.StartCountdown();
+                        }
                     }
                     // Ensure the player doesn't pass through the platform from below
                     else if (player.Velocity.Y < 0 && playerRect.Top <= platformRect.Bottom && previousPosition.Y >= platformRect.Bottom)
@@ -307,7 +311,22 @@ namespace JumpScape
                     {
                         player.Position = new Vector2(platformRect.Right, player.Position.Y);
                     }
+                    // prevent player from falling through the ground with high velocity
+                    else if (playerRect.Bottom >= platformRect.Top && playerRect.Top <= platformRect.Bottom && playerRect.Right >= platformRect.Left && playerRect.Left <= platformRect.Right)
+                    {
+                        player.Position = new Vector2(player.Position.X, platformRect.Top - playerRect.Height);
+                        player.Velocity = new Vector2(player.Velocity.X, 0);
+                        player.IsJumping = false;
+                        isOnPlatform = true;
+                        player.isOnPlatform = true;
+                    }
                 }
+            }
+
+            //start update platforms
+            foreach (var platform in platforms)
+            {
+                platform.Update(gameTime);
             }
 
             // Check if the player is on the ground if not on a platform
@@ -358,12 +377,6 @@ namespace JumpScape
 
             // Begin drawing with camera transformation
             _spriteBatch.Begin(transformMatrix: cameraTransform);
-
-            // Draw the ground
-            // for (int i = 0; i < GraphicsDevice.Viewport.Width * 2; i += groundTexture.Width)
-            // {
-            //     _spriteBatch.Draw(groundTexture, new Vector2(i, groundLevel), Color.White);
-            // }
 
             // Draw platforms
             foreach (var platform in platforms)

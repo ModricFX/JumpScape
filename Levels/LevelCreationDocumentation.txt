@@ -1,0 +1,9 @@
+PlayerSpawn: X, Y
+
+Platform: X, Y, length, Monster on platform (0, 1), Disapearing platform (0, 1)
+groundY gets replaced with the ground's Y position
+groundLength gets replaced with the ground's length
+
+DoorPosition: X, Y, Locked or unlocked (0, 1)
+
+KeyPosition: X, Y

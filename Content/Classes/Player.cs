@@ -90,9 +90,6 @@ namespace JumpScape.Classes
                 previousYUpdateTimer = 0f; // Reset the timer
             }
             playerOnGround = isFalling();
-            // Console.WriteLine("Player is falling: " + isFalling());
-            // Console.WriteLine("Player on ground: " + playerOnGround);
-            // Console.WriteLine("Player on platform: " + isOnPlatform);
 
             // Decrease the knockback timer if it's active
             if (knockbackTimer > 0)
