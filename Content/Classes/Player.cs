@@ -2,6 +2,8 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace JumpScape.Classes
 {
@@ -17,7 +19,7 @@ namespace JumpScape.Classes
         public bool IsJumping { get; set; }
 
         // Heart System Variables
-        private const int MaxHearts = 1;
+        private const int MaxHearts = 3;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
@@ -53,23 +55,32 @@ namespace JumpScape.Classes
         public bool isDead = false;
         private float deathRotationSpeed = 4f; // Speed at which the player rotates after death
 
+        private float jumpStrength = -15f;
+
         private bool gravityStop = false;
 
-        public Player(Texture2D textureRight, Texture2D textureLeft, Vector2 startPosition,
-                      Texture2D heartFull, Texture2D heartHalf, Texture2D heartEmpty,
-                      Texture2D inventoryTexture, Texture2D keyTexture, Texture2D inventorySelect1, Texture2D inventorySelect2, Texture2D inventorySelect3)
+        public bool endLevel = false;
+
+        private bool isEKeyReleased = true; // Check if the E key is released
+
+        private float previousY = 0;
+        private float previousX = 0;
+
+        public Player(GraphicsDevice graphicsDevice, Vector2 startPosition)
         {
-            _textureRight = textureRight;
-            _textureLeft = textureLeft;
+            _textureRight = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Player", "player_right.png"));
+            _textureLeft = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Player", "player_left.png"));
+
             _currentTexture = _textureRight;
             Position = startPosition;
             Velocity = Vector2.Zero;
 
             _currentHearts = MaxHearts * 2;
-            _heartFullTexture = heartFull;
-            _heartHalfTexture = heartHalf;
-            _heartEmptyTexture = heartEmpty;
-            _inventory = new Inventory(inventoryTexture, keyTexture, inventorySelect1, inventorySelect2, inventorySelect3);  // Create an inventory
+            _heartFullTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_full.png"));
+            _heartHalfTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_half.png"));
+            _heartEmptyTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_empty.png"));
+
+            _inventory = new Inventory(graphicsDevice);  // Create an inventory
         }
 
         public Rectangle BoundingBox => new Rectangle((int)Position.X, (int)Position.Y, (int)(_currentTexture.Width * 0.1f), (int)(_currentTexture.Height * 0.1f));
@@ -77,9 +88,60 @@ namespace JumpScape.Classes
         private float previousYUpdateTimer = 0f; // Timer for controlling the delay
         private const float previousYUpdateDelay = 0.2f; // 0.2 seconds delay
 
-        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, int screenWidth, float groundLevel)
+        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, int screenWidth, float groundLevel, Item key, Door door)
         {
-            // IS FALLING FUNCTION
+            // Limit the player so they can't go out of the left or right bounds
+            if (Position.X < 0)
+            {
+                Position = new Vector2(0, Position.Y); // Limit the left bound
+            }
+            else if (Position.X > screenWidth - BoundingBox.Width)
+            {
+                Position = new Vector2(screenWidth - BoundingBox.Width, Position.Y); // Limit the right bound
+            }
+
+            // Ensure the player picks up the key only when they are directly over it
+            if (BoundingBox.Intersects(key.BoundingBox) && !key.Collected)
+            {
+                // Check if the player's feet are at the same level as the top of the key
+                if (BoundingBox.Bottom >= key.BoundingBox.Top && BoundingBox.Top <= key.BoundingBox.Bottom)
+                {
+                    key.Collect();
+                    HasKey = true;
+                    AddItemToInventory("Key");  // Add the key to the player's inventory
+                    System.Diagnostics.Debug.WriteLine("Key collected and added to inventory!");
+                }
+            }
+
+            if (BoundingBox.Intersects(door.BoundingBox))
+            {
+                if (keyboardState.IsKeyDown(Keys.E) && isEKeyReleased)
+                {
+                    isEKeyReleased = false; // Prevent holding down the key to trigger multiple actions
+
+                    if (door.IsLocked && !HasKey)
+                    {
+                        System.Diagnostics.Debug.WriteLine("You need a key!");
+                    }
+                    else if (door.IsLocked && HasKey)
+                    {
+                        UnlockDoor(door);
+                        System.Diagnostics.Debug.WriteLine("Door unlocked. Press E to open.");
+                    }
+                    else if (door.IsUnlocked)
+                    {
+                        door.Open();
+                        System.Diagnostics.Debug.WriteLine("Door opened. Press E to enter.");
+                    }
+                    else if (door.IsOpened)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Entering the door...");
+                        endLevel = true; // Start fading out
+                        Position = new Vector2(-100, -100); // Move the player out of view to simulate entering
+                    }
+                }
+            }
+
             // Accumulate elapsed time
             previousYUpdateTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -101,8 +163,6 @@ namespace JumpScape.Classes
                 // If knockback duration is over, stop moving the player
                 Velocity = new Vector2(0, Velocity.Y);  // Stop the horizontal knockback effect (keep vertical velocity)
             }
-            // Calculate the screen Y position for hearts and inventory
-            float topLeftScreenY = cameraPosition.Y + 20;
 
             // Calculate the X position for inventory (right-aligned)
             int TopRightScreenX = (int)(cameraPosition.X + screenWidth - _inventory._selectTextures[selectedIndex].Width * 0.7f - 20);
@@ -168,6 +228,15 @@ namespace JumpScape.Classes
         public void UpdateMovement(KeyboardState keyboardState)
         {
             if (isDead) return;
+            // Update jump logic to ensure player can only jump when on ground or platform
+            if (keyboardState.IsKeyDown(Keys.Space) && !IsJumping && isOnPlatform)
+            {
+                Jump(jumpStrength);
+            }
+            if (keyboardState.IsKeyUp(Keys.E))
+            {
+                isEKeyReleased = true; // Allow the E key action again when the key is released
+            }
             if (keyboardState.IsKeyDown(Keys.Left))
             {
                 Position = new Vector2(Position.X - 3f, Position.Y);
@@ -302,7 +371,6 @@ namespace JumpScape.Classes
         }
 
         // function to check if y is bigger than previous y
-        private float previousY = 0;
         public bool isFalling()
         {
             //Console.WriteLine("Current Y: " + (int)Position.Y + " Previous Y: " + (int)previousY);
@@ -373,5 +441,73 @@ namespace JumpScape.Classes
             _inventory.Draw(spriteBatch, topLeftScreenY);
         }
 
+        internal void checkPlatforms(List<Platform> platforms, float groundLevel)
+        {
+            foreach (var platform in platforms)
+            {
+                if (!platform.isVisible) continue;
+                Rectangle platformRect = platform.BoundingBox;
+                if (!playerOnGround)
+                {
+                    playerOnGround = Position.Y >= groundLevel - BoundingBox.Height || isOnPlatform;
+                    if (Position.Y >= groundLevel - BoundingBox.Height)
+                    {
+                        isOnPlatform = false;
+                    }
+                }
+
+                if (BoundingBox.Intersects(platformRect))
+                {
+                    // Ensure the player is landing from above
+                    if (Velocity.Y > 0 && BoundingBox.Bottom >= platformRect.Top && BoundingBox.Bottom - Velocity.Y <= platformRect.Top)
+                    {
+                        Position = new Vector2(Position.X, platform.Position.Y - BoundingBox.Height);
+                        Velocity = new Vector2(Velocity.X, 0);
+                        IsJumping = false;
+                        isOnPlatform = true;
+                        isOnPlatform = true;
+                        if (platform.IsDisappearing)
+                        {
+                            platform.StartCountdown();
+                        }
+                    }
+                    // Ensure the player doesn't pass through the platform from below
+                    else if (Velocity.Y < 0 && BoundingBox.Top <= platformRect.Bottom && previousY >= platformRect.Bottom)
+                    {
+                        Position = new Vector2(Position.X, platformRect.Bottom);
+                        Velocity = new Vector2(Velocity.X, 0);
+                    }
+                    // Prevent the player from walking through the platform from the sides
+                    else if (BoundingBox.Right > platformRect.Left && previousX + BoundingBox.Width <= platformRect.Left)
+                    {
+                        Position = new Vector2(platformRect.Left - BoundingBox.Width, Position.Y);
+                    }
+                    else if (BoundingBox.Left < platformRect.Right && previousX >= platformRect.Right)
+                    {
+                        Position = new Vector2(platformRect.Right, Position.Y);
+                    }
+                    // prevent player from falling through the ground with high velocity
+                    else if (BoundingBox.Bottom >= platformRect.Top && BoundingBox.Top <= platformRect.Bottom && BoundingBox.Right >= platformRect.Left && BoundingBox.Left <= platformRect.Right)
+                    {
+                        Position = new Vector2(Position.X, platformRect.Top - BoundingBox.Height);
+                        Velocity = new Vector2(Velocity.X, 0);
+                        IsJumping = false;
+                        isOnPlatform = true;
+                        isOnPlatform = true;
+                    }
+                }
+            }
+            // Check if the player is on the ground if not on a platform
+            if (!isOnPlatform && Position.Y >= groundLevel - BoundingBox.Height)
+            {
+                if (!isDead)
+                {
+                    Position = new Vector2(Position.X, groundLevel - BoundingBox.Height);
+                    Velocity = new Vector2(Velocity.X, 0);
+                    IsJumping = false;
+                    isOnPlatform = true;
+                }
+            }
+        }
     }
 }

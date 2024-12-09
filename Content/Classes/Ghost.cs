@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.IO;
 
 namespace JumpScape.Classes
 {
@@ -28,10 +29,11 @@ namespace JumpScape.Classes
             (int)(GhostTextureRight.Height * 0.05f)
         );
 
-        public Ghost(Texture2D ghostTextureRight, Texture2D ghostTextureLeft, Vector2 position, float radius)
+        public Ghost(GraphicsDevice graphicsDevice, Vector2 position, float radius)
         {
-            GhostTextureRight = ghostTextureRight;
-            GhostTextureLeft = ghostTextureLeft;
+            GhostTextureRight = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "ghost_monster_right.png"));
+            GhostTextureLeft = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "ghost_monster_left.png"));
+
             OriginalPosition = position;
             currentPosition = position;
             smoothPosition = position; // Initialize smoothed position

@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System;
+using System.IO;
 
 namespace JumpScape.Classes
 {
@@ -10,14 +10,22 @@ namespace JumpScape.Classes
         public int MaxInventoryItems = 3;
         public string[] _inventory;
         private Texture2D _keyTexture;
+        private Texture2D select1;
+        private Texture2D select2;
+        private Texture2D select3;
         public Texture2D[] _selectTextures; // Textures for selected inventory items
         private int _topRightScreenX;
         private int _selectedIndex; // The currently selected inventory item (0, 1, or 2)
 
 
-        public Inventory(Texture2D inventoryTexture, Texture2D keyTexture, Texture2D select1, Texture2D select2, Texture2D select3)
+        public Inventory(GraphicsDevice graphicsDevice)
         {
-            _keyTexture = keyTexture;
+            _keyTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Items", "key_inventory.png"));
+            
+            select1 = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_1.png"));
+            select2 = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_2.png"));
+            select3 = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_3.png"));
+
             _inventory = new string[MaxInventoryItems];
             _selectTextures = new Texture2D[] { select1, select2, select3 }; // Initialize select textures
             _selectedIndex = 0; // Default to the first item being selected

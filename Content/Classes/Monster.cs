@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.IO;
 
 namespace JumpScape.Classes
 {
@@ -31,14 +32,16 @@ namespace JumpScape.Classes
         // The current facing direction of the monster
         public FacingDirection Direction { get; private set; }
 
-        public Monster(Texture2D textureLeft, Texture2D textureRight, Texture2D textureLeftYellow, Texture2D textureRightYellow, Vector2 position, Rectangle platformBounds)
+        public Monster(GraphicsDevice graphicsDevice, Vector2 position, Rectangle platformBounds)
         {
-            _textureLeft = textureLeft;
-            _textureRight = textureRight;
-            _textureLeftYellow = textureLeftYellow;
-            _textureRightYellow = textureRightYellow;
+            _textureLeft = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_left.png"));
+            _textureRight = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_right.png"));
+
+            _textureLeftYellow = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_left_yellow.png"));
+            _textureRightYellow = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_right_yellow.png"));
+            
             _currentTexture = _textureRight; // Start facing right
-            _position = position;
+            _position = new Vector2(position.X, position.Y - _textureLeft.Height / 19);;
             _platformBounds = platformBounds;
             _speed = 1.0f;
             _movingLeft = false;
@@ -54,10 +57,10 @@ namespace JumpScape.Classes
             (int)(_currentTexture.Height * Scale * BoundingBoxScale)  // Smaller height
         );
 
-        public void Update(GameTime gameTime, Vector2 playerPosition)
+        public void Update(GameTime gameTime, Player player)
         {
             // Update the facing direction based on the player's position
-            if (playerPosition.X < _position.X)
+            if (player.Position.X < _position.X)
             {
                 Direction = FacingDirection.Left;
             }
@@ -72,7 +75,7 @@ namespace JumpScape.Classes
                 _position.X -= _speed;
 
                 // Check if player is on the same platform and to the left
-                if (IsPlayerInSight(playerPosition) && playerPosition.X < _position.X)
+                if (IsPlayerInSight(player.Position) && player.Position.X < _position.X)
                 {
                     _currentTexture = _textureLeftYellow;  // Change texture when facing the player
                 }
@@ -91,7 +94,7 @@ namespace JumpScape.Classes
                 _position.X += _speed;
 
                 // Check if player is on the same platform and to the right
-                if (IsPlayerInSight(playerPosition) && playerPosition.X > _position.X)
+                if (IsPlayerInSight(player.Position) && player.Position.X > _position.X)
                 {
                     _currentTexture = _textureRightYellow;  // Change texture when facing the player
                 }
@@ -103,6 +106,40 @@ namespace JumpScape.Classes
                 if (_position.X + _currentTexture.Width * Scale >= _platformBounds.Right)
                 {
                     _movingLeft = true;
+                }
+            }
+
+            // Check for collisions between the player and monsters
+
+            if (player.BoundingBox.Intersects(BoundingBox))
+            {
+                bool isMonsterFacingPlayer = IsFacingPlayer(player.Position);
+
+                if (!player.IsInvincible)
+                {
+                    int monsterDirection = 0;
+
+                    // Determine the direction the monster is facing
+                    if (Direction == Monster.FacingDirection.Right)
+                    {
+                        monsterDirection = 1;  // Monster is facing right
+                    }
+                    else if (Direction == Monster.FacingDirection.Left)
+                    {
+                        monsterDirection = -1;  // Monster is facing left
+                    }
+
+                    // Apply damage and knockback
+                    if (isMonsterFacingPlayer)
+                    {
+                        // If the monster is facing the player, apply knockback based on the direction the monster is facing
+                        player.LoseHeart(1, monsterDirection);
+                    }
+                    else
+                    {
+                        // If the monster is not facing the player, apply lesser damage
+                        player.LoseHeart(0.5f, monsterDirection);
+                    }
                 }
             }
         }
@@ -126,7 +163,7 @@ namespace JumpScape.Classes
         }
 
         public bool IsFacingPlayer(Vector2 playerPosition)
-         {
+        {
             if (_movingLeft && playerPosition.X < _position.X)
                 return true;
             else if (!_movingLeft && playerPosition.X > _position.X)

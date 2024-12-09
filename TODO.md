@@ -1,6 +1,6 @@
 TODO:
 NEEDED:
-- MENUS: main menu (starting screen, level picker, settings), pause menu (continue, quit), game over menu (retry, quit)
+- FINISH MENUS: main menu (starting screen, level picker, settings), pause menu (continue, quit), game over menu (retry, quit)
 - Player goes through ground if he jumps from enough (fixed? needs testing)
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
