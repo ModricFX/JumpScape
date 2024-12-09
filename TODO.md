@@ -1,8 +1,7 @@
 TODO:
 NEEDED:
-- Dissapearing platforms when player jumps on them
 - Add ghost that follows player in path finding way
-- Player goes through ground if he jumps from enough
+- Player goes through ground if he jumps from enough (fixed? needs testing)
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 
