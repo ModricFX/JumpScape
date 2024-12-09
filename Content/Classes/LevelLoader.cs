@@ -11,12 +11,14 @@ namespace JumpScape
         public Vector2 KeyPosition { get; private set; }
         public (Vector2 Position, bool IsLocked) DoorData { get; private set; }
         public List<(Vector2 Position, int Length, bool HasMonster, bool IsDisappearing)> PlatformData { get; private set; }
+        public List<(Vector2 Position, float Radius)> GhostsData { get; private set; }
 
         public static float GroundY { get; private set; }
 
         public LevelLoader()
         {
             PlatformData = new List<(Vector2, int, bool, bool)>();
+            GhostsData = new List<(Vector2, float)>();
         }
 
         // Helper method to convert and save a level file with replacements
@@ -112,6 +114,13 @@ namespace JumpScape
                                 case "Platform":
                                     ProcessPlatformLine(values, position);
                                     break;
+                                case "Ghost":
+                                    if (values.Length == 3 && float.TryParse(values[2], out float radius))
+                                    {
+                                        GhostsData.Add((position, radius));
+                                    }
+                                break;
+
                             }
                         }
                     }

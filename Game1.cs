@@ -27,6 +27,7 @@ namespace JumpScape
 
         private float groundLevel;
         private List<Platform> platforms;
+        private List<Ghost> ghosts;
         private List<Monster> monsters;
         private bool isEKeyReleased = true;
         private Matrix cameraTransform;
@@ -82,6 +83,9 @@ namespace JumpScape
             Texture2D inventorySelect1 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_1.png"));
             Texture2D inventorySelect2 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_2.png"));
             Texture2D inventorySelect3 = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Inventory", "Inventory_select_3.png"));
+            
+            Texture2D ghostTextureRight = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "ghost_monster_right.png"));
+            Texture2D ghostTextureLeft = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "ghost_monster_left.png"));
 
 
 
@@ -114,6 +118,7 @@ namespace JumpScape
             // Initialize platforms and monsters
             platforms = new List<Platform>();
             monsters = new List<Monster>();
+            ghosts = new List<Ghost>();
             foreach (var (position, length, hasMonster, isDisappearing) in levelLoader.PlatformData)
             {
                 Platform platform = new Platform(platformTexture, position, length, isDisappearing);
@@ -125,6 +130,12 @@ namespace JumpScape
                     Rectangle platformBounds = platform.BoundingBox;
                     monsters.Add(new Monster(frogTextureLeft, frogTextureRight, textureLeftYellow, textureRightYellow, monsterPosition, platformBounds));
                 }
+            }
+
+            foreach (var (position, radius) in levelLoader.GhostsData)
+            {   
+                Ghost ghost = new Ghost(ghostTextureRight, ghostTextureLeft, position, radius);
+                ghosts.Add(ghost);
             }
 
             // Initialize camera position
@@ -162,6 +173,10 @@ namespace JumpScape
             foreach (var monster in monsters)
             {
                 monster.Update(gameTime, player.Position);
+            }
+            foreach (var ghost in ghosts)
+            {
+                ghost.Update(gameTime, player.Position, player);
             }
 
             // Check for collisions between the player and monsters
@@ -388,6 +403,10 @@ namespace JumpScape
             foreach (var monster in monsters)
             {
                 monster.Draw(_spriteBatch);
+            }
+            foreach (var ghost in ghosts)
+            {
+                ghost.Draw(_spriteBatch);
             }
 
             // Draw the key (animated or static)

@@ -7,3 +7,6 @@ groundLength gets replaced with the ground's length
 DoorPosition: X, Y, Locked or unlocked (0, 1)
 
 KeyPosition: X, Y
+
+Ghost: X, Y, radius
+radius means how far the ghost can move from its starting position
