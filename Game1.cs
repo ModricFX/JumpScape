@@ -348,7 +348,7 @@ namespace JumpScape
                     menuPosition.X -= 100; // A rough offset to center menu items
 
                     // Draw the menu with the selector icon and a custom scale
-                    mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 1.0f, isMenu: true);
+                    mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 3.0f, isMenu: true);
 
                     _spriteBatch.End();
                     break;
