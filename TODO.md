@@ -1,8 +1,9 @@
 TODO:
 NEEDED:
-- BUGGY PLAYER ON PLATFORMS, SHAKES UP AND DOWN
-- FINISH MENUS: main menu (starting screen, level picker, settings), pause menu (continue, quit), game over menu (retry, quit)
-- Player goes through ground if he jumps from enough (fixed? needs testing)
+- better level selector menu
+- better settings menu
+- add pause menu
+- add death screen
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 

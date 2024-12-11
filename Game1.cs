@@ -77,13 +77,13 @@ namespace JumpScape
             menuFont = font; // For simplicity, use the same font for menus
 
             // Initialize Menus
-            mainMenu = new Menu(menuFont);
+            mainMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             mainMenu.AddMenuItem("Play");
             mainMenu.AddMenuItem("Level Picker");
             mainMenu.AddMenuItem("Settings");
             mainMenu.AddMenuItem("Exit");
 
-            levelSelectMenu = new Menu(menuFont);
+            levelSelectMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
 
             // Dynamically load levels from the Levels directory
             string levelsDirectory = "Levels";
@@ -113,8 +113,9 @@ namespace JumpScape
                 }
                 // If the file doesn't start with "Level", ignore it.
             }
+            levelSelectMenu.AddMenuItem("Back");
 
-            settingsMenu = new Menu(menuFont);
+            settingsMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             settingsMenu.AddMenuItem("Toggle Fullscreen");
             settingsMenu.AddMenuItem("Back");
 
@@ -198,7 +199,7 @@ namespace JumpScape
             {
                 case GameState.MainMenu:
                     {
-                        int selection = mainMenu.Update();
+                        int selection = mainMenu.Update(gameTime, GraphicsDevice);
                         if (selection == 0) // Play
                         {
                             currentLevel = lastCompletedLevel + 1;
@@ -246,8 +247,8 @@ namespace JumpScape
 
                 case GameState.LevelSelect:
                     {
-                        int selection = levelSelectMenu.Update();
-                        if (selection >= 0)
+                        int selection = levelSelectMenu.Update(gameTime, GraphicsDevice);
+                        if (selection == 0)
                         {
                             string selectedLevelName = levelSelectMenu.GetSelectedItem();
                             if (selectedLevelName.StartsWith("Level", StringComparison.InvariantCultureIgnoreCase))
@@ -263,12 +264,17 @@ namespace JumpScape
                             InitializeCamera();
                             currentGameState = GameState.Playing;
                         }
+                        else if (selection == 1) // Back
+                        {
+                            currentGameState = GameState.MainMenu;
+                            mainMenu.ResetPreviousState();
+                        }
                     }
                     break;
 
                 case GameState.Settings:
                     {
-                        int selection = settingsMenu.Update();
+                        int selection = settingsMenu.Update(gameTime, GraphicsDevice);
                         if (selection == 0) // Toggle Fullscreen
                         {
                             _graphics.IsFullScreen = !_graphics.IsFullScreen;
@@ -329,9 +335,24 @@ namespace JumpScape
             {
                 case GameState.MainMenu:
                     _spriteBatch.Begin();
-                    mainMenu.Draw(_spriteBatch, new Vector2(GraphicsDevice.Viewport.Width / 2 - 50, GraphicsDevice.Viewport.Height / 2 - 80));
+
+                    // Position the menu below the logo
+                    Vector2 menuPosition = new Vector2(
+                        GraphicsDevice.Viewport.Width / 2,
+                        GraphicsDevice.Viewport.Height * 0.4f
+                    );
+
+                    // Adjust so text is centered
+                    // We'll align text center by subtracting half of the item width, but for simplicity, 
+                    // we can assume that the longest item fits in 200px.
+                    menuPosition.X -= 100; // A rough offset to center menu items
+
+                    // Draw the menu with the selector icon and a custom scale
+                    mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 1.0f, isMenu: true);
+
                     _spriteBatch.End();
                     break;
+
 
                 case GameState.Playing:
                     _spriteBatch.Begin(transformMatrix: cameraTransform);
@@ -358,14 +379,14 @@ namespace JumpScape
                 case GameState.LevelSelect:
                     _spriteBatch.Begin();
                     _spriteBatch.DrawString(font, "Select a Level:", new Vector2(100, 100), Color.White);
-                    levelSelectMenu.Draw(_spriteBatch, new Vector2(100, 150));
+                    levelSelectMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150), isMenu: false);
                     _spriteBatch.End();
                     break;
 
                 case GameState.Settings:
                     _spriteBatch.Begin();
                     _spriteBatch.DrawString(font, "Settings:", new Vector2(100, 100), Color.White);
-                    settingsMenu.Draw(_spriteBatch, new Vector2(100, 150));
+                    settingsMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150), isMenu: false);
                     _spriteBatch.End();
                     break;
             }
