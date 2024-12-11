@@ -1,5 +1,6 @@
 TODO:
 NEEDED:
+- BUGGY PLAYER ON PLATFORMS, SHAKES UP AND DOWN
 - FINISH MENUS: main menu (starting screen, level picker, settings), pause menu (continue, quit), game over menu (retry, quit)
 - Player goes through ground if he jumps from enough (fixed? needs testing)
 - Add weapons for player, attack by clicking mouse button in direction
@@ -11,6 +12,7 @@ CAN DO LATER:
 - PRESS Q TO DROP ITEM (if player has an item in inventory), let player select item by pressing combination Q + 1, Q + 2, Q + 3. If player has no item, do nothing OR player selects item by pressing 1, 2 or 3, and then presses Q to drop
 
 TESTING:
+- Test playing a level, and then exiting to menu, and playing another level (if loads are good)
 - Have 2 keys in inventory, unlock door -> it should take 1 key from the inventory
 - have 2 doors and 1 key, unlock door -> it should take 1 key from the inventory and only 1 door should get unlocked
 - have 2 doors and 2 keys, unlock door -> it should take 1 key from the inventory and only 1 door should get unlocked, then the other door should get unlocked

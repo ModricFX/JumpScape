@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
 using System.IO;
 using JumpScape.Classes;
+using System;
 
 namespace JumpScape
 {
@@ -30,6 +31,27 @@ namespace JumpScape
         private const float Gravity = 0.6f;
         private float cameraFollowThreshold;
 
+        public enum GameState
+        {
+            MainMenu,
+            Playing,
+            LevelSelect,
+            Settings
+        }
+
+        private GameState currentGameState;
+        private Menu mainMenu;
+        private Menu levelSelectMenu;
+        private Menu settingsMenu;
+
+        private SpriteFont menuFont;
+        private int lastCompletedLevel = 0; // Track the last completed level
+        private int currentLevel = 1;       // Track the current level to play
+        private KeyboardState previousKeyboardState;
+
+
+
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this)
@@ -47,19 +69,65 @@ namespace JumpScape
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+            // Load fade texture, font, etc.
             fadeTexture = new Texture2D(GraphicsDevice, 1, 1);
             fadeTexture.SetData(new[] { Color.Black });
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
+            menuFont = font; // For simplicity, use the same font for menus
 
-            LoadLevelData();
-            InitializeCamera();
+            // Initialize Menus
+            mainMenu = new Menu(menuFont);
+            mainMenu.AddMenuItem("Play");
+            mainMenu.AddMenuItem("Level Picker");
+            mainMenu.AddMenuItem("Settings");
+            mainMenu.AddMenuItem("Exit");
+
+            levelSelectMenu = new Menu(menuFont);
+
+            // Dynamically load levels from the Levels directory
+            string levelsDirectory = "Levels";
+            if (!Directory.Exists(levelsDirectory))
+            {
+                Directory.CreateDirectory(levelsDirectory);
+            }
+
+            // Find all files matching Level*.txt
+            string[] levelFiles = Directory.GetFiles(levelsDirectory, "Level*.txt");
+            // Sort them to ensure a logical order (e.g., Level1, Level2, etc.)
+            Array.Sort(levelFiles, StringComparer.InvariantCultureIgnoreCase);
+
+            foreach (string filePath in levelFiles)
+            {
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath); // e.g. "Level1"
+                                                                                              // Attempt to parse the number from the filename
+                                                                                              // Assuming file name format is strictly "LevelX"
+                if (fileNameWithoutExtension.StartsWith("Level", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    string numberPart = fileNameWithoutExtension.Substring("Level".Length);
+                    if (int.TryParse(numberPart, out int levelNumber))
+                    {
+                        levelSelectMenu.AddMenuItem("Level " + levelNumber);
+                    }
+                    // If we fail to parse the number, ignore this file.
+                }
+                // If the file doesn't start with "Level", ignore it.
+            }
+
+            settingsMenu = new Menu(menuFont);
+            settingsMenu.AddMenuItem("Toggle Fullscreen");
+            settingsMenu.AddMenuItem("Back");
+
+            currentGameState = GameState.MainMenu;
         }
+
+
 
         private void LoadLevelData()
         {
+            string levelFile = Path.Combine("Levels", "Level" + currentLevel + ".txt");
             var levelLoader = new LevelLoader();
-            levelLoader.LoadLevel(Path.Combine("Levels", "Level1.txt"), GraphicsDevice.Viewport.Height, GraphicsDevice.Viewport.Width);
+            levelLoader.LoadLevel(levelFile, GraphicsDevice.Viewport.Height, GraphicsDevice.Viewport.Width);
             groundLevel = LevelLoader.GroundY;
 
             player = new Player(GraphicsDevice, levelLoader.PlayerSpawn);
@@ -91,22 +159,137 @@ namespace JumpScape
             cameraFollowThreshold = GraphicsDevice.Viewport.Height * 0.05f;
         }
 
+        private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)
+        {
+            return current.IsKeyDown(key) && previous.IsKeyUp(key);
+        }
+
         protected override void Update(GameTime gameTime)
         {
-            if (Keyboard.GetState().IsKeyDown(Keys.Escape)) Exit();
+            KeyboardState ks = Keyboard.GetState();
+            // Only trigger if Escape is newly pressed this frame
+            if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))
+            {
+                switch (currentGameState)
+                {
+                    case GameState.Playing:
+                        // pause game logic or just fall through to main menu
+                        Exit();
+                        break;
 
-            isFadingOut = player.endLevel;
-            player.Update(gameTime, Keyboard.GetState(), cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, key, door);
-            UpdateMonstersAndGhosts(gameTime);
-            key?.Update(gameTime);
-            player.ApplyGravity(Gravity);
-            player.CheckPlatforms(platforms, groundLevel);
-            UpdatePlatforms(gameTime);
-            UpdateCamera();
-            UpdateFadeEffect();
+                    case GameState.LevelSelect:
+                        currentGameState = GameState.MainMenu;
+                        mainMenu.ResetPreviousState();
+                        break;
 
+                    case GameState.Settings:
+                        currentGameState = GameState.MainMenu;
+                        mainMenu.ResetPreviousState();
+                        break;
+
+                    case GameState.MainMenu:
+                    default:
+                        Exit();
+                        break;
+                }
+            }
+
+            switch (currentGameState)
+            {
+                case GameState.MainMenu:
+                    {
+                        int selection = mainMenu.Update();
+                        if (selection == 0) // Play
+                        {
+                            currentLevel = lastCompletedLevel + 1;
+                            LoadLevelData();
+                            InitializeCamera();
+                            currentGameState = GameState.Playing;
+                        }
+                        else if (selection == 1) // Level Picker
+                        {
+                            currentGameState = GameState.LevelSelect;
+                            levelSelectMenu.ResetPreviousState();
+                        }
+                        else if (selection == 2) // Settings
+                        {
+                            currentGameState = GameState.Settings;
+                            settingsMenu.ResetPreviousState();
+                        }
+                        else if (selection == 3) // Exit
+                        {
+                            Exit();
+                        }
+                    }
+                    break;
+
+                case GameState.Playing:
+                    {
+                        isFadingOut = player.endLevel;
+                        player.Update(gameTime, ks, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, key, door);
+                        UpdateMonstersAndGhosts(gameTime);
+                        key?.Update(gameTime);
+                        player.ApplyGravity(0.6f);
+                        player.CheckPlatforms(platforms, groundLevel);
+                        UpdatePlatforms(gameTime);
+                        UpdateCamera();
+                        UpdateFadeEffect();
+
+                        if (player.endLevel)
+                        {
+                            lastCompletedLevel = Math.Max(lastCompletedLevel, currentLevel);
+                            currentGameState = GameState.MainMenu;
+                            mainMenu.ResetPreviousState();
+                        }
+                    }
+                    break;
+
+                case GameState.LevelSelect:
+                    {
+                        int selection = levelSelectMenu.Update();
+                        if (selection >= 0)
+                        {
+                            string selectedLevelName = levelSelectMenu.GetSelectedItem();
+                            if (selectedLevelName.StartsWith("Level", StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                string numberPart = selectedLevelName.Substring("Level".Length);
+                                if (int.TryParse(numberPart, out int lvlNum))
+                                {
+                                    currentLevel = lvlNum;
+                                }
+                            }
+
+                            LoadLevelData();
+                            InitializeCamera();
+                            currentGameState = GameState.Playing;
+                        }
+                    }
+                    break;
+
+                case GameState.Settings:
+                    {
+                        int selection = settingsMenu.Update();
+                        if (selection == 0) // Toggle Fullscreen
+                        {
+                            _graphics.IsFullScreen = !_graphics.IsFullScreen;
+                            _graphics.ApplyChanges();
+                            // After toggling, reset menu state to avoid immediate re-trigger
+                            settingsMenu.ResetPreviousState();
+                        }
+                        else if (selection == 1) // Back
+                        {
+                            currentGameState = GameState.MainMenu;
+                            mainMenu.ResetPreviousState();
+                        }
+                    }
+                    break;
+            }
+            previousKeyboardState = ks;
             base.Update(gameTime);
         }
+
+
+
 
         private void UpdateMonstersAndGhosts(GameTime gameTime)
         {
@@ -142,26 +325,52 @@ namespace JumpScape
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            _spriteBatch.Begin(transformMatrix: cameraTransform);
+            switch (currentGameState)
+            {
+                case GameState.MainMenu:
+                    _spriteBatch.Begin();
+                    mainMenu.Draw(_spriteBatch, new Vector2(GraphicsDevice.Viewport.Width / 2 - 50, GraphicsDevice.Viewport.Height / 2 - 80));
+                    _spriteBatch.End();
+                    break;
 
-            foreach (var platform in platforms)
-                platform.Draw(_spriteBatch);
+                case GameState.Playing:
+                    _spriteBatch.Begin(transformMatrix: cameraTransform);
 
-            foreach (var monster in monsters)
-                monster.Draw(_spriteBatch);
+                    foreach (var platform in platforms)
+                        platform.Draw(_spriteBatch);
 
-            foreach (var ghost in ghosts)
-                ghost.Draw(_spriteBatch);
+                    foreach (var monster in monsters)
+                        monster.Draw(_spriteBatch);
 
-            key?.Draw(_spriteBatch);
-            door.Draw(_spriteBatch);
-            door.Update(_spriteBatch, player, font, GraphicsDevice.Viewport.Width);
-            player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, cameraPosition.Y + 20, gameTime);
+                    foreach (var ghost in ghosts)
+                        ghost.Draw(_spriteBatch);
 
-            _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
-            _spriteBatch.End();
+                    key?.Draw(_spriteBatch);
+                    door.Draw(_spriteBatch);
+                    door.Update(_spriteBatch, player, font, GraphicsDevice.Viewport.Width);
+                    player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, cameraPosition.Y + 20, gameTime);
+
+                    _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
+
+                    _spriteBatch.End();
+                    break;
+
+                case GameState.LevelSelect:
+                    _spriteBatch.Begin();
+                    _spriteBatch.DrawString(font, "Select a Level:", new Vector2(100, 100), Color.White);
+                    levelSelectMenu.Draw(_spriteBatch, new Vector2(100, 150));
+                    _spriteBatch.End();
+                    break;
+
+                case GameState.Settings:
+                    _spriteBatch.Begin();
+                    _spriteBatch.DrawString(font, "Settings:", new Vector2(100, 100), Color.White);
+                    settingsMenu.Draw(_spriteBatch, new Vector2(100, 150));
+                    _spriteBatch.End();
+                    break;
+            }
 
             base.Draw(gameTime);
         }
     }
-} 
+}

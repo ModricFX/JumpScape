@@ -64,7 +64,6 @@ namespace JumpScape.Classes
         private bool isEKeyReleased = true; // Check if the E key is released
 
         private float previousY = 0;
-        private float previousX = 0;
 
         public Player(GraphicsDevice graphicsDevice, Vector2 startPosition)
         {
@@ -462,31 +461,21 @@ namespace JumpScape.Classes
                         isOnPlatform = false;
                     }
                 }
-
-                // Check intersection with the platform
                 if (BoundingBox.Intersects(platformRect))
                 {
-                    // Find how much they overlap
                     Rectangle intersection = Rectangle.Intersect(BoundingBox, platformRect);
 
-                    // Determine which dimension has the minimal overlap
-                    // This tells us if it's primarily a vertical collision or a horizontal collision.
                     if (intersection.Width < intersection.Height)
                     {
                         // Horizontal collision resolution
                         if (BoundingBox.Center.X < platformRect.Center.X)
                         {
-                            // Player hit the platform from the left side
                             Position = new Vector2(Position.X - intersection.Width, Position.Y);
                         }
                         else
                         {
-                            // Player hit from the right side
                             Position = new Vector2(Position.X + intersection.Width, Position.Y);
                         }
-
-                        // If we hit from left or right, we shouldn't affect vertical velocity directly
-                        // unless we specifically want to stop vertical motion as well.
                     }
                     else
                     {
@@ -494,19 +483,21 @@ namespace JumpScape.Classes
                         if (BoundingBox.Center.Y < platformRect.Center.Y)
                         {
                             // Player landed on top of the platform
-                            Position = new Vector2(Position.X, Position.Y - intersection.Height);
+                            Position = new Vector2(Position.X, platformRect.Top - BoundingBox.Height);
                             Velocity = new Vector2(Velocity.X, 0);
                             IsJumping = false;
                             isOnPlatform = true;
 
                             if (platform.IsDisappearing)
                                 platform.StartCountdown();
+
+                            // Reset previousY to the current Y to prevent twitching
+                            previousY = Position.Y;
                         }
                         else
                         {
                             // Player hit the platform from below
                             Position = new Vector2(Position.X, Position.Y + intersection.Height);
-                            // Stop upward movement
                             Velocity = new Vector2(Velocity.X, 0);
                         }
                     }
@@ -515,16 +506,10 @@ namespace JumpScape.Classes
                 }
             }
 
-            // If not on platform and at or below ground level, adjust to ground
-            if (!resolvedPlatform && Position.Y >= groundLevel - BoundingBox.Height)
+            // If we didn't resolve any platform collision, the player is not on a platform
+            if (!resolvedPlatform)
             {
-                if (!isDead)
-                {
-                    Position = new Vector2(Position.X, groundLevel - BoundingBox.Height);
-                    Velocity = new Vector2(Velocity.X, 0);
-                    IsJumping = false;
-                    isOnPlatform = true;
-                }
+                isOnPlatform = false;
             }
         }
 

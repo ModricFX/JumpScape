@@ -11,11 +11,14 @@ namespace JumpScape
         private List<string> menuItems;
         private int selectedIndex;
 
+        private KeyboardState previousKeyboardState;
+
         public Menu(SpriteFont font)
         {
             this.font = font;
             menuItems = new List<string>();
             selectedIndex = 0;
+            previousKeyboardState = Keyboard.GetState();
         }
 
         public void AddMenuItem(string item)
@@ -23,26 +26,38 @@ namespace JumpScape
             menuItems.Add(item);
         }
 
+        public void ResetPreviousState()
+        {
+            previousKeyboardState = Keyboard.GetState();
+        }
+
         public int Update()
         {
-            KeyboardState state = Keyboard.GetState();
+            KeyboardState currentKeyboardState = Keyboard.GetState();
 
-            if (state.IsKeyDown(Keys.Up))
+            if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Up))
             {
                 selectedIndex--;
                 if (selectedIndex < 0) selectedIndex = menuItems.Count - 1;
             }
-            else if (state.IsKeyDown(Keys.Down))
+            else if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Down))
             {
                 selectedIndex++;
                 if (selectedIndex >= menuItems.Count) selectedIndex = 0;
             }
-            else if (state.IsKeyDown(Keys.Enter))
+            else if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Enter))
             {
-                return selectedIndex; // Return selected item
+                // Return selected item index
+                return selectedIndex;
             }
 
+            previousKeyboardState = currentKeyboardState;
             return -1; // No selection yet
+        }
+
+        private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)
+        {
+            return current.IsKeyDown(key) && previous.IsKeyUp(key);
         }
 
         public void Draw(SpriteBatch spriteBatch, Vector2 position)
@@ -52,6 +67,13 @@ namespace JumpScape
                 Color color = (i == selectedIndex) ? Color.Yellow : Color.White;
                 spriteBatch.DrawString(font, menuItems[i], position + new Vector2(0, i * 40), color);
             }
+        }
+
+        public string GetSelectedItem()
+        {
+            if (selectedIndex >= 0 && selectedIndex < menuItems.Count)
+                return menuItems[selectedIndex];
+            return null;
         }
     }
 }
