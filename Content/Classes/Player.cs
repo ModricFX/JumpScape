@@ -441,12 +441,19 @@ namespace JumpScape.Classes
             _inventory.Draw(spriteBatch, topLeftScreenY);
         }
 
-        internal void checkPlatforms(List<Platform> platforms, float groundLevel)
+        internal void CheckPlatforms(List<Platform> platforms, float groundLevel)
         {
+            // Assume we start off not resolving any platform collision this frame
+            bool resolvedPlatform = false;
+
             foreach (var platform in platforms)
             {
-                if (!platform.isVisible) continue;
+                if (!platform.isVisible)
+                    continue;
+
                 Rectangle platformRect = platform.BoundingBox;
+
+                // Update if the player is on the ground (if not on a platform)
                 if (!playerOnGround)
                 {
                     playerOnGround = Position.Y >= groundLevel - BoundingBox.Height || isOnPlatform;
@@ -456,49 +463,60 @@ namespace JumpScape.Classes
                     }
                 }
 
+                // Check intersection with the platform
                 if (BoundingBox.Intersects(platformRect))
                 {
-                    // Ensure the player is landing from above
-                    if (Velocity.Y > 0 && BoundingBox.Bottom >= platformRect.Top && BoundingBox.Bottom - Velocity.Y <= platformRect.Top)
+                    // Find how much they overlap
+                    Rectangle intersection = Rectangle.Intersect(BoundingBox, platformRect);
+
+                    // Determine which dimension has the minimal overlap
+                    // This tells us if it's primarily a vertical collision or a horizontal collision.
+                    if (intersection.Width < intersection.Height)
                     {
-                        Position = new Vector2(Position.X, platform.Position.Y - BoundingBox.Height);
-                        Velocity = new Vector2(Velocity.X, 0);
-                        IsJumping = false;
-                        isOnPlatform = true;
-                        isOnPlatform = true;
-                        if (platform.IsDisappearing)
+                        // Horizontal collision resolution
+                        if (BoundingBox.Center.X < platformRect.Center.X)
                         {
-                            platform.StartCountdown();
+                            // Player hit the platform from the left side
+                            Position = new Vector2(Position.X - intersection.Width, Position.Y);
+                        }
+                        else
+                        {
+                            // Player hit from the right side
+                            Position = new Vector2(Position.X + intersection.Width, Position.Y);
+                        }
+
+                        // If we hit from left or right, we shouldn't affect vertical velocity directly
+                        // unless we specifically want to stop vertical motion as well.
+                    }
+                    else
+                    {
+                        // Vertical collision resolution
+                        if (BoundingBox.Center.Y < platformRect.Center.Y)
+                        {
+                            // Player landed on top of the platform
+                            Position = new Vector2(Position.X, Position.Y - intersection.Height);
+                            Velocity = new Vector2(Velocity.X, 0);
+                            IsJumping = false;
+                            isOnPlatform = true;
+
+                            if (platform.IsDisappearing)
+                                platform.StartCountdown();
+                        }
+                        else
+                        {
+                            // Player hit the platform from below
+                            Position = new Vector2(Position.X, Position.Y + intersection.Height);
+                            // Stop upward movement
+                            Velocity = new Vector2(Velocity.X, 0);
                         }
                     }
-                    // Ensure the player doesn't pass through the platform from below
-                    else if (Velocity.Y < 0 && BoundingBox.Top <= platformRect.Bottom && previousY >= platformRect.Bottom)
-                    {
-                        Position = new Vector2(Position.X, platformRect.Bottom);
-                        Velocity = new Vector2(Velocity.X, 0);
-                    }
-                    // Prevent the player from walking through the platform from the sides
-                    else if (BoundingBox.Right > platformRect.Left && previousX + BoundingBox.Width <= platformRect.Left)
-                    {
-                        Position = new Vector2(platformRect.Left - BoundingBox.Width, Position.Y);
-                    }
-                    else if (BoundingBox.Left < platformRect.Right && previousX >= platformRect.Right)
-                    {
-                        Position = new Vector2(platformRect.Right, Position.Y);
-                    }
-                    // prevent player from falling through the ground with high velocity
-                    else if (BoundingBox.Bottom >= platformRect.Top && BoundingBox.Top <= platformRect.Bottom && BoundingBox.Right >= platformRect.Left && BoundingBox.Left <= platformRect.Right)
-                    {
-                        Position = new Vector2(Position.X, platformRect.Top - BoundingBox.Height);
-                        Velocity = new Vector2(Velocity.X, 0);
-                        IsJumping = false;
-                        isOnPlatform = true;
-                        isOnPlatform = true;
-                    }
+
+                    resolvedPlatform = true;
                 }
             }
-            // Check if the player is on the ground if not on a platform
-            if (!isOnPlatform && Position.Y >= groundLevel - BoundingBox.Height)
+
+            // If not on platform and at or below ground level, adjust to ground
+            if (!resolvedPlatform && Position.Y >= groundLevel - BoundingBox.Height)
             {
                 if (!isDead)
                 {
@@ -509,5 +527,6 @@ namespace JumpScape.Classes
                 }
             }
         }
+
     }
 }
