@@ -1,6 +1,7 @@
 TODO:
 NEEDED:
 - better level selector menu
+- Level selector when selecting item doesnt work, only loads level 1
 - better settings menu
 - add pause menu
 - add death screen
