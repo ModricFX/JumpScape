@@ -7,4 +7,6 @@ Platform: 960,250,200,1,0
 Platform: 1230,400,300,0,0
 Platform: 465,200,100,0,0
 Platform: 100,180,250,0,0
-DoorPosition: 1310,260,0
+DoorPosition: 1310,260,1
+KeyPosition: 120,100
+Ghost: 700,600,200

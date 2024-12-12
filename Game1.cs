@@ -199,10 +199,20 @@ namespace JumpScape
             {
                 case GameState.MainMenu:
                     {
+                        if (mainMenu.visible == false)
+                        {
+                            mainMenu.visible = true;
+                            levelSelectMenu.visible = false;
+                            settingsMenu.visible = false;
+                        }
                         int selection = mainMenu.Update(gameTime, GraphicsDevice);
                         if (selection == 0) // Play
                         {
                             currentLevel = lastCompletedLevel + 1;
+                            if (currentLevel > levelSelectMenu.menuItems.Count - 1)
+                            {
+                                currentLevel = levelSelectMenu.menuItems.Count - 1;
+                            }
                             LoadLevelData();
                             InitializeCamera();
                             currentGameState = GameState.Playing;
@@ -226,6 +236,9 @@ namespace JumpScape
 
                 case GameState.Playing:
                     {
+                        levelSelectMenu.visible = false;
+                        mainMenu.visible = false;
+                        settingsMenu.visible = false;
                         isFadingOut = player.endLevel;
                         player.Update(gameTime, ks, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, key, door);
                         UpdateMonstersAndGhosts(gameTime);
@@ -239,41 +252,74 @@ namespace JumpScape
                         if (player.endLevel)
                         {
                             lastCompletedLevel = Math.Max(lastCompletedLevel, currentLevel);
-                            currentGameState = GameState.MainMenu;
-                            mainMenu.ResetPreviousState();
+                            // if its the last level, keep the player in the last level
+                            if (lastCompletedLevel == levelSelectMenu.menuItems.Count)
+                            {
+                                lastCompletedLevel = levelSelectMenu.menuItems.Count - 1;
+                            }
+                            
+                            // fade out then go to main menu
+                            if (fadeAlpha >= 1)
+                            {
+                                currentGameState = GameState.MainMenu;
+                                //wait till is black + 1 second
+                                System.Threading.Thread.Sleep(1000);
+                                mainMenu.ResetPreviousState();
+                            }
                         }
                     }
                     break;
 
                 case GameState.LevelSelect:
                     {
-                        int selection = levelSelectMenu.Update(gameTime, GraphicsDevice);
-                        if (selection == 0)
+                        if (levelSelectMenu.visible == false)
                         {
-                            string selectedLevelName = levelSelectMenu.GetSelectedItem();
-                            if (selectedLevelName.StartsWith("Level", StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                string numberPart = selectedLevelName.Substring("Level".Length);
-                                if (int.TryParse(numberPart, out int lvlNum))
-                                {
-                                    currentLevel = lvlNum;
-                                }
-                            }
-
-                            LoadLevelData();
-                            InitializeCamera();
-                            currentGameState = GameState.Playing;
+                            levelSelectMenu.selectedIndex = 0;
+                            levelSelectMenu.visible = true;
+                            mainMenu.visible = false;
+                            settingsMenu.visible = false;
                         }
-                        else if (selection == 1) // Back
+
+                        int selection = levelSelectMenu.Update(gameTime, GraphicsDevice);
+
+                        // Wait for player to confirm selection with Enter
+                        if (previousKeyboardState.IsKeyUp(Keys.Enter) && Keyboard.GetState().IsKeyDown(Keys.Enter))
                         {
-                            currentGameState = GameState.MainMenu;
-                            mainMenu.ResetPreviousState();
+                            if (selection != levelSelectMenu.menuItems.Count - 1) // If not the "Back" button
+                            {
+                                string selectedLevelName = levelSelectMenu.GetSelectedItem();
+                                if (selectedLevelName.StartsWith("Level", StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    string numberPart = selectedLevelName.Substring("Level".Length);
+                                    if (int.TryParse(numberPart, out int lvlNum))
+                                    {
+                                        currentLevel = lvlNum;
+                                    }
+                                }
+
+                                LoadLevelData();
+                                InitializeCamera();
+                                currentGameState = GameState.Playing;
+                            }
+                            else if (selection == levelSelectMenu.menuItems.Count - 1) // If "Back" button is selected
+                            {
+                                currentGameState = GameState.MainMenu;
+                                mainMenu.ResetPreviousState();
+                            }
                         }
                     }
                     break;
 
+
                 case GameState.Settings:
                     {
+                        if (settingsMenu.visible == false)
+                        {
+                            settingsMenu.selectedIndex = 0;
+                            settingsMenu.visible = true;
+                            mainMenu.visible = false;
+                            levelSelectMenu.visible = false;
+                        }
                         int selection = settingsMenu.Update(gameTime, GraphicsDevice);
                         if (selection == 0) // Toggle Fullscreen
                         {
@@ -348,7 +394,7 @@ namespace JumpScape
                     menuPosition.X -= 100; // A rough offset to center menu items
 
                     // Draw the menu with the selector icon and a custom scale
-                    mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 3.0f, isMenu: true);
+                    mainMenu.DrawMainMenu(_spriteBatch, GraphicsDevice, menuPosition, scale: 3.0f);
 
                     _spriteBatch.End();
                     break;
@@ -378,15 +424,14 @@ namespace JumpScape
 
                 case GameState.LevelSelect:
                     _spriteBatch.Begin();
-                    _spriteBatch.DrawString(font, "Select a Level:", new Vector2(100, 100), Color.White);
-                    levelSelectMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150), isMenu: false);
+                    levelSelectMenu.drawLevelSelector(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
                     _spriteBatch.End();
                     break;
 
                 case GameState.Settings:
                     _spriteBatch.Begin();
                     _spriteBatch.DrawString(font, "Settings:", new Vector2(100, 100), Color.White);
-                    settingsMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150), isMenu: false);
+                    settingsMenu.DrawSettings(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
                     _spriteBatch.End();
                     break;
             }

@@ -100,15 +100,19 @@ namespace JumpScape.Classes
             }
 
             // Ensure the player picks up the key only when they are directly over it
-            if (BoundingBox.Intersects(key.BoundingBox) && !key.Collected)
+            // if key doesnt exit, skip this check
+            if (key != null)
             {
-                // Check if the player's feet are at the same level as the top of the key
-                if (BoundingBox.Bottom >= key.BoundingBox.Top && BoundingBox.Top <= key.BoundingBox.Bottom)
+                if (BoundingBox.Intersects(key.BoundingBox) && !key.Collected)
                 {
-                    key.Collect();
-                    HasKey = true;
-                    AddItemToInventory("Key");  // Add the key to the player's inventory
-                    System.Diagnostics.Debug.WriteLine("Key collected and added to inventory!");
+                    // Check if the player's feet are at the same level as the top of the key
+                    if (BoundingBox.Bottom >= key.BoundingBox.Top && BoundingBox.Top <= key.BoundingBox.Bottom)
+                    {
+                        key.Collect();
+                        HasKey = true;
+                        AddItemToInventory("Key");  // Add the key to the player's inventory
+                        System.Diagnostics.Debug.WriteLine("Key collected and added to inventory!");
+                    }
                 }
             }
 
@@ -136,7 +140,7 @@ namespace JumpScape.Classes
                     {
                         System.Diagnostics.Debug.WriteLine("Entering the door...");
                         endLevel = true; // Start fading out
-                        Position = new Vector2(-100, -100); // Move the player out of view to simulate entering
+                        //Position = new Vector2(-100, -100); // Move the player out of view to simulate entering
                     }
                 }
             }
