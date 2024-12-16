@@ -28,8 +28,11 @@ namespace JumpScape
         private List<Monster> monsters;
         private Matrix cameraTransform;
         private Vector2 cameraPosition;
-        private const float Gravity = 0.6f;
         private float cameraFollowThreshold;
+        private Vector2 _backgroundPosition;
+        private float _backgroundSpeed;
+        private bool _movingRight;
+        private Texture2D _backgroundTexture;
 
         public enum GameState
         {
@@ -40,9 +43,9 @@ namespace JumpScape
         }
 
         private GameState currentGameState;
-        private Menu mainMenu;
-        private Menu levelSelectMenu;
-        private Menu settingsMenu;
+        private MainMenu mainMenu;
+        private LevelSelectorMenu levelSelectMenu;
+        private SettingsMenu settingsMenu;
 
         private SpriteFont menuFont;
         private int lastCompletedLevel = 0; // Track the last completed level
@@ -57,33 +60,40 @@ namespace JumpScape
             _graphics = new GraphicsDeviceManager(this)
             {
                 IsFullScreen = false,
-                PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width,
-                PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height
+                PreferredBackBufferWidth = 1920, // Default width
+                PreferredBackBufferHeight = 1080, // Default height
+                SynchronizeWithVerticalRetrace = true
             };
+            Window.AllowUserResizing = true;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            _backgroundPosition = Vector2.Zero;
+            _backgroundSpeed = 0.3f; // Slow scrolling speed
+            _movingRight = true;
             _graphics.ApplyChanges();
         }
 
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
+            _backgroundTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
 
             // Load fade texture, font, etc.
             fadeTexture = new Texture2D(GraphicsDevice, 1, 1);
             fadeTexture.SetData(new[] { Color.Black });
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
-            menuFont = font; // For simplicity, use the same font for menus
+            //menuFont = Content.Load<SpriteFont>("Fonts/FontBigger");; // For simplicity, use the same font for menus
+            menuFont = Content.Load<SpriteFont>("Fonts/BigFont");; // For simplicity, use the same font for menus
 
             // Initialize Menus
-            mainMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            mainMenu = new MainMenu(menuFont, _graphics, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             mainMenu.AddMenuItem("Play");
             mainMenu.AddMenuItem("Level Picker");
             mainMenu.AddMenuItem("Settings");
             mainMenu.AddMenuItem("Exit");
 
-            levelSelectMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            levelSelectMenu = new LevelSelectorMenu(font, menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
 
             // Dynamically load levels from the Levels directory
             string levelsDirectory = "Levels";
@@ -115,7 +125,7 @@ namespace JumpScape
             }
             levelSelectMenu.AddMenuItem("Back");
 
-            settingsMenu = new Menu(menuFont, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            settingsMenu = new SettingsMenu(menuFont, font, _graphics, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             settingsMenu.AddMenuItem("Toggle Fullscreen");
             settingsMenu.AddMenuItem("Back");
 
@@ -165,6 +175,27 @@ namespace JumpScape
             return current.IsKeyDown(key) && previous.IsKeyUp(key);
         }
 
+        private void backgroundMovement(GameTime gameTime, GraphicsDevice graphicsDevice) {
+            // Background movement logic
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_movingRight)
+            {
+                _backgroundPosition.X += _backgroundSpeed * elapsed * 100;
+                if (_backgroundPosition.X >= _backgroundTexture.Width - GraphicsDevice.Viewport.Width * 1.1)
+                {
+                    _movingRight = false;
+                }
+            }
+            else
+            {
+                _backgroundPosition.X -= _backgroundSpeed * elapsed * 100;
+                if (_backgroundPosition.X <= 0)
+                {
+                    _movingRight = true;
+                }
+            }
+        }
+
         protected override void Update(GameTime gameTime)
         {
             KeyboardState ks = Keyboard.GetState();
@@ -195,6 +226,11 @@ namespace JumpScape
                 }
             }
 
+            if (currentGameState != GameState.Playing)
+            {
+                backgroundMovement(gameTime, _graphics.GraphicsDevice);
+            }
+
             switch (currentGameState)
             {
                 case GameState.MainMenu:
@@ -205,7 +241,7 @@ namespace JumpScape
                             levelSelectMenu.visible = false;
                             settingsMenu.visible = false;
                         }
-                        int selection = mainMenu.Update(gameTime, GraphicsDevice);
+                        int selection = mainMenu.Update(gameTime, GraphicsDevice, _backgroundPosition);
                         if (selection == 0) // Play
                         {
                             currentLevel = lastCompletedLevel + 1;
@@ -280,7 +316,7 @@ namespace JumpScape
                             settingsMenu.visible = false;
                         }
 
-                        int selection = levelSelectMenu.Update(gameTime, GraphicsDevice);
+                        int selection = levelSelectMenu.Update(gameTime, GraphicsDevice, _backgroundPosition);
 
                         // Wait for player to confirm selection with Enter
                         if (previousKeyboardState.IsKeyUp(Keys.Enter) && Keyboard.GetState().IsKeyDown(Keys.Enter))
@@ -320,7 +356,7 @@ namespace JumpScape
                             mainMenu.visible = false;
                             levelSelectMenu.visible = false;
                         }
-                        int selection = settingsMenu.Update(gameTime, GraphicsDevice);
+                        int selection = settingsMenu.Update(gameTime, GraphicsDevice, _backgroundPosition, _spriteBatch);
                         if (selection == 0) // Toggle Fullscreen
                         {
                             _graphics.IsFullScreen = !_graphics.IsFullScreen;
@@ -394,7 +430,7 @@ namespace JumpScape
                     menuPosition.X -= 100; // A rough offset to center menu items
 
                     // Draw the menu with the selector icon and a custom scale
-                    mainMenu.DrawMainMenu(_spriteBatch, GraphicsDevice, menuPosition, scale: 3.0f);
+                    mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 1.0f);
 
                     _spriteBatch.End();
                     break;
@@ -424,14 +460,14 @@ namespace JumpScape
 
                 case GameState.LevelSelect:
                     _spriteBatch.Begin();
-                    levelSelectMenu.drawLevelSelector(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
+                    levelSelectMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
                     _spriteBatch.End();
                     break;
 
                 case GameState.Settings:
                     _spriteBatch.Begin();
                     _spriteBatch.DrawString(font, "Settings:", new Vector2(100, 100), Color.White);
-                    settingsMenu.DrawSettings(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
+                    settingsMenu.Draw(_spriteBatch, GraphicsDevice, new Vector2(100, 150));
                     _spriteBatch.End();
                     break;
             }

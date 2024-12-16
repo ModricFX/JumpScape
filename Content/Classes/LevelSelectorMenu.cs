@@ -7,9 +7,10 @@ using System.IO;
 
 namespace JumpScape
 {
-    public class Menu
+    public class LevelSelectorMenu
     {
         private SpriteFont font;
+        private SpriteFont bigFont;
         public List<string> menuItems;
         public int selectedIndex;
         public bool visible;
@@ -23,14 +24,13 @@ namespace JumpScape
 
         private Vector2 _logoPosition;
         private Vector2 _backgroundPosition;
-        private float _backgroundSpeed;
-        private bool _movingRight;
 
         private KeyboardState previousKeyboardState;
 
-        public Menu(SpriteFont font, GraphicsDevice graphicsDevice, int width, int height)
+        public LevelSelectorMenu(SpriteFont font, SpriteFont bigFont, GraphicsDevice graphicsDevice, int width, int height)
         {
             this.font = font;
+            this.bigFont = bigFont;
             menuItems = new List<string>();
             selectedIndex = 0;
             previousKeyboardState = Keyboard.GetState();
@@ -49,10 +49,6 @@ namespace JumpScape
                 (width - _gameLogoTexture.Width * logoScale) / 2,
                 height * 0.02f // Higher position at 2% of the screen height
             );
-
-            _backgroundPosition = Vector2.Zero;
-            _backgroundSpeed = 0.3f; // Slow scrolling speed
-            _movingRight = true;
         }
 
         public void AddMenuItem(string item)
@@ -65,28 +61,10 @@ namespace JumpScape
             previousKeyboardState = Keyboard.GetState();
         }
 
-        public int Update(GameTime gameTime, GraphicsDevice graphicsDevice)
+        public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
             KeyboardState currentKeyboardState = Keyboard.GetState();
-
-            // Background movement logic
-            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            if (_movingRight)
-            {
-                _backgroundPosition.X += _backgroundSpeed * elapsed * 100;
-                if (_backgroundPosition.X >= _backgroundTexture.Width - graphicsDevice.Viewport.Width * 1.1)
-                {
-                    _movingRight = false;
-                }
-            }
-            else
-            {
-                _backgroundPosition.X -= _backgroundSpeed * elapsed * 100;
-                if (_backgroundPosition.X <= 0)
-                {
-                    _movingRight = true;
-                }
-            }
+            _backgroundPosition = backgroundPosition;
 
             if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Up))
             {
@@ -110,54 +88,6 @@ namespace JumpScape
         private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)
         {
             return current.IsKeyDown(key) && previous.IsKeyUp(key);
-        }
-
-        public void DrawMainMenu(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 3.0f)
-        {
-            // Draw the background
-            DrawBackground(spriteBatch);
-
-
-            // MAIN MENU LOGIC
-            float spacing = _buttonTexture.Height + 20;
-            position = new Vector2(
-                (graphicsDevice.Viewport.Width - _buttonTexture.Width) / 2,
-                graphicsDevice.Viewport.Height / 2 - (menuItems.Count * spacing) / 2
-            );
-
-            for (int i = 0; i < menuItems.Count; i++)
-            {
-                bool isSelected = (i == selectedIndex);
-                Color color = isSelected ? Color.Yellow : Color.White;
-                Vector2 itemPosition = position + new Vector2(0, i * spacing);
-
-                // Draw button texture
-                spriteBatch.Draw(
-                    _buttonTexture,
-                    new Rectangle((int)itemPosition.X, (int)itemPosition.Y, _buttonTexture.Width, _buttonTexture.Height),
-                    Color.White
-                );
-
-                // Draw menu text centered on the button
-                Vector2 textSize = font.MeasureString(menuItems[i]) * scale;
-                Vector2 textPosition = itemPosition + new Vector2(
-                    (_buttonTexture.Width - textSize.X) / 2,
-                    (_buttonTexture.Height - textSize.Y) / 2
-                );
-
-                spriteBatch.DrawString(
-                    font,
-                    menuItems[i],
-                    textPosition,
-                    color,
-                    0f,
-                    Vector2.Zero,
-                    scale,
-                    SpriteEffects.None,
-                    0f
-                );
-            }
-
         }
 
         private void DrawBackground(SpriteBatch spriteBatch)
@@ -190,7 +120,7 @@ namespace JumpScape
             return null;
         }
 
-        internal void drawLevelSelector(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 3.0f)
+        internal void Draw(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 3.0f)
         {
             DrawBackground(spriteBatch);
 
@@ -212,13 +142,13 @@ namespace JumpScape
             // Draw Title
             string titleText = "Level Selector";
             float titleScale = 1.5f;
-            Vector2 titleSize = font.MeasureString(titleText) * titleScale;
+            Vector2 titleSize = bigFont.MeasureString(titleText) * titleScale;
             Vector2 titlePosition = boxPosition + new Vector2(
                 (boxWidth - titleSize.X) / 2,
                 30
             );
             spriteBatch.DrawString(
-                font,
+                bigFont,
                 titleText,
                 titlePosition,
                 Color.White,
@@ -271,19 +201,19 @@ namespace JumpScape
 
                 // Draw Level Number (centered inside the box)
                 string levelNumber = (i + 1).ToString();
-                Vector2 textSize = font.MeasureString(levelNumber) * scale;
+                Vector2 textSize = bigFont.MeasureString(levelNumber) * 1f;
                 Vector2 textPosition = new Vector2(
                     levelBoxPosition.X + (levelBoxWidth - textSize.X) / 2,
                     levelBoxPosition.Y + (levelBoxHeight - textSize.Y) / 2
                 );
                 spriteBatch.DrawString(
-                    font,
+                    bigFont,
                     levelNumber,
                     textPosition,
                     textColor,
                     0f,
                     Vector2.Zero,
-                    scale,
+                    1f,
                     SpriteEffects.None,
                     0f
                 );
@@ -351,15 +281,15 @@ namespace JumpScape
             int backIndex = menuItems.Count - 1;
             bool backSelected = (backIndex == selectedIndex);
             Color backColor = backSelected ? Color.Yellow : Color.White;
-            float backScale = scale * (backSelected ? 1.1f : 1.0f);
-            Vector2 backTextSize = font.MeasureString(menuItems[backIndex]) * backScale;
+            float backScale = backSelected ? 1.1f : 1.0f;
+            Vector2 backTextSize = bigFont.MeasureString(menuItems[backIndex]) * backScale;
             Vector2 backPosition = new Vector2(
                 boxPosition.X + (boxWidth - backTextSize.X) / 2,
                 boxPosition.Y + boxHeight - backTextSize.Y - 50
             );
 
             spriteBatch.DrawString(
-                font,
+                bigFont,
                 menuItems[backIndex],
                 backPosition,
                 backColor,
@@ -369,13 +299,6 @@ namespace JumpScape
                 SpriteEffects.None,
                 0f
             );
-        }
-
-
-        public void DrawSettings(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 3.0f)
-        {
-            DrawBackground(spriteBatch);
-
         }
     }
 }

@@ -1,5 +1,7 @@
 TODO:
 NEEDED:
+- FIX MENU CENTERING
+- IMPLEMENT SETTING RESLUTIONS
 - better level selector menu
 - Level selector when selecting item doesnt work, only loads level 1
 - better settings menu
