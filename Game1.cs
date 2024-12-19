@@ -379,7 +379,6 @@ namespace JumpScape
                             levelSelectMenu.visible = false;
                         }
                         int selection = settingsMenu.Update(gameTime, GraphicsDevice, _backgroundPosition, _spriteBatch);
-                        Console.WriteLine("Selection: " + selection);
                         if (selection >= 0)
                         {
                             if (selection != settingsMenu.menuItems.Count - 1) // If not the "Back" button
