@@ -60,8 +60,6 @@ namespace JumpScape
             _graphics = new GraphicsDeviceManager(this)
             {
                 IsFullScreen = false,
-                PreferredBackBufferWidth = 1920, // Default width
-                PreferredBackBufferHeight = 1080, // Default height
                 SynchronizeWithVerticalRetrace = true
             };
             Window.AllowUserResizing = true;
@@ -70,11 +68,30 @@ namespace JumpScape
             _backgroundPosition = Vector2.Zero;
             _backgroundSpeed = 0.3f; // Slow scrolling speed
             _movingRight = true;
+
+            // Set the minimum resolution
+            Window.ClientSizeChanged += (sender, e) =>
+            {
+                int minWidth = 1300;  // Minimum width
+                int minHeight = 700; // Minimum height
+
+                if (Window.ClientBounds.Width < minWidth || Window.ClientBounds.Height < minHeight)
+                {
+                    _graphics.PreferredBackBufferWidth = Math.Max(Window.ClientBounds.Width, minWidth);
+                    _graphics.PreferredBackBufferHeight = Math.Max(Window.ClientBounds.Height, minHeight);
+                    _graphics.ApplyChanges();
+                }
+            };
+
             _graphics.ApplyChanges();
         }
 
+
         protected override void LoadContent()
         {
+            _graphics.PreferredBackBufferWidth = 1920;  // New window width
+            _graphics.PreferredBackBufferHeight = 1080; // New window height
+            _graphics.ApplyChanges();
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _backgroundTexture = Texture2D.FromFile(GraphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
 
@@ -84,10 +101,10 @@ namespace JumpScape
 
             font = Content.Load<SpriteFont>("Fonts/DefaultFont");
             //menuFont = Content.Load<SpriteFont>("Fonts/FontBigger");; // For simplicity, use the same font for menus
-            menuFont = Content.Load<SpriteFont>("Fonts/BigFont");; // For simplicity, use the same font for menus
+            menuFont = Content.Load<SpriteFont>("Fonts/BigFont"); ; // For simplicity, use the same font for menus
 
             // Initialize Menus
-            mainMenu = new MainMenu(menuFont, _graphics, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            mainMenu = new MainMenu(menuFont, GraphicsDevice);
             mainMenu.AddMenuItem("Play");
             mainMenu.AddMenuItem("Level Picker");
             mainMenu.AddMenuItem("Settings");
@@ -175,7 +192,8 @@ namespace JumpScape
             return current.IsKeyDown(key) && previous.IsKeyUp(key);
         }
 
-        private void backgroundMovement(GameTime gameTime, GraphicsDevice graphicsDevice) {
+        private void backgroundMovement(GameTime gameTime, GraphicsDevice graphicsDevice)
+        {
             // Background movement logic
             float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (_movingRight)
@@ -198,6 +216,11 @@ namespace JumpScape
 
         protected override void Update(GameTime gameTime)
         {
+            // current resolutions
+            // width GraphicsDevice.Viewport.Width
+            // height GraphicsDevice.Viewport.Height
+            Console.WriteLine("Width: " + GraphicsDevice.Viewport.Width + " Height: " + GraphicsDevice.Viewport.Height);
+
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
             if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))
@@ -293,7 +316,7 @@ namespace JumpScape
                             {
                                 lastCompletedLevel = levelSelectMenu.menuItems.Count - 1;
                             }
-                            
+
                             // fade out then go to main menu
                             if (fadeAlpha >= 1)
                             {

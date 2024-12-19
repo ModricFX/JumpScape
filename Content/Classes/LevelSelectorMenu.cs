@@ -26,6 +26,7 @@ namespace JumpScape
         private Vector2 _backgroundPosition;
 
         private KeyboardState previousKeyboardState;
+        private MouseState previousMouseState;
 
         public LevelSelectorMenu(SpriteFont font, SpriteFont bigFont, GraphicsDevice graphicsDevice, int width, int height)
         {
@@ -42,13 +43,6 @@ namespace JumpScape
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
             _levelBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "levelBox.png"));
             _starTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "star.png"));
-
-            // Initialize positions and speeds
-            float logoScale = 0.4f; // Scale the logo to 40% size
-            _logoPosition = new Vector2(
-                (width - _gameLogoTexture.Width * logoScale) / 2,
-                height * 0.02f // Higher position at 2% of the screen height
-            );
         }
 
         public void AddMenuItem(string item)
@@ -63,9 +57,16 @@ namespace JumpScape
 
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
-            KeyboardState currentKeyboardState = Keyboard.GetState();
+            _logoPosition = new Vector2(
+                (graphicsDevice.Viewport.Width - (_gameLogoTexture.Width * 0.4f)) / 2,
+                graphicsDevice.Viewport.Height * 0.01f
+            );
             _backgroundPosition = backgroundPosition;
 
+            KeyboardState currentKeyboardState = Keyboard.GetState();
+            MouseState currentMouseState = Mouse.GetState();
+
+            // Keyboard
             if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Up))
             {
                 selectedIndex--;
@@ -78,16 +79,115 @@ namespace JumpScape
             }
             else if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Enter))
             {
+                previousKeyboardState = currentKeyboardState;
+                previousMouseState = currentMouseState;
                 return selectedIndex;
             }
 
+            // Mouse
+            float boxWidth = 700;
+            float boxHeight = 500;
+            float levelBoxScale = 0.2f;
+            float horizontalSpacing = 90f;
+            float verticalSpacing = 20f;
+
+            Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
+
+            for (int i = 0; i < menuItems.Count - 1; i++)
+            {
+                if (GetLevelBoxBounds(i, graphicsDevice, boxWidth, boxHeight, levelBoxScale, horizontalSpacing, verticalSpacing)
+                    .Contains(mousePos))
+                {
+                    selectedIndex = i;
+                    if (currentMouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+                    {
+                        previousKeyboardState = currentKeyboardState;
+                        previousMouseState = currentMouseState;
+                        return selectedIndex;
+                    }
+                }
+            }
+
+            int backIndex = menuItems.Count - 1;
+            bool backSelected = (backIndex == selectedIndex);
+            float backScale = backSelected ? 1.1f : 1.0f;
+            if (GetBackButtonBounds(graphicsDevice, boxWidth, boxHeight, backScale).Contains(mousePos))
+            {
+                selectedIndex = backIndex;
+                if (currentMouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+                {
+                    previousKeyboardState = currentKeyboardState;
+                    previousMouseState = currentMouseState;
+                    return selectedIndex;
+                }
+            }
+
             previousKeyboardState = currentKeyboardState;
-            return -1; // No selection yet
+            previousMouseState = currentMouseState;
+            return -1;
         }
 
         private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)
         {
             return current.IsKeyDown(key) && previous.IsKeyUp(key);
+        }
+
+        private Vector2 GetBasePosition(GraphicsDevice graphicsDevice, float boxWidth, float boxHeight)
+        {
+            return new Vector2(
+                graphicsDevice.Viewport.Bounds.Center.X - (boxWidth / 2),
+                graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)
+            );
+        }
+
+        private Rectangle GetLevelBoxBounds(int index, GraphicsDevice graphicsDevice, float boxWidth, float boxHeight, float levelBoxScale, float horizontalSpacing, float verticalSpacing)
+        {
+            int columns = 3;
+            float levelBoxWidth = _levelBoxTexture.Width * levelBoxScale;
+            float levelBoxHeight = _levelBoxTexture.Height * levelBoxScale;
+            Vector2 boxPosition = GetBasePosition(graphicsDevice, boxWidth, boxHeight);
+
+            string titleText = "Level Selector";
+            float titleScale = 1.5f;
+            Vector2 titleSize = bigFont.MeasureString(titleText) * titleScale;
+            Vector2 titlePosition = boxPosition + new Vector2((boxWidth - titleSize.X) / 2, 30);
+
+            Vector2 levelStartPosition = new Vector2(
+                boxPosition.X + 50f,
+                titlePosition.Y + titleSize.Y + 40f
+            );
+
+            int row = index / columns;
+            int col = index % columns;
+
+            Vector2 levelBoxPosition = new Vector2(
+                levelStartPosition.X + col * (levelBoxWidth + horizontalSpacing),
+                levelStartPosition.Y + row * (levelBoxHeight + verticalSpacing)
+            );
+
+            return new Rectangle(
+                (int)levelBoxPosition.X,
+                (int)levelBoxPosition.Y,
+                (int)levelBoxWidth,
+                (int)levelBoxHeight
+            );
+        }
+
+        private Rectangle GetBackButtonBounds(GraphicsDevice graphicsDevice, float boxWidth, float boxHeight, float backScale)
+        {
+            Vector2 boxPosition = GetBasePosition(graphicsDevice, boxWidth, boxHeight);
+            Vector2 backTextSize = bigFont.MeasureString(menuItems[menuItems.Count - 1]) * backScale;
+            Vector2 backPosition = new Vector2(
+                boxPosition.X + (boxWidth - backTextSize.X) / 2,
+                boxPosition.Y + boxHeight - backTextSize.Y - 50
+            );
+
+            return new Rectangle(
+                (int)backPosition.X,
+                (int)backPosition.Y,
+                (int)backTextSize.X,
+                (int)backTextSize.Y
+            );
         }
 
         private void DrawBackground(SpriteBatch spriteBatch)
@@ -100,13 +200,15 @@ namespace JumpScape
 
             // Draw the game logo scaled
             float logoScale = 0.4f;
+
+            // Draw the logo using its CENTER as the origin
             spriteBatch.Draw(
                 _gameLogoTexture,
                 _logoPosition,
                 null,
                 Color.White,
                 0f,
-                Vector2.Zero,
+                new Vector2(0, 0),
                 logoScale,
                 SpriteEffects.None,
                 0f
@@ -124,72 +226,41 @@ namespace JumpScape
         {
             DrawBackground(spriteBatch);
 
-            // LEVEL SELECTOR LOGIC
             float boxWidth = 700;
             float boxHeight = 500;
-            Vector2 boxPosition = new Vector2(
-                graphicsDevice.Viewport.Bounds.Center.X - (boxWidth / 2),
-                graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)
-            );
+            Vector2 boxPosition = GetBasePosition(graphicsDevice, boxWidth, boxHeight);
 
-            // Draw Wooden Box
             spriteBatch.Draw(
                 _woodBoxTexture,
                 new Rectangle((int)boxPosition.X, (int)boxPosition.Y, (int)boxWidth, (int)boxHeight),
                 Color.White
             );
 
-            // Draw Title
             string titleText = "Level Selector";
             float titleScale = 1.5f;
             Vector2 titleSize = bigFont.MeasureString(titleText) * titleScale;
-            Vector2 titlePosition = boxPosition + new Vector2(
-                (boxWidth - titleSize.X) / 2,
-                30
-            );
-            spriteBatch.DrawString(
-                bigFont,
-                titleText,
-                titlePosition,
-                Color.White,
-                0f,
-                Vector2.Zero,
-                titleScale,
-                SpriteEffects.None,
-                0f
-            );
+            Vector2 titlePosition = boxPosition + new Vector2((boxWidth - titleSize.X) / 2, 30);
+            spriteBatch.DrawString(bigFont, titleText, titlePosition, Color.White, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
 
-            // Layout for Level Boxes
             float levelBoxScale = 0.2f;
             float levelBoxWidth = _levelBoxTexture.Width * levelBoxScale;
             float levelBoxHeight = _levelBoxTexture.Height * levelBoxScale;
-
-            int columns = 3; // Number of columns for the grid layout
             float horizontalSpacing = 90f;
             float verticalSpacing = 20f;
 
-            Vector2 levelStartPosition = new Vector2(
-                boxPosition.X + 50f,
-                titlePosition.Y + titleSize.Y + 40f
-            );
-
-            for (int i = 0; i < menuItems.Count - 1; i++) // Exclude the "Back" button
+            for (int i = 0; i < menuItems.Count - 1; i++)
             {
                 bool isSelected = (i == selectedIndex);
-                Color textColor = isSelected ? Color.Yellow : Color.White;
+                bool isHovering = GetLevelBoxBounds(i, graphicsDevice, boxWidth, boxHeight, levelBoxScale, horizontalSpacing, verticalSpacing)
+                    .Contains(Mouse.GetState().Position);
 
-                int row = i / columns;
-                int col = i % columns;
+                Color textColor = (isSelected || isHovering) ? Color.Yellow : Color.White;
 
-                Vector2 levelBoxPosition = new Vector2(
-                    levelStartPosition.X + col * (levelBoxWidth + horizontalSpacing),
-                    levelStartPosition.Y + row * (levelBoxHeight + verticalSpacing)
-                );
+                Rectangle levelRect = GetLevelBoxBounds(i, graphicsDevice, boxWidth, boxHeight, levelBoxScale, horizontalSpacing, verticalSpacing);
 
-                // Draw Level Box
                 spriteBatch.Draw(
                     _levelBoxTexture,
-                    levelBoxPosition,
+                    new Vector2(levelRect.X, levelRect.Y),
                     null,
                     Color.White,
                     0f,
@@ -199,99 +270,49 @@ namespace JumpScape
                     0f
                 );
 
-                // Draw Level Number (centered inside the box)
                 string levelNumber = (i + 1).ToString();
-                Vector2 textSize = bigFont.MeasureString(levelNumber) * 1f;
+                Vector2 textSize = bigFont.MeasureString(levelNumber);
                 Vector2 textPosition = new Vector2(
-                    levelBoxPosition.X + (levelBoxWidth - textSize.X) / 2,
-                    levelBoxPosition.Y + (levelBoxHeight - textSize.Y) / 2
+                    levelRect.X + (levelRect.Width - textSize.X) / 2,
+                    levelRect.Y + (levelRect.Height - textSize.Y) / 2
                 );
-                spriteBatch.DrawString(
-                    bigFont,
-                    levelNumber,
-                    textPosition,
-                    textColor,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0f
-                );
+                spriteBatch.DrawString(bigFont, levelNumber, textPosition, textColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
 
                 float starScale = 0.02f;
-                float starYOffset = 25f; // Additional offset to move the stars downward
+                float starYOffset = 25f;
 
                 Vector2 topStarPosition = new Vector2(
-                    levelBoxPosition.X + levelBoxWidth / 2 - (_starTexture.Width * starScale) / 2,
-                    levelBoxPosition.Y + levelBoxHeight - 20f - (_starTexture.Height * starScale) + starYOffset
+                    levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) / 2,
+                    levelRect.Y + levelRect.Height - 20f - (_starTexture.Height * starScale) + starYOffset
                 );
 
                 Vector2 leftStarPosition = new Vector2(
-                    levelBoxPosition.X + levelBoxWidth / 2 - (_starTexture.Width * starScale) - 10f,
-                    levelBoxPosition.Y + levelBoxHeight - (_starTexture.Height * starScale) - 10f + starYOffset
+                    levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) - 10f,
+                    levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
                 );
 
                 Vector2 rightStarPosition = new Vector2(
-                    levelBoxPosition.X + levelBoxWidth / 2 + 10f,
-                    levelBoxPosition.Y + levelBoxHeight - (_starTexture.Height * starScale) - 10f + starYOffset
+                    levelRect.X + levelRect.Width / 2 + 10f,
+                    levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
                 );
 
-                // Draw the top star
-                spriteBatch.Draw(
-                    _starTexture,
-                    topStarPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    Vector2.Zero,
-                    starScale,
-                    SpriteEffects.None,
-                    0f
-                );
-
-                // Draw the left star
-                spriteBatch.Draw(
-                    _starTexture,
-                    leftStarPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    Vector2.Zero,
-                    starScale,
-                    SpriteEffects.None,
-                    0f
-                );
-
-                // Draw the right star
-                spriteBatch.Draw(
-                    _starTexture,
-                    rightStarPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    Vector2.Zero,
-                    starScale,
-                    SpriteEffects.None,
-                    0f
-                );
-
+                spriteBatch.Draw(_starTexture, topStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
+                spriteBatch.Draw(_starTexture, leftStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
+                spriteBatch.Draw(_starTexture, rightStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
             }
 
-            // Draw "Back" Button
             int backIndex = menuItems.Count - 1;
             bool backSelected = (backIndex == selectedIndex);
-            Color backColor = backSelected ? Color.Yellow : Color.White;
-            float backScale = backSelected ? 1.1f : 1.0f;
-            Vector2 backTextSize = bigFont.MeasureString(menuItems[backIndex]) * backScale;
-            Vector2 backPosition = new Vector2(
-                boxPosition.X + (boxWidth - backTextSize.X) / 2,
-                boxPosition.Y + boxHeight - backTextSize.Y - 50
-            );
+            bool backHover = GetBackButtonBounds(graphicsDevice, boxWidth, boxHeight, backSelected ? 1.1f : 1.0f)
+                .Contains(Mouse.GetState().Position);
+            Color backColor = (backSelected || backHover) ? Color.Yellow : Color.White;
+            float backScale = backSelected || backHover ? 1.1f : 1.0f;
 
+            Rectangle backBounds = GetBackButtonBounds(graphicsDevice, boxWidth, boxHeight, backScale);
             spriteBatch.DrawString(
                 bigFont,
                 menuItems[backIndex],
-                backPosition,
+                new Vector2(backBounds.X, backBounds.Y),
                 backColor,
                 0f,
                 Vector2.Zero,

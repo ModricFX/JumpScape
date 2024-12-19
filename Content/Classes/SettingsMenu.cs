@@ -53,11 +53,6 @@ namespace JumpScape
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
 
-            float logoScale = 0.4f;
-            _logoPosition = new Vector2(
-                (graphicsDeviceManager.PreferredBackBufferWidth - _gameLogoTexture.Width * logoScale) / 2,
-                height * 0.02f
-            );
         }
 
         public void ResetPreviousState()
@@ -67,6 +62,10 @@ namespace JumpScape
 
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
         {
+            _logoPosition = new Vector2(
+                (graphicsDevice.Viewport.Width / 2) - _gameLogoTexture.Width / 2 * 0.4f, // Centered X position
+                graphicsDevice.Viewport.Height * 0.01f             // Y position
+            );
             MouseState currentMouseState = Mouse.GetState();
             _backgroundPosition = backgroundPosition;
 
@@ -186,7 +185,7 @@ namespace JumpScape
                 null,
                 Color.White,
                 0f,
-                Vector2.Zero,
+                new Vector2(_gameLogoTexture.Width / 2, 0),
                 logoScale,
                 SpriteEffects.None,
                 0f

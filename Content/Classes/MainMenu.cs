@@ -23,33 +23,19 @@ namespace JumpScape
 
         private KeyboardState previousKeyboardState;
         private MouseState previousMouseState;
-        private GraphicsDeviceManager graphicsDeviceManager;
 
-        public MainMenu(SpriteFont font, GraphicsDeviceManager _graphics, GraphicsDevice graphicsDevice, int width, int height)
+        public MainMenu(SpriteFont font, GraphicsDevice graphicsDevice)
         {
             this.font = font;
             menuItems = new List<string>();
             selectedIndex = 0;
             previousKeyboardState = Keyboard.GetState();
             previousMouseState = Mouse.GetState();
-            this.graphicsDeviceManager = _graphics;
 
             // Load textures
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _buttonTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "buttonBackground.png"));
             _backgroundTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
-
-            // Initialize positions
-            float logoScale = 0.4f;
-            float logoWidth = _gameLogoTexture.Width * logoScale;
-
-            _logoPosition = new Vector2(
-                (graphicsDevice.Viewport.Width - logoWidth) / 2, // Centered X position
-                graphicsDevice.Viewport.Height * 0.02f             // Y position
-            );
-
-            // my current screen size:
-            Console.WriteLine("Width: " + _graphics.PreferredBackBufferWidth + " Height: " + _graphics.PreferredBackBufferHeight);
         }
 
         public void AddMenuItem(string item)
@@ -65,10 +51,18 @@ namespace JumpScape
 
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
+            _logoPosition = new Vector2(
+                (graphicsDevice.Viewport.Width - (_gameLogoTexture.Width * 0.4f)) / 2, // Centered X position
+                graphicsDevice.Viewport.Height * 0.01f // Y position
+            );
+
             KeyboardState currentKeyboardState = Keyboard.GetState();
             MouseState currentMouseState = Mouse.GetState();
             _backgroundPosition = backgroundPosition;
 
+            Vector2 mousePosition = new Vector2(currentMouseState.X, currentMouseState.Y);
+
+            // Check for keyboard navigation
             if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Up))
             {
                 selectedIndex--;
@@ -84,14 +78,15 @@ namespace JumpScape
                 return selectedIndex;
             }
 
-            if (IsMouseClicked(currentMouseState, previousMouseState))
+            // Mouse hover and click detection
+            for (int i = 0; i < menuItems.Count; i++)
             {
-                for (int i = 0; i < menuItems.Count; i++)
+                Rectangle buttonBounds = GetButtonBounds(i, graphicsDevice);
+                if (buttonBounds.Contains(mousePosition.ToPoint()))
                 {
-                    Rectangle buttonBounds = GetButtonBounds(i, graphicsDevice);
-                    if (buttonBounds.Contains(currentMouseState.Position))
+                    selectedIndex = i;
+                    if (IsMouseClicked(currentMouseState, previousMouseState))
                     {
-                        selectedIndex = i;
                         return i;
                     }
                 }
@@ -112,14 +107,26 @@ namespace JumpScape
             return current.LeftButton == ButtonState.Pressed && previous.LeftButton == ButtonState.Released;
         }
 
-        private Rectangle GetButtonBounds(int index, GraphicsDevice graphicsDevice)
+        private Vector2 GetBasePosition(GraphicsDevice graphicsDevice, float spacing, float scale = 1.0f)
         {
-            float spacing = _buttonTexture.Height + 20;
-            Vector2 position = new Vector2(
-                (graphicsDevice.Viewport.Width - _buttonTexture.Width) / 2,
-                graphicsDevice.Viewport.Height / 2 - (menuItems.Count * spacing) / 2 + index * spacing
+            return new Vector2(
+                (graphicsDevice.Viewport.Width - (_buttonTexture.Width * scale)) / 2,
+                graphicsDevice.Viewport.Height / 2 - (menuItems.Count * spacing) / 2 + (_gameLogoTexture.Height * 0.4f / 3)
             );
-            return new Rectangle((int)position.X, (int)position.Y, _buttonTexture.Width, _buttonTexture.Height);
+        }
+
+        private Rectangle GetButtonBounds(int index, GraphicsDevice graphicsDevice, float scale = 1.0f)
+        {
+            float spacing = (_buttonTexture.Height * scale) + 20;
+            Vector2 basePosition = GetBasePosition(graphicsDevice, spacing, scale);
+            Vector2 itemPosition = basePosition + new Vector2(0, index * spacing);
+
+            return new Rectangle(
+                (int)itemPosition.X,
+                (int)itemPosition.Y,
+                (int)(_buttonTexture.Width * scale),
+                (int)(_buttonTexture.Height * scale)
+            );
         }
 
         public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 1.0f)
@@ -127,16 +134,13 @@ namespace JumpScape
             DrawBackground(spriteBatch);
 
             float spacing = _buttonTexture.Height + 20;
-            position = new Vector2(
-                (graphicsDevice.Viewport.Width - _buttonTexture.Width) / 2,
-                graphicsDevice.Viewport.Height / 2 - (menuItems.Count * spacing) / 2
-            );
+            Vector2 basePosition = GetBasePosition(graphicsDevice, spacing, scale);
 
             for (int i = 0; i < menuItems.Count; i++)
             {
                 bool isSelected = (i == selectedIndex);
                 Color color = isSelected ? Color.Yellow : Color.White;
-                Vector2 itemPosition = position + new Vector2(0, i * spacing);
+                Vector2 itemPosition = basePosition + new Vector2(0, i * spacing);
 
                 spriteBatch.Draw(
                     _buttonTexture,
@@ -150,11 +154,15 @@ namespace JumpScape
                     (_buttonTexture.Height - textSize.Y) / 2
                 );
 
+                // Check mouse hover
+                bool isHovering = GetButtonBounds(i, graphicsDevice).Contains(new Point(Mouse.GetState().X, Mouse.GetState().Y));
+                Color textColor = (isSelected || isHovering) ? Color.Yellow : Color.White;
+
                 spriteBatch.DrawString(
                     font,
                     menuItems[i],
                     textPosition,
-                    color,
+                    textColor,
                     0f,
                     Vector2.Zero,
                     scale,
@@ -165,31 +173,28 @@ namespace JumpScape
         }
 
         private void DrawBackground(SpriteBatch spriteBatch)
-{
-    spriteBatch.Draw(
-        _backgroundTexture,
-        new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
-        Color.White
-    );
+        {
+            spriteBatch.Draw(
+                _backgroundTexture,
+                new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
+                Color.White
+            );
 
-    float logoScale = 0.4f;
+            float logoScale = 0.4f;
 
-    // Draw the logo using its CENTER as the origin
-    spriteBatch.Draw(
-        _gameLogoTexture,
-        _logoPosition,
-        null,
-        Color.White,
-        0f,
-        new Vector2(_gameLogoTexture.Width,0), // Center origin
-        logoScale,
-        SpriteEffects.None,
-        0f
-    );
-}
-
-
-
+            // Draw the logo using its CENTER as the origin
+            spriteBatch.Draw(
+                _gameLogoTexture,
+                _logoPosition,
+                null,
+                Color.White,
+                0f,
+                new Vector2(0, 0),
+                logoScale,
+                SpriteEffects.None,
+                0f
+            );
+        }
 
         public string GetSelectedItem()
         {

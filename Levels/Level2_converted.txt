@@ -1,5 +1,5 @@
 PlayerSpawn: 20,550
-Platform: -5,711,1584,0,0
+Platform: -5,599.61,1584,0,0
 Platform: 100,550,200,0,1
 Platform: 400,450,200,0,0
 Platform: 700,350,120,0,0
