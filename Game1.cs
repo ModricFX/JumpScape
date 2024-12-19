@@ -331,7 +331,7 @@ namespace JumpScape
 
                 case GameState.LevelSelect:
                     {
-                        if (levelSelectMenu.visible == false)
+                        if (!levelSelectMenu.visible)
                         {
                             levelSelectMenu.selectedIndex = 0;
                             levelSelectMenu.visible = true;
@@ -341,8 +341,8 @@ namespace JumpScape
 
                         int selection = levelSelectMenu.Update(gameTime, GraphicsDevice, _backgroundPosition);
 
-                        // Wait for player to confirm selection with Enter
-                        if (previousKeyboardState.IsKeyUp(Keys.Enter) && Keyboard.GetState().IsKeyDown(Keys.Enter))
+                        // If selection >= 0 means user has clicked or pressed Enter on an item
+                        if (selection >= 0)
                         {
                             if (selection != levelSelectMenu.menuItems.Count - 1) // If not the "Back" button
                             {
@@ -360,7 +360,7 @@ namespace JumpScape
                                 InitializeCamera();
                                 currentGameState = GameState.Playing;
                             }
-                            else if (selection == levelSelectMenu.menuItems.Count - 1) // If "Back" button is selected
+                            else // "Back" button
                             {
                                 currentGameState = GameState.MainMenu;
                                 mainMenu.ResetPreviousState();
@@ -368,6 +368,7 @@ namespace JumpScape
                         }
                     }
                     break;
+
 
 
                 case GameState.Settings:
