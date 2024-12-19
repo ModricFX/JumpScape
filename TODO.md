@@ -1,6 +1,5 @@
 TODO:
 NEEDED:
-- fix levelselector menu, clicking doesnt work
 - IMPLEMENT SETTING RESLUTIONS
 - better level selector menu
 - Level selector when selecting item doesnt work, only loads level 1
