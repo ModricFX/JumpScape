@@ -29,6 +29,8 @@ namespace JumpScape
         private int sensitivity = 5;
 
         private readonly string[] resolutions = { "1280x720", "1920x1080", "2560x1440" };
+        string[] categories = { "Graphics", "Audio", "Miscellaneous" };
+
         private const int SLIDER_WIDTH = 200;
         private bool isDraggingVolume = false;
         private bool isDraggingSensitivity = false;
@@ -45,7 +47,7 @@ namespace JumpScape
             this.graphicsDevice = graphicsDevice;
             this.graphicsDeviceManager = _graphics;
 
-            menuItems = new List<string>() { resolutions[resolutionIndex], "Volume", "Sensitivity", "Back" };
+            menuItems = new List<string>() { resolutions[resolutionIndex], "Volume", "Back" };
             selectedIndex = 0;
             previousMouseState = Mouse.GetState();
 
@@ -60,94 +62,82 @@ namespace JumpScape
             previousMouseState = Mouse.GetState();
         }
 
-        public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
-        {
-            _logoPosition = new Vector2(
-                (graphicsDevice.Viewport.Width / 2) - _gameLogoTexture.Width / 2 * 0.4f, // Centered X position
-                graphicsDevice.Viewport.Height * 0.01f             // Y position
-            );
-            MouseState currentMouseState = Mouse.GetState();
-            _backgroundPosition = backgroundPosition;
-
-            HandleMouseInput(currentMouseState);
-
-            previousMouseState = currentMouseState;
-            return -1;
-        }
-
         private int hoveredIndex = -1; // Track which dropdown item is hovered
 
         private void HandleMouseInput(MouseState currentMouseState)
         {
-            // Raw mouse coordinates in window space
+            // Use the actual mouse coordinates as is (no virtual scaling)
             Vector2 mousePosition = new Vector2(currentMouseState.X, currentMouseState.Y);
 
-            // Suppose your UI and game logic is based on a virtual resolution:
-            int virtualWidth = 1920;
-            int virtualHeight = 1080;
+            bool mouseClicked = (currentMouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed);
 
-            Viewport viewport = graphicsDevice.Viewport;
+            // Calculate the exact position of the resolution dropdown as in Draw():
+            // For the "Graphics" category (i = 0), we have:
+            // categoriesStart, categoryBlockHeight, and category text size used in Draw().
+            // Recompute those here to ensure coordinates match:
 
-            // Calculate how the viewport scales the virtual resolution
-            float scaleX = (float)viewport.Width / (float)virtualWidth;
-            float scaleY = (float)viewport.Height / (float)virtualHeight;
-
-            // Translate mouse from window coordinates into viewport space
-            mousePosition.X -= viewport.X;
-            mousePosition.Y -= viewport.Y;
-
-            // Scale mouse position back to virtual resolution space
-            mousePosition.X /= scaleX;
-            mousePosition.Y /= scaleY;
-
-            // Now position your UI in virtual coordinates as well
+            float categoryBlockHeight = 100f;
+            float scale = 1.0f;
             Vector2 boxPosition = new Vector2(
-                (virtualWidth / 2f) - (boxWidth / 2f),
-                (virtualHeight / 2f) - (boxHeight / 2f)
+                graphicsDevice.Viewport.Bounds.Center.X - (boxWidth / 2),
+                graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)
             );
 
-            Vector2 menuStartPosition = new Vector2(
+            string titleText = "Settings";
+            float titleScale = 1.5f;
+            Vector2 titleSize = font.MeasureString(titleText) * titleScale;
+            Vector2 titlePosition = boxPosition + new Vector2((boxWidth - titleSize.X) / 2, 30);
+
+            Vector2 categoriesStart = new Vector2(
                 boxPosition.X + 60,
-                boxPosition.Y + 130
+                titlePosition.Y + titleSize.Y + 60
             );
 
-            Vector2 resolutionPosition = new Vector2(menuStartPosition.X + 300, menuStartPosition.Y);
+            // For "Graphics" category (index 0):
+            int i = 0;
+            Vector2 categoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + i * categoryBlockHeight);
+            Vector2 categoryTextSize = font.MeasureString(categories[i]) * scale;
+            Vector2 childStart = categoryPosition + new Vector2(30, categoryTextSize.Y + 20);
+
+            // "Resolution:" label and dropdown:
+            Vector2 labelSize = smallFont.MeasureString("Resolution:");
+            Vector2 dropdownPosition = new Vector2(childStart.X + labelSize.X + 20, childStart.Y - 2);
+            // Shifted up by 2 pixels to align visually
+
             Rectangle dropdownRect = new Rectangle(
-                (int)resolutionPosition.X,
-                (int)resolutionPosition.Y,
+                (int)dropdownPosition.X,
+                (int)dropdownPosition.Y,
                 200,
                 isDropdownOpen ? resolutions.Length * 30 + 30 : 30
             );
 
-            bool mouseClicked = currentMouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed;
             hoveredIndex = -1;
 
             if (isDropdownOpen)
             {
                 bool clickedItem = false;
-                for (int i = 0; i < resolutions.Length; i++)
+                for (int idx = 0; idx < resolutions.Length; idx++)
                 {
-                    // Subtracting 10 pixels from the Y-position to align with visible text:
                     Rectangle itemRect = new Rectangle(
-                        (int)resolutionPosition.X,
-                        (int)(resolutionPosition.Y + 30 * (i + 1) + 20),
+                        (int)dropdownPosition.X,
+                        (int)(dropdownPosition.Y + 30 * (idx + 1)),
                         200,
                         30
                     );
 
                     if (IsMouseOverRectangle(mousePosition, itemRect))
                     {
-                        hoveredIndex = i;
+                        hoveredIndex = idx;
                         if (mouseClicked)
                         {
-                            resolutionIndex = i;
+                            resolutionIndex = idx;
                             menuItems[0] = resolutions[resolutionIndex];
                             isDropdownOpen = false;
+                            clickedItem = true;
                             break;
                         }
                     }
                 }
-
 
                 if (!clickedItem && mouseClicked && !IsMouseOverRectangle(mousePosition, dropdownRect))
                 {
@@ -156,6 +146,7 @@ namespace JumpScape
             }
             else
             {
+                // Open the dropdown if the mouse clicked on it when closed
                 if (IsMouseOverRectangle(mousePosition, dropdownRect) && mouseClicked)
                 {
                     isDropdownOpen = true;
@@ -192,6 +183,47 @@ namespace JumpScape
             );
         }
 
+
+        public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
+        {
+            _logoPosition = new Vector2(
+                (graphicsDevice.Viewport.Width / 2) - _gameLogoTexture.Width / 2 * 0.4f,
+                graphicsDevice.Viewport.Height * 0.01f
+            );
+            _backgroundPosition = backgroundPosition;
+
+            MouseState currentMouseState = Mouse.GetState();
+            HandleMouseInput(currentMouseState);
+
+            int backIndex = menuItems.Count - 1;
+
+            // Recalculate the "Back" button's position exactly as in Draw()
+            Viewport viewport = graphicsDevice.Viewport;
+            Vector2 boxPosition = new Vector2(
+                viewport.Bounds.Center.X - (boxWidth / 2),
+                viewport.Bounds.Center.Y - (boxHeight / 2)
+            );
+
+            Vector2 backSize = font.MeasureString(menuItems[backIndex]);
+            Vector2 backPosition = new Vector2(
+                boxPosition.X + (boxWidth - backSize.X) / 2,
+                boxPosition.Y + boxHeight - backSize.Y - 50
+            );
+
+            bool mouseClicked = currentMouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed;
+            Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
+            Rectangle backRect = new Rectangle((int)backPosition.X, (int)backPosition.Y, (int)backSize.X, (int)backSize.Y);
+
+            // Check if the back button was clicked
+            if (backRect.Contains(mousePos) && mouseClicked)
+            {
+                previousMouseState = currentMouseState;
+                return backIndex; // Return the back index to signal that "Back" was chosen
+            }
+
+            previousMouseState = currentMouseState;
+            return -1;
+        }
         public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 1.0f)
         {
             DrawBackground(spriteBatch);
@@ -202,76 +234,102 @@ namespace JumpScape
                 viewport.Bounds.Center.Y - (boxHeight / 2)
             );
 
+            // Wooden box with overlay
             spriteBatch.Draw(
                 _woodBoxTexture,
                 new Rectangle((int)boxPosition.X, (int)boxPosition.Y, (int)boxWidth, (int)boxHeight),
                 Color.White
             );
+            spriteBatch.Draw(
+                GetFilledTexture(graphicsDevice, Color.Black),
+                new Rectangle((int)boxPosition.X, (int)boxPosition.Y, (int)boxWidth, (int)boxHeight),
+                Color.Black * 0.4f
+            );
 
             string titleText = "Settings";
             float titleScale = 1.5f;
             Vector2 titleSize = font.MeasureString(titleText) * titleScale;
-            Vector2 titlePosition = boxPosition + new Vector2(
-                (boxWidth - titleSize.X) / 2,
-                30
-            );
-            // Title with main font
-            spriteBatch.DrawString(
-                font, titleText, titlePosition, Color.White, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f
-            );
+            Vector2 titlePosition = boxPosition + new Vector2((boxWidth - titleSize.X) / 2, 30);
 
-            Vector2 menuStartPosition = new Vector2(
+            // Title with shadow
+            spriteBatch.DrawString(font, titleText, titlePosition + new Vector2(2, 2), Color.Black * 0.5f, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(font, titleText, titlePosition, Color.White, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
+
+            float categoryBlockHeight = 100f;
+            Vector2 categoriesStart = new Vector2(
                 boxPosition.X + 60,
                 titlePosition.Y + titleSize.Y + 60
             );
 
-            float rowHeight = 80f;
-            string[] categories = { "Graphics", "Audio", "Mouse Sensitivity", "Miscellaneous" };
+            int totalRows = categories.Length;
+            int totalPanelHeight = (int)(totalRows * categoryBlockHeight + 40);
+            Rectangle categoriesPanel = new Rectangle(
+                (int)categoriesStart.X - 20,
+                (int)categoriesStart.Y - 20,
+                (int)(boxWidth - (60 * 2) + 40),
+                totalPanelHeight
+            );
+            spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.Black), categoriesPanel, Color.Black * 0.3f);
+            DrawOutline(spriteBatch, categoriesPanel, Color.White);
 
             for (int i = 0; i < categories.Length; i++)
             {
-                // Categories with main font
-                Vector2 categoryPosition = new Vector2(menuStartPosition.X, menuStartPosition.Y + i * rowHeight);
+                Vector2 categoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + i * categoryBlockHeight);
+                spriteBatch.DrawString(font, categories[i], categoryPosition + new Vector2(1, 1), Color.Black * 0.5f, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(font, categories[i], categoryPosition, Color.Yellow, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
 
-                Vector2 settingPosition = new Vector2(menuStartPosition.X + 300, menuStartPosition.Y + i * rowHeight);
+                Vector2 categoryTextSize = font.MeasureString(categories[i]) * scale;
+                Vector2 childStart = categoryPosition + new Vector2(30, categoryTextSize.Y + 20);
 
-                // Settings and dropdown items with smallFont
-                if (i == 0) // Graphics dropdown
+                if (i == 0) // Graphics
                 {
-                    DrawDropdown(spriteBatch, settingPosition, isDropdownOpen, resolutions, resolutionIndex, hoveredIndex);
+                    // Adjust dropdown Y by -10 for better alignment
+                    spriteBatch.DrawString(smallFont, "Resolution:", childStart, Color.White);
+                    Vector2 labelSize = smallFont.MeasureString("Resolution:");
+                    Vector2 dropdownPos = new Vector2(childStart.X + labelSize.X + 20, childStart.Y - 10);
+                    DrawDropdown(spriteBatch, dropdownPos, isDropdownOpen, resolutions, resolutionIndex, hoveredIndex);
                 }
-                else if (i == 1)
+                else if (i == 1) // Audio
                 {
-                    // Volume slider would be drawn with smallFont if implemented
+                    spriteBatch.DrawString(smallFont, "Volume: [ " + volume + " ]", childStart, Color.White);
                 }
-                else if (i == 2)
-                {
-                    // Sensitivity slider would be drawn with smallFont if implemented
-                }
-                else
-                {
-                    // Miscellaneous items (like "Back") with smallFont
-                    spriteBatch.DrawString(smallFont, menuItems[i], settingPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-                }
+                // Remove the "Back" drawing from here to place it at the bottom
             }
+
+            // Draw "Back" button at the bottom, similar to how it's done in LevelSelectorMenu
+            int backIndex = menuItems.Count - 1;
+            Vector2 backSize = font.MeasureString(menuItems[backIndex]);
+
+            Vector2 backPosition = new Vector2(
+                boxPosition.X + (boxWidth - backSize.X) / 2,
+                boxPosition.Y + boxHeight - backSize.Y - 50
+            );
+
+            Vector2 mousePos = new Vector2(Mouse.GetState().X, Mouse.GetState().Y);
+            Rectangle backRect = new Rectangle((int)backPosition.X, (int)backPosition.Y, (int)backSize.X, (int)backSize.Y);
+            bool hoveringBack = backRect.Contains(mousePos);
+
+            spriteBatch.DrawString(font, menuItems[backIndex], backPosition + new Vector2(1, 1), Color.Black * 0.5f, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(font, menuItems[backIndex], backPosition, hoveringBack ? Color.Yellow : Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
+
+
 
         private void DrawDropdown(SpriteBatch spriteBatch, Vector2 position, bool isOpen, string[] items, int selectedIndex, int hoveredIndex)
         {
             int dropdownHeight = isOpen ? items.Length * 30 + 30 : 30;
             Rectangle dropdownRect = new Rectangle((int)position.X, (int)position.Y, 200, dropdownHeight);
 
-            // Draw the dropdown background
-            spriteBatch.Draw(GetFilledTexture(spriteBatch.GraphicsDevice, Color.Gray), dropdownRect, Color.Gray);
-            DrawOutline(spriteBatch, dropdownRect, Color.Black);
+            // Draw the dropdown background a bit darker
+            spriteBatch.Draw(GetFilledTexture(spriteBatch.GraphicsDevice, Color.Black), dropdownRect, Color.Black * 0.7f);
+            DrawOutline(spriteBatch, dropdownRect, Color.White);
 
-            // Draw the currently selected item at the top with smallFont
+            // Draw the currently selected item at the top with smallFont and a slight shadow
+            spriteBatch.DrawString(smallFont, items[selectedIndex], new Vector2(position.X + 11, position.Y + 6), Color.Black * 0.5f);
             spriteBatch.DrawString(smallFont, items[selectedIndex], new Vector2(position.X + 10, position.Y + 5), Color.White);
 
             if (isOpen)
             {
-                // Draw the dropdown items using smallFont
                 for (int i = 0; i < items.Length; i++)
                 {
                     Rectangle itemRect = new Rectangle(
@@ -281,20 +339,15 @@ namespace JumpScape
                         30
                     );
 
-                    if (i == hoveredIndex)
-                    {
-                        // Highlighted item
-                        spriteBatch.Draw(GetFilledTexture(spriteBatch.GraphicsDevice, Color.DarkGray), itemRect, Color.DarkGray);
-                        DrawOutline(spriteBatch, itemRect, Color.Black);
-                        spriteBatch.DrawString(smallFont, items[i], new Vector2(itemRect.X + 10, itemRect.Y + 5), Color.White);
-                    }
-                    else
-                    {
-                        // Normal item
-                        spriteBatch.Draw(GetFilledTexture(spriteBatch.GraphicsDevice, Color.Gray), itemRect, Color.Gray);
-                        DrawOutline(spriteBatch, itemRect, Color.Black);
-                        spriteBatch.DrawString(smallFont, items[i], new Vector2(itemRect.X + 10, itemRect.Y + 5), Color.White);
-                    }
+                    // Different shades for hover and normal
+                    Color bgColor = (i == hoveredIndex) ? Color.DarkGray : Color.Gray;
+
+                    spriteBatch.Draw(GetFilledTexture(spriteBatch.GraphicsDevice, bgColor), itemRect, bgColor);
+                    DrawOutline(spriteBatch, itemRect, Color.White);
+
+                    // Slight shadow on text
+                    spriteBatch.DrawString(smallFont, items[i], new Vector2(itemRect.X + 11, itemRect.Y + 6), Color.Black * 0.5f);
+                    spriteBatch.DrawString(smallFont, items[i], new Vector2(itemRect.X + 10, itemRect.Y + 5), Color.White);
                 }
             }
         }

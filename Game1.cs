@@ -143,8 +143,6 @@ namespace JumpScape
             levelSelectMenu.AddMenuItem("Back");
 
             settingsMenu = new SettingsMenu(menuFont, font, _graphics, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
-            settingsMenu.AddMenuItem("Toggle Fullscreen");
-            settingsMenu.AddMenuItem("Back");
 
             currentGameState = GameState.MainMenu;
         }
@@ -219,7 +217,7 @@ namespace JumpScape
             // current resolutions
             // width GraphicsDevice.Viewport.Width
             // height GraphicsDevice.Viewport.Height
-            Console.WriteLine("Width: " + GraphicsDevice.Viewport.Width + " Height: " + GraphicsDevice.Viewport.Height);
+            //Console.WriteLine("Width: " + GraphicsDevice.Viewport.Width + " Height: " + GraphicsDevice.Viewport.Height);
 
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
@@ -381,17 +379,18 @@ namespace JumpScape
                             levelSelectMenu.visible = false;
                         }
                         int selection = settingsMenu.Update(gameTime, GraphicsDevice, _backgroundPosition, _spriteBatch);
-                        if (selection == 0) // Toggle Fullscreen
+                        Console.WriteLine("Selection: " + selection);
+                        if (selection >= 0)
                         {
-                            _graphics.IsFullScreen = !_graphics.IsFullScreen;
-                            _graphics.ApplyChanges();
-                            // After toggling, reset menu state to avoid immediate re-trigger
-                            settingsMenu.ResetPreviousState();
-                        }
-                        else if (selection == 1) // Back
-                        {
-                            currentGameState = GameState.MainMenu;
-                            mainMenu.ResetPreviousState();
+                            if (selection != settingsMenu.menuItems.Count - 1) // If not the "Back" button
+                            {
+
+                            }
+                            else // Back
+                            {
+                                currentGameState = GameState.MainMenu;
+                                mainMenu.ResetPreviousState();
+                            }
                         }
                     }
                     break;

@@ -58,7 +58,7 @@ namespace JumpScape
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
             _logoPosition = new Vector2(
-                (graphicsDevice.Viewport.Width - (_gameLogoTexture.Width * 0.4f)) / 2,
+                (graphicsDevice.Viewport.Width - (_gameLogoTexture.Width * 0.3f)) / 2,
                 graphicsDevice.Viewport.Height * 0.01f
             );
             _backgroundPosition = backgroundPosition;
@@ -136,7 +136,7 @@ namespace JumpScape
         {
             return new Vector2(
                 graphicsDevice.Viewport.Bounds.Center.X - (boxWidth / 2),
-                graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)
+                (graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)) * 1.5f
             );
         }
 
@@ -199,7 +199,7 @@ namespace JumpScape
             );
 
             // Draw the game logo scaled
-            float logoScale = 0.4f;
+            float logoScale = 0.3f;
 
             // Draw the logo using its CENTER as the origin
             spriteBatch.Draw(
