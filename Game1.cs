@@ -260,6 +260,14 @@ namespace JumpScape
             {
                 case GameState.MainMenu:
                     {
+                        // reset level data
+                        player = null;
+                        door = null;
+                        key = null;
+                        platforms = new List<Platform>();
+                        monsters = new List<Monster>();
+                        ghosts = new List<Ghost>();
+
                         if (mainMenu.visible == false)
                         {
                             mainMenu.visible = true;
@@ -318,6 +326,8 @@ namespace JumpScape
                         else if (pauseSelection == 1) // Quit
                         {
                             currentGameState = GameState.MainMenu;
+                            isPaused = false;
+                            pauseMenu.ToggleVisibility();
                             mainMenu.ResetPreviousState();
                         }
                     }
@@ -351,7 +361,9 @@ namespace JumpScape
                             }
                             else if (selection == 1) // Quit
                             {
-                                Exit();  // Exit the game or return to the main menu
+                                currentGameState = GameState.MainMenu;
+                                deathMenu.Hide();
+                                mainMenu.ResetPreviousState();
                             }
                         }
 

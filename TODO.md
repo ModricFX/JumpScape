@@ -3,6 +3,8 @@ NEEDED:
 - Death Screen - add fade out when player clicks retry
 - Implement fullscreen
 - Implement frames per second
+- Implement sounds
+- Implement leaderboard, database for levels, timer?
 - better level selector menu
 - better settings menu
 - Add weapons for player, attack by clicking mouse button in direction
