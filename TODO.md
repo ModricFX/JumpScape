@@ -1,11 +1,10 @@
 TODO:
 NEEDED:
+- Death Screen - add fade out when player clicks retry
 - Implement fullscreen
 - Implement frames per second
 - better level selector menu
 - better settings menu
-- add pause menu
-- add death screen
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 

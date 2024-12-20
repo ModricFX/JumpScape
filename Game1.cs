@@ -16,7 +16,7 @@ namespace JumpScape
         private bool isFadingOut;
 
         private float fadeAlpha = 1f;
-        private const float FadeSpeed = 0.01f;
+        private const float FadeSpeed = 0.005f;
         private Player player;
         private Door door;
         private Item key;
@@ -34,6 +34,9 @@ namespace JumpScape
         private bool _movingRight;
         private Texture2D _backgroundTexture;
 
+        private bool isPaused;
+        private DeathMenu deathMenu;
+
         public enum GameState
         {
             MainMenu,
@@ -47,6 +50,7 @@ namespace JumpScape
         private LevelSelectorMenu levelSelectMenu;
         private SettingsMenu settingsMenu;
 
+        private PauseMenu pauseMenu;
         private SpriteFont menuFont;
         private int lastCompletedLevel = 0; // Track the last completed level
         private int currentLevel = 1;       // Track the current level to play
@@ -144,6 +148,10 @@ namespace JumpScape
 
             settingsMenu = new SettingsMenu(menuFont, font, _graphics, GraphicsDevice);
 
+            pauseMenu = new PauseMenu(menuFont, GraphicsDevice);
+
+            deathMenu = new DeathMenu(menuFont, GraphicsDevice);
+
             currentGameState = GameState.MainMenu;
         }
 
@@ -214,7 +222,7 @@ namespace JumpScape
 
         protected override void Update(GameTime gameTime)
         {
-            
+
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
             if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))
@@ -223,7 +231,7 @@ namespace JumpScape
                 {
                     case GameState.Playing:
                         // pause game logic or just fall through to main menu
-                        Exit();
+                        //Exit();
                         break;
 
                     case GameState.LevelSelect:
@@ -288,10 +296,37 @@ namespace JumpScape
                     break;
 
                 case GameState.Playing:
+                    if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))
+                    {
+                        if (!player.isDead)
+                        {
+                            isPaused = !isPaused;
+                            pauseMenu.ToggleVisibility();
+                        }
+                    }
+
+                    if (isPaused)
+                    {
+                        // Update pause menu and handle selection
+                        int pauseSelection = pauseMenu.Update(gameTime, GraphicsDevice);
+
+                        if (pauseSelection == 0) // Resume
+                        {
+                            isPaused = false;
+                            pauseMenu.ToggleVisibility();
+                        }
+                        else if (pauseSelection == 1) // Quit
+                        {
+                            currentGameState = GameState.MainMenu;
+                            mainMenu.ResetPreviousState();
+                        }
+                    }
+                    else
                     {
                         levelSelectMenu.visible = false;
                         mainMenu.visible = false;
                         settingsMenu.visible = false;
+
                         isFadingOut = player.endLevel;
                         player.Update(gameTime, ks, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, key, door);
                         UpdateMonstersAndGhosts(gameTime);
@@ -302,26 +337,42 @@ namespace JumpScape
                         UpdateCamera();
                         UpdateFadeEffect();
 
+                        if (player.isDead)
+                        {
+                            deathMenu.Show();
+                            int selection = deathMenu.Update(gameTime, GraphicsDevice);
+
+                            if (selection == 0) // Retry
+                            {
+                                deathMenu.Hide();
+                                
+                                LoadLevelData();  // Reload the same level
+                                InitializeCamera();  // Reset camera
+                            }
+                            else if (selection == 1) // Quit
+                            {
+                                Exit();  // Exit the game or return to the main menu
+                            }
+                        }
+
+
                         if (player.endLevel)
                         {
                             lastCompletedLevel = Math.Max(lastCompletedLevel, currentLevel);
-                            // if its the last level, keep the player in the last level
-                            if (lastCompletedLevel == levelSelectMenu.menuItems.Count)
-                            {
-                                lastCompletedLevel = levelSelectMenu.menuItems.Count - 1;
-                            }
 
-                            // fade out then go to main menu
+                            if (lastCompletedLevel == levelSelectMenu.menuItems.Count)
+                                lastCompletedLevel = levelSelectMenu.menuItems.Count - 1;
+
                             if (fadeAlpha >= 1)
                             {
                                 currentGameState = GameState.MainMenu;
-                                //wait till is black + 1 second
                                 System.Threading.Thread.Sleep(1000);
                                 mainMenu.ResetPreviousState();
                             }
                         }
                     }
                     break;
+
 
                 case GameState.LevelSelect:
                     {
@@ -393,8 +444,6 @@ namespace JumpScape
             previousKeyboardState = ks;
             base.Update(gameTime);
         }
-
-
 
 
         private void UpdateMonstersAndGhosts(GameTime gameTime)
@@ -471,10 +520,17 @@ namespace JumpScape
                     door.Update(_spriteBatch, player, font, GraphicsDevice.Viewport.Width);
                     player.Draw(_spriteBatch, cameraPosition, GraphicsDevice.Viewport.Width, groundLevel, cameraPosition.Y + 20, gameTime);
 
-                    _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
+                    if (isPaused)
+                    {
+                        pauseMenu.Draw(_spriteBatch, GraphicsDevice);
+                    }
+                    
+                    deathMenu.Draw(_spriteBatch, GraphicsDevice);
 
+                    _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
                     _spriteBatch.End();
                     break;
+
 
                 case GameState.LevelSelect:
                     _spriteBatch.Begin();

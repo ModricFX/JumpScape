@@ -19,7 +19,7 @@ namespace JumpScape.Classes
         public bool IsJumping { get; set; }
 
         // Heart System Variables
-        private const int MaxHearts = 3;
+        private const int MaxHearts = 1;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
