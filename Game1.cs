@@ -142,7 +142,7 @@ namespace JumpScape
             }
             levelSelectMenu.AddMenuItem("Back");
 
-            settingsMenu = new SettingsMenu(menuFont, font, _graphics, GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            settingsMenu = new SettingsMenu(menuFont, font, _graphics, GraphicsDevice);
 
             currentGameState = GameState.MainMenu;
         }
@@ -214,11 +214,7 @@ namespace JumpScape
 
         protected override void Update(GameTime gameTime)
         {
-            // current resolutions
-            // width GraphicsDevice.Viewport.Width
-            // height GraphicsDevice.Viewport.Height
-            //Console.WriteLine("Width: " + GraphicsDevice.Viewport.Width + " Height: " + GraphicsDevice.Viewport.Height);
-
+            
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
             if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))

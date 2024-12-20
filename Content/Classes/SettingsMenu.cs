@@ -23,11 +23,11 @@ namespace JumpScape
         private Vector2 _backgroundPosition;
 
         private MouseState previousMouseState;
-        private int resolutionIndex = 1;
+        private int frameRateIndex = 1;
         private int volume = 80;
         private int sensitivity = 5;
 
-        private readonly string[] resolutions = { "1280x720", "1920x1080", "2560x1440" };
+        private readonly string[] frameRates = { "30 FPS", "60 FPS", "120 FPS", "Unlimited" };
         string[] categories = { "Graphics", "Audio", "Miscellaneous" };
 
         private const int SLIDER_WIDTH = 200;
@@ -41,21 +41,19 @@ namespace JumpScape
         private bool isFullscreen = false; // Track whether fullscreen is enabled
 
 
-        public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager _graphics, GraphicsDevice graphicsDevice, int width, int height)
+        public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
         {
             this.font = font;
             this.smallFont = smallFont;
             this.graphicsDevice = graphicsDevice;
-            this.graphicsDeviceManager = _graphics;
+            this.graphicsDeviceManager = graphics;
 
-            menuItems = new List<string>() { resolutions[resolutionIndex], "Volume", "Back" };
-            selectedIndex = 0;
+            menuItems = new List<string> { frameRates[frameRateIndex], "Volume", "Back" };
             previousMouseState = Mouse.GetState();
 
             _backgroundTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
-
         }
 
         public void ResetPreviousState()
@@ -68,22 +66,35 @@ namespace JumpScape
 
         private void ApplyGraphicsChanges()
         {
-            // Parse current resolution from resolutions[resolutionIndex]
-            string currentRes = resolutions[resolutionIndex];
-            string[] parts = currentRes.Split('x');
-            int parsedWidth = 1280;
-            int parsedHeight = 720;
-
-            if (parts.Length == 2)
+            // Set frame rate cap based on user selection
+            graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
             {
-                int.TryParse(parts[0], out parsedWidth);
-                int.TryParse(parts[1], out parsedHeight);
-            }
+                0 => PresentInterval.Two,       // 30 FPS (Assumes VSync enabled)
+                1 => PresentInterval.One,       // 60 FPS (Standard VSync)
+                2 => PresentInterval.Immediate, // 120 FPS
+                3 => PresentInterval.Immediate, // Unlimited (No VSync)
+                _ => PresentInterval.One
+            };
 
-            graphicsDeviceManager.PreferredBackBufferWidth = parsedWidth;
-            graphicsDeviceManager.PreferredBackBufferHeight = parsedHeight;
-            graphicsDeviceManager.IsFullScreen = isFullscreen;
+            // Apply changes without adjusting the window size
             graphicsDeviceManager.ApplyChanges();
+        }
+
+
+
+        private bool IsMouseOverRectangle(Vector2 mousePosition, Rectangle rect)
+        {
+            return mousePosition.X >= rect.X && mousePosition.X <= rect.X + rect.Width &&
+                   mousePosition.Y >= rect.Y && mousePosition.Y <= rect.Y + rect.Height;
+        }
+
+        private void DrawBackground(SpriteBatch spriteBatch)
+        {
+            spriteBatch.Draw(
+                _backgroundTexture,
+                new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
+                Color.White
+            );
         }
 
         private void HandleMouseInput(MouseState currentMouseState)
@@ -96,9 +107,11 @@ namespace JumpScape
             float categoryBlockHeight = 150f; // same as in Draw()
             float scale = 1.0f;
 
+            // Calculate boxPosition as in Draw()
+            Viewport viewport = graphicsDevice.Viewport;
             Vector2 boxPosition = new Vector2(
-                graphicsDevice.Viewport.Bounds.Center.X - (boxWidth / 2),
-                graphicsDevice.Viewport.Bounds.Center.Y - (boxHeight / 2)
+                viewport.Bounds.Center.X - (boxWidth / 2),
+                viewport.Bounds.Center.Y - (boxHeight / 2)
             );
 
             string titleText = "Settings";
@@ -110,22 +123,18 @@ namespace JumpScape
                 titlePosition.Y + titleSize.Y + 60
             );
 
-            // Audio category is at index 1
+            // Audio category is index 1
             int audioIndex = 1;
             Vector2 audioCategoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + audioIndex * categoryBlockHeight);
             Vector2 audioCatTextSize = font.MeasureString(categories[audioIndex]) * scale;
             Vector2 childStart = audioCategoryPosition + new Vector2(30, audioCatTextSize.Y + 10);
-
-            // Match the offsets and scales used in Draw()
-            Vector2 audioStart = childStart + new Vector2(0, 20);
             float textScale = 0.5f;
             string volumeLabel = "Game Volume";
             Vector2 gvSize = font.MeasureString(volumeLabel) * textScale;
 
             int sliderWidth = 200;
             int sliderHeight = 4;
-            Vector2 sliderPos = audioStart + new Vector2(gvSize.X + 40, (gvSize.Y - sliderHeight) / 2);
-
+            Vector2 sliderPos = childStart + new Vector2(0, 20) + new Vector2(gvSize.X + 40, (gvSize.Y - sliderHeight) / 2);
             Rectangle sliderRect = new Rectangle((int)sliderPos.X, (int)sliderPos.Y, sliderWidth, sliderHeight);
 
             float volumePercent = volume / 100f;
@@ -134,7 +143,7 @@ namespace JumpScape
             int knobY = (int)(sliderPos.Y + sliderHeight / 2);
             Rectangle knobRect = new Rectangle(knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2);
 
-            // Dragging logic for volume
+            // Volume dragging logic
             if (mouseDown && !isDraggingVolume)
             {
                 if (knobRect.Contains(mousePosition.ToPoint()))
@@ -155,19 +164,19 @@ namespace JumpScape
                 volume = MathHelper.Clamp(volume, 0, 100);
             }
 
-            // Handle dropdown as before
-            int i = 0;
-            Vector2 categoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + i * categoryBlockHeight);
-            Vector2 categoryTextSize = font.MeasureString(categories[i]) * scale;
+            // Dropdown logic for the Graphics category (index 0)
+            int graphicsIndex = 0;
+            Vector2 categoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + graphicsIndex * categoryBlockHeight);
+            Vector2 categoryTextSize = font.MeasureString(categories[graphicsIndex]) * scale;
             Vector2 childStartGraphics = categoryPosition + new Vector2(30, categoryTextSize.Y + 10);
-            Vector2 labelSize = font.MeasureString("Resolution:") * 0.5f;
+            Vector2 labelSize = font.MeasureString("Frame rates:") * 0.5f;
             Vector2 dropdownPosition = new Vector2(childStartGraphics.X + labelSize.X + 20, childStartGraphics.Y);
 
             Rectangle dropdownRect = new Rectangle(
                 (int)dropdownPosition.X,
                 (int)dropdownPosition.Y,
                 200,
-                isDropdownOpen ? resolutions.Length * 30 + 30 : 30
+                isDropdownOpen ? frameRates.Length * 30 + 30 : 30
             );
 
             hoveredIndex = -1;
@@ -175,7 +184,7 @@ namespace JumpScape
             if (isDropdownOpen)
             {
                 bool clickedItem = false;
-                for (int idx = 0; idx < resolutions.Length; idx++)
+                for (int idx = 0; idx < frameRates.Length; idx++)
                 {
                     Rectangle itemRect = new Rectangle(
                         (int)dropdownPosition.X,
@@ -189,10 +198,13 @@ namespace JumpScape
                         hoveredIndex = idx;
                         if (mouseClicked)
                         {
-                            resolutionIndex = idx;
-                            menuItems[0] = resolutions[resolutionIndex];
+                            frameRateIndex = idx;
+                            menuItems[0] = frameRates[frameRateIndex];
                             isDropdownOpen = false;
                             clickedItem = true;
+
+                            ApplyGraphicsChanges();
+
                             break;
                         }
                     }
@@ -205,6 +217,7 @@ namespace JumpScape
             }
             else
             {
+                // Check if we clicked on the dropdown area to open it
                 if (IsMouseOverRectangle(mousePosition, dropdownRect) && mouseClicked)
                 {
                     isDropdownOpen = true;
@@ -227,24 +240,6 @@ namespace JumpScape
                 ApplyGraphicsChanges();
             }
         }
-
-
-        private bool IsMouseOverRectangle(Vector2 mousePosition, Rectangle rect)
-        {
-            return mousePosition.X >= rect.X && mousePosition.X <= rect.X + rect.Width &&
-                   mousePosition.Y >= rect.Y && mousePosition.Y <= rect.Y + rect.Height;
-        }
-
-        private void DrawBackground(SpriteBatch spriteBatch)
-        {
-            spriteBatch.Draw(
-                _backgroundTexture,
-                new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
-                Color.White
-            );
-        }
-
-
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
         {
             _backgroundPosition = backgroundPosition;
@@ -342,9 +337,9 @@ namespace JumpScape
 
                 if (i == 0) // Graphics
                 {
-                    // Draw Resolution line
-                    spriteBatch.DrawString(font, "Resolution:", childStart, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                    Vector2 labelSize = font.MeasureString("Resolution:") * 0.5f;
+                    // Draw Frame rates line
+                    spriteBatch.DrawString(font, "Frame rates:", childStart, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    Vector2 labelSize = font.MeasureString("Frame rates:") * 0.5f;
                     Vector2 dropdownPos = new Vector2(childStart.X + labelSize.X + 20, childStart.Y);
 
                     // Draw Fullscreen line and checkbox FIRST
@@ -373,7 +368,7 @@ namespace JumpScape
                     }
 
                     // NOW draw the dropdown on top, so it covers the checkbox if opened
-                    DrawDropdown(spriteBatch, dropdownPos, isDropdownOpen, resolutions, resolutionIndex, hoveredIndex, scale: 0.5f);
+                    DrawDropdown(spriteBatch, dropdownPos, isDropdownOpen, frameRates, frameRateIndex, hoveredIndex, scale: 0.5f);
                 }
                 else if (i == 1) // Audio
                 {

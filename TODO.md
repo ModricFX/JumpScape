@@ -1,9 +1,8 @@
 TODO:
 NEEDED:
-- Fix dropdown for resolutions to change when selected new
-- Fix background for other resolutions
+- Implement fullscreen
+- Implement frames per second
 - better level selector menu
-- Level selector when selecting item doesnt work, only loads level 1
 - better settings menu
 - add pause menu
 - add death screen
