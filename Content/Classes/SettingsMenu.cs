@@ -25,14 +25,12 @@ namespace JumpScape
         private MouseState previousMouseState;
         private int frameRateIndex = 1;
         private int volume = 80;
-        private int sensitivity = 5;
 
         private readonly string[] frameRates = { "30 FPS", "60 FPS", "120 FPS", "Unlimited" };
         string[] categories = { "Graphics", "Audio", "Miscellaneous" };
 
         private const int SLIDER_WIDTH = 200;
         private bool isDraggingVolume = false;
-        private bool isDraggingSensitivity = false;
 
         private GraphicsDevice graphicsDevice; // Store this so we can use it in HandleMouseInput
         private GraphicsDeviceManager graphicsDeviceManager;
@@ -40,13 +38,26 @@ namespace JumpScape
         private float boxHeight = 800;
         private bool isFullscreen = false; // Track whether fullscreen is enabled
 
+        private GameSettings settings;
 
-        public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
+
+    public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
         {
             this.font = font;
             this.smallFont = smallFont;
             this.graphicsDevice = graphicsDevice;
             this.graphicsDeviceManager = graphics;
+
+            // Load settings
+            settings = GameSettings.Load();
+
+            // Initialize settings from loaded values
+            frameRateIndex = settings.FrameRateIndex;
+            volume = settings.Volume;
+            isFullscreen = settings.IsFullscreen;
+
+            // Apply fullscreen and frame rate settings
+            ApplyGraphicsChanges();
 
             menuItems = new List<string> { frameRates[frameRateIndex], "Volume", "Back" };
             previousMouseState = Mouse.GetState();
@@ -55,6 +66,8 @@ namespace JumpScape
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
         }
+
+
 
         public void ResetPreviousState()
         {
@@ -66,17 +79,16 @@ namespace JumpScape
 
         private void ApplyGraphicsChanges()
         {
-            // Set frame rate cap based on user selection
-            graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
-            {
-                0 => PresentInterval.Two,       // 30 FPS (Assumes VSync enabled)
-                1 => PresentInterval.One,       // 60 FPS (Standard VSync)
-                2 => PresentInterval.Immediate, // 120 FPS
-                3 => PresentInterval.Immediate, // Unlimited (No VSync)
-                _ => PresentInterval.One
-            };
+            // graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
+            // {
+            //     0 => PresentInterval.Two,       // 30 FPS
+            //     1 => PresentInterval.One,       // 60 FPS
+            //     2 => PresentInterval.Immediate, // 120 FPS
+            //     3 => PresentInterval.Immediate, // Unlimited
+            //     _ => PresentInterval.One
+            // };
 
-            // Apply changes without adjusting the window size
+            graphicsDeviceManager.IsFullScreen = isFullscreen;
             graphicsDeviceManager.ApplyChanges();
         }
 
@@ -162,6 +174,10 @@ namespace JumpScape
                 float relativeX = MathHelper.Clamp(mousePosition.X, sliderRect.X, sliderRect.X + sliderRect.Width);
                 volume = (int)(((relativeX - sliderRect.X) / sliderRect.Width) * 100f);
                 volume = MathHelper.Clamp(volume, 0, 100);
+
+                // Update settings
+                settings.Volume = volume;
+                settings.Save();
             }
 
             // Dropdown logic for the Graphics category (index 0)
@@ -203,7 +219,11 @@ namespace JumpScape
                             isDropdownOpen = false;
                             clickedItem = true;
 
-                            ApplyGraphicsChanges();
+                            // Update settings
+                            settings.FrameRateIndex = frameRateIndex;
+                            settings.Save();
+
+                            //ApplyGraphicsChanges();
 
                             break;
                         }
@@ -237,6 +257,9 @@ namespace JumpScape
             if (IsMouseOverRectangle(mousePosition, fsCheckboxRect) && mouseClicked)
             {
                 isFullscreen = !isFullscreen;
+                // Update settings
+                settings.IsFullscreen = isFullscreen;
+                settings.Save();
                 ApplyGraphicsChanges();
             }
         }
