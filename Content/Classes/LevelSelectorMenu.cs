@@ -278,27 +278,29 @@ namespace JumpScape
                 );
                 spriteBatch.DrawString(bigFont, levelNumber, textPosition, textColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
 
-                float starScale = 0.02f;
-                float starYOffset = 25f;
 
-                Vector2 topStarPosition = new Vector2(
-                    levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) / 2,
-                    levelRect.Y + levelRect.Height - 20f - (_starTexture.Height * starScale) + starYOffset
-                );
+                // STAR LOGIC
+                // float starScale = 0.02f;
+                // float starYOffset = 25f;
 
-                Vector2 leftStarPosition = new Vector2(
-                    levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) - 10f,
-                    levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
-                );
+                //     Vector2 topStarPosition = new Vector2(
+                //         levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) / 2,
+                //         levelRect.Y + levelRect.Height - 20f - (_starTexture.Height * starScale) + starYOffset
+                //     );
 
-                Vector2 rightStarPosition = new Vector2(
-                    levelRect.X + levelRect.Width / 2 + 10f,
-                    levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
-                );
+                //     Vector2 leftStarPosition = new Vector2(
+                //         levelRect.X + levelRect.Width / 2 - (_starTexture.Width * starScale) - 10f,
+                //         levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
+                //     );
 
-                spriteBatch.Draw(_starTexture, topStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
-                spriteBatch.Draw(_starTexture, leftStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
-                spriteBatch.Draw(_starTexture, rightStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
+                //     Vector2 rightStarPosition = new Vector2(
+                //         levelRect.X + levelRect.Width / 2 + 10f,
+                //         levelRect.Y + levelRect.Height - (_starTexture.Height * starScale) - 10f + starYOffset
+                //     );
+
+                //     spriteBatch.Draw(_starTexture, topStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
+                //     spriteBatch.Draw(_starTexture, leftStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
+                //     spriteBatch.Draw(_starTexture, rightStarPosition, null, Color.White, 0f, Vector2.Zero, starScale, SpriteEffects.None, 0f);
             }
 
             int backIndex = menuItems.Count - 1;

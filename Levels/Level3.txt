@@ -1,0 +1,10 @@
+PlayerSpawn: 100,groundY-100
+Platform: -50,groundY,groundLength,0,0
+Platform: 200,groundY-50,250,0,0
+Platform: 600,groundY-150,200,1,0
+Platform: 1000,groundY-250,200,0,1
+Platform: 1200,groundY-400,200,0,1
+Platform: 1400,groundY-500,250,1,0
+Platform: 1650,groundY-650,250,0,0
+KeyPosition: 1800,groundY-785
+DoorPosition: 1680,groundY-15,1
