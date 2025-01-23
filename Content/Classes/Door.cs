@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Audio;
 using System.IO;
 
 namespace JumpScape.Classes
@@ -10,6 +11,8 @@ namespace JumpScape.Classes
         private Texture2D _unlockedTexture;
         private Texture2D _openedTexture;
         private Texture2D _currentTexture;
+
+        private SoundEffect _doorOpenSound; // Field for door open sound
 
         public Vector2 Position { get; }
         public bool IsLocked { get; private set; }
@@ -34,6 +37,9 @@ namespace JumpScape.Classes
             _openedTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Doors", "door_opened.png"));
 
             _currentTexture = IsLocked ? _lockedTexture : _unlockedTexture;
+
+            // Load door open sound
+            _doorOpenSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "DoorOpen.wav"));
         }
 
         public void Unlock()
@@ -51,6 +57,9 @@ namespace JumpScape.Classes
             {
                 IsOpened = true;
                 _currentTexture = _openedTexture;
+
+                // Play the door open sound
+                _doorOpenSound.Play();
             }
         }
 
