@@ -7,6 +7,11 @@ namespace JumpScape
 {
     public class LevelLoader
     {
+        private const float BaseWidth = 1920f;
+        private const float BaseHeight = 1080f;
+
+        private const float GroundLengthMultiplier = 1.10f; // 110% of screen width
+
         public Vector2 PlayerSpawn { get; private set; }
         public Vector2 KeyPosition { get; private set; }
         public (Vector2 Position, bool IsLocked) DoorData { get; private set; }
@@ -21,123 +26,117 @@ namespace JumpScape
             GhostsData = new List<(Vector2, float)>();
         }
 
-        // Helper method to convert and save a level file with replacements
-        public static string ConvertLevelFile(string inputFilePath, int windowHeight, int windowWidth)
-        {
-            string directory = Path.GetDirectoryName(inputFilePath);
-            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(inputFilePath);
-            string newFileName = $"{fileNameWithoutExtension}_converted.txt";
-            string outputFilePath = Path.Combine(directory, newFileName);
-
-            using (StreamReader reader = new StreamReader(inputFilePath))
-            using (StreamWriter writer = new StreamWriter(outputFilePath))
-            {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    string[] parts = line.Split(':');
-                    if (parts.Length == 2)
-                    {
-                        string type = parts[0].Trim();
-                        string[] values = parts[1].Trim().Split(',');
-
-                        if (type == "Platform" && values.Length >= 4)
-                        {
-                            ProcessPlatformData(ref values, windowHeight, windowWidth);
-                        }
-
-                        string modifiedLine = $"{type}: {string.Join(",", values)}";
-                        writer.WriteLine(modifiedLine);
-                    }
-                    else
-                    {
-                        writer.WriteLine(line);
-                    }
-                }
-            }
-
-            return outputFilePath;
-        }
-
-        // Method to process platform lines, handling replacements of "groundY" and "groundLength"
-        private static void ProcessPlatformData(ref string[] values, int windowHeight, int windowWidth)
-        {
-            for (int i = 0; i < values.Length; i++)
-            {
-                if (string.Equals(values[i].Trim(), "groundY", StringComparison.OrdinalIgnoreCase))
-                {
-                    values[i] = (windowHeight - windowHeight * 0.21f).ToString();
-                }
-                else if (string.Equals(values[i].Trim(), "groundLength", StringComparison.OrdinalIgnoreCase))
-                {
-                    GroundY = windowWidth + windowWidth * 0.1f;
-                    values[i] = GroundY.ToString();
-                }
-            }
-        }
-
-        // Main method to load level after conversion
         public void LoadLevel(string filePath, int windowHeight, int windowWidth)
         {
-            string convertedFilePath = ConvertLevelFile(filePath, windowHeight, windowWidth);
-
-            using (StreamReader reader = new StreamReader(convertedFilePath))
+            using (var reader = new StreamReader(filePath))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] parts = line.Split(':');
-                    if (parts.Length == 2)
+                    if (parts.Length != 2)
+                        continue;
+
+                    string type = parts[0].Trim();
+                    string[] values = parts[1].Trim().Split(',');
+
+                    if (values.Length < 2)
+                        continue;
+
+                    float x = ParseValue(values[0], windowWidth, windowHeight);
+                    float y = ParseValue(values[1], windowWidth, windowHeight);
+
+                    Vector2 position = new Vector2(x, y);
+
+                    switch (type)
                     {
-                        string type = parts[0].Trim();
-                        string[] values = parts[1].Trim().Split(',');
+                        case "PlayerSpawn":
+                            PlayerSpawn = ScalePosition(position, windowWidth, windowHeight);
+                            break;
 
-                        if (values.Length >= 2 && float.TryParse(values[0], out float x) && float.TryParse(values[1], out float y))
-                        {
-                            Vector2 position = new Vector2(x, y);
+                        case "KeyPosition":
+                            KeyPosition = ScalePosition(position, windowWidth, windowHeight);
+                            break;
 
-                            switch (type)
+                        case "DoorPosition":
+                            if (values.Length == 3 && int.TryParse(values[2], out int lockState))
                             {
-                                case "PlayerSpawn":
-                                    PlayerSpawn = position;
-                                    break;
-                                case "KeyPosition":
-                                    KeyPosition = position;
-                                    break;
-                                case "DoorPosition":
-                                    if (values.Length == 3 && int.TryParse(values[2], out int lockState))
-                                    {
-                                        bool isLocked = lockState == 1;
-                                        DoorData = (position, isLocked);
-                                    }
-                                    break;
-                                case "Platform":
-                                    ProcessPlatformLine(values, position);
-                                    break;
-                                case "Ghost":
-                                    if (values.Length == 3 && float.TryParse(values[2], out float radius))
-                                    {
-                                        GhostsData.Add((position, radius));
-                                    }
-                                break;
-
+                                bool isLocked = (lockState == 1);
+                                DoorData = (ScalePosition(position, windowWidth, windowHeight), isLocked);
                             }
-                        }
+                            break;
+
+                        case "Platform":
+                            ProcessPlatformLine(values, position, windowWidth, windowHeight);
+                            break;
+
+                        case "Ghost":
+                            if (values.Length >= 3 && float.TryParse(values[2], out float radius))
+                            {
+                                Vector2 ghostPos = ScalePosition(position, windowWidth, windowHeight);
+                                float scaledRadius = radius * (windowWidth / BaseWidth);
+                                GhostsData.Add((ghostPos, scaledRadius));
+                            }
+                            break;
                     }
                 }
             }
         }
 
-        // Helper method to process the platform line and add to PlatformData
-        private void ProcessPlatformLine(string[] values, Vector2 position)
+        private void ProcessPlatformLine(string[] values, Vector2 rawPosition, int windowWidth, int windowHeight)
         {
             if (values.Length < 5) return;
 
+            float length = ParseValue(values[2], windowWidth, windowHeight);
             bool hasMonster = int.TryParse(values[3], out int monsterFlag) && monsterFlag == 1;
             bool isDisappearing = int.TryParse(values[4], out int disappearingFlag) && disappearingFlag == 1;
-            int length = int.TryParse(values[2], out int parsedLength) ? parsedLength : 100;
 
-            PlatformData.Add((position, length, hasMonster, isDisappearing));
+            Vector2 scaledPosition = ScalePosition(rawPosition, windowWidth, windowHeight);
+
+            // Skip scaling `groundLength` if it's already calculated in absolute terms
+            if (values[2].Trim().ToLowerInvariant() != "groundlength")
+                length = (length / BaseWidth) * windowWidth;
+
+            PlatformData.Add((scaledPosition, (int)length, hasMonster, isDisappearing));
+
+            // Debugging Info
+            Console.WriteLine($"Platform Added: Pos={scaledPosition}, Length={length}, Monster={hasMonster}, Disappearing={isDisappearing}");
+        }
+
+        private float ParseValue(string raw, int windowWidth, int windowHeight)
+        {
+            raw = raw.Trim().ToLowerInvariant();
+
+            if (raw == "groundy")
+            {
+                float groundVal = windowHeight - 50;
+                GroundY = groundVal; // Store groundY globally
+                return groundVal;
+            }
+            else if (raw == "groundlength")
+            {
+                float groundLen = GroundLengthMultiplier * windowWidth;
+                return groundLen;
+            }
+            else if (float.TryParse(raw, out float numericVal))
+            {
+                return numericVal; // Numeric values are in base-resolution coordinates
+            }
+
+            return 0f; // Default for invalid inputs
+        }
+
+        private Vector2 ScalePosition(Vector2 basePos, int windowWidth, int windowHeight)
+        {
+            float scaledX = basePos.X;
+            float scaledY = basePos.Y;
+
+            if (basePos.X >= 0 && basePos.X <= BaseWidth)
+                scaledX = (basePos.X / BaseWidth) * windowWidth;
+            if (basePos.Y >= 0 && basePos.Y <= BaseHeight)
+                scaledY = (basePos.Y / BaseHeight) * windowHeight;
+
+            return new Vector2(scaledX, scaledY);
         }
     }
 }
