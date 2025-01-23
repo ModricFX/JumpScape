@@ -510,17 +510,13 @@ namespace JumpScape
                         GraphicsDevice.Viewport.Height * 0.4f
                     );
 
-                    // Adjust so text is centered
-                    // We'll align text center by subtracting half of the item width, but for simplicity, 
-                    // we can assume that the longest item fits in 200px.
-                    menuPosition.X -= 100; // A rough offset to center menu items
+                    menuPosition.X -= 100; // Adjust so text is centered
 
                     // Draw the menu with the selector icon and a custom scale
                     mainMenu.Draw(_spriteBatch, GraphicsDevice, menuPosition, scale: 1.0f);
 
                     _spriteBatch.End();
                     break;
-
 
                 case GameState.Playing:
                     _spriteBatch.Begin(transformMatrix: cameraTransform);
@@ -546,10 +542,20 @@ namespace JumpScape
 
                     deathMenu.Draw(_spriteBatch, GraphicsDevice);
 
-                    _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));
+                    // Apply the fade effect considering the camera transform
+                    _spriteBatch.Draw(
+                        fadeTexture,
+                        new Rectangle(
+                            (int)cameraPosition.X, // Adjust for the current camera position
+                            (int)cameraPosition.Y, // Adjust for the current camera position
+                            _graphics.PreferredBackBufferWidth,
+                            _graphics.PreferredBackBufferHeight
+                        ),
+                        new Color(0, 0, 0, fadeAlpha)
+                    );
+
                     _spriteBatch.End();
                     break;
-
 
                 case GameState.LevelSelect:
                     _spriteBatch.Begin();

@@ -3,8 +3,8 @@ Platform: -50,groundY,groundLength,0,0
 Platform: 150,groundY-10,200,0,0
 Platform: 450,groundY-100,200,0,0
 Platform: 700,groundY-250,200,0,0
-Platform: 300,groundY-400,200,0,0
-Platform: 700,groundY-550,200,0,0
+Platform: 300,groundY-400,200,1,0
+Platform: 700,groundY-550,200,0,1
 Platform: 900,groundY-700,200,0,0
 Platform: 1150,groundY-850,200,0,0
 Platform: 1560,groundY-900,200,0,0
