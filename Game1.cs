@@ -355,7 +355,7 @@ namespace JumpScape
                             if (selection == 0) // Retry
                             {
                                 deathMenu.Hide();
-                                
+
                                 LoadLevelData();  // Reload the same level
                                 InitializeCamera();  // Reset camera
                             }
@@ -475,11 +475,18 @@ namespace JumpScape
 
         private void UpdateCamera()
         {
-            cameraPosition.Y = player.Position.Y < cameraFollowThreshold
-                ? player.Position.Y - GraphicsDevice.Viewport.Height * 0.05f
+            // Target position: Follow the player if they are above the threshold
+            float targetY = player.Position.Y < cameraFollowThreshold
+                ? player.Position.Y - GraphicsDevice.Viewport.Height * 0.3f
                 : 0;
+
+            // Smoothly transition the camera's Y position
+            cameraPosition.Y = MathHelper.Lerp(cameraPosition.Y, targetY, 0.1f); // Adjust 0.1f for desired smoothness (higher = slower, lower = faster)
+
+            // Apply the updated camera transform
             cameraTransform = Matrix.CreateTranslation(new Vector3(0, -cameraPosition.Y, 0));
         }
+
 
         private void UpdateFadeEffect()
         {
@@ -536,7 +543,7 @@ namespace JumpScape
                     {
                         pauseMenu.Draw(_spriteBatch, GraphicsDevice);
                     }
-                    
+
                     deathMenu.Draw(_spriteBatch, GraphicsDevice);
 
                     _spriteBatch.Draw(fadeTexture, new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight), new Color(0, 0, 0, fadeAlpha));

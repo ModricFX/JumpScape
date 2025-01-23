@@ -9,12 +9,12 @@ namespace JumpScape
     {
         private const float BaseWidth = 1920f;
         private const float BaseHeight = 1080f;
-
-        private const float GroundLengthMultiplier = 1.10f; // 110% of screen width
+        private const float GroundLengthMultiplier = 1.50f;
 
         public Vector2 PlayerSpawn { get; private set; }
         public Vector2 KeyPosition { get; private set; }
         public (Vector2 Position, bool IsLocked) DoorData { get; private set; }
+
         public List<(Vector2 Position, int Length, bool HasMonster, bool IsDisappearing)> PlatformData { get; private set; }
         public List<(Vector2 Position, float Radius)> GhostsData { get; private set; }
 
@@ -26,6 +26,10 @@ namespace JumpScape
             GhostsData = new List<(Vector2, float)>();
         }
 
+        /// <summary>
+        /// Reads lines from a level file and processes them.
+        /// Note the parameter order is (windowHeight, windowWidth).
+        /// </summary>
         public void LoadLevel(string filePath, int windowHeight, int windowWidth)
         {
             using (var reader = new StreamReader(filePath))
@@ -38,13 +42,14 @@ namespace JumpScape
                         continue;
 
                     string type = parts[0].Trim();
-                    string[] values = parts[1].Trim().Split(',');
+                    string[] vals = parts[1].Trim().Split(',');
 
-                    if (values.Length < 2)
+                    if (vals.Length < 2)
                         continue;
 
-                    float x = ParseValue(values[0], windowWidth, windowHeight);
-                    float y = ParseValue(values[1], windowWidth, windowHeight);
+                    // Parse X and Y (these might be numeric or placeholders like groundY)
+                    float x = ParseValue(vals[0], windowWidth, windowHeight);
+                    float y = ParseValue(vals[1], windowWidth, windowHeight);
 
                     Vector2 position = new Vector2(x, y);
 
@@ -59,19 +64,22 @@ namespace JumpScape
                             break;
 
                         case "DoorPosition":
-                            if (values.Length == 3 && int.TryParse(values[2], out int lockState))
+                            // Format: DoorPosition: X, Y, lockState(0/1)
+                            if (vals.Length == 3 && int.TryParse(vals[2], out int lockState))
                             {
                                 bool isLocked = (lockState == 1);
-                                DoorData = (ScalePosition(position, windowWidth, windowHeight), isLocked);
+                                Vector2 doorPos = ScalePosition(position, windowWidth, windowHeight);
+                                DoorData = (doorPos, isLocked);
                             }
                             break;
 
                         case "Platform":
-                            ProcessPlatformLine(values, position, windowWidth, windowHeight);
+                            ProcessPlatformLine(vals, position, windowWidth, windowHeight);
                             break;
 
                         case "Ghost":
-                            if (values.Length >= 3 && float.TryParse(values[2], out float radius))
+                            // Format: Ghost: X, Y, radius
+                            if (vals.Length >= 3 && float.TryParse(vals[2], out float radius))
                             {
                                 Vector2 ghostPos = ScalePosition(position, windowWidth, windowHeight);
                                 float scaledRadius = radius * (windowWidth / BaseWidth);
@@ -81,49 +89,72 @@ namespace JumpScape
                     }
                 }
             }
+
+            // If you need a static "GroundY" to represent the bottom, store it here:
+            GroundY = windowHeight;
         }
 
+        /// <summary>
+        /// Processes "Platform: X,Y,Length,HasMonster,IsDisappearing" lines.
+        /// </summary>
         private void ProcessPlatformLine(string[] values, Vector2 rawPosition, int windowWidth, int windowHeight)
         {
-            if (values.Length < 5) return;
+            if (values.Length < 5)
+                return;
 
-            float length = ParseValue(values[2], windowWidth, windowHeight);
-            bool hasMonster = int.TryParse(values[3], out int monsterFlag) && monsterFlag == 1;
-            bool isDisappearing = int.TryParse(values[4], out int disappearingFlag) && disappearingFlag == 1;
+            float lengthVal = ParseValue(values[2], windowWidth, windowHeight);
 
-            Vector2 scaledPosition = ScalePosition(rawPosition, windowWidth, windowHeight);
+            bool hasMonster = (int.TryParse(values[3], out int monsterFlag) && monsterFlag == 1);
+            bool isDisappearing = (int.TryParse(values[4], out int disappearingFlag) && disappearingFlag == 1);
 
-            // Skip scaling `groundLength` if it's already calculated in absolute terms
-            if (values[2].Trim().ToLowerInvariant() != "groundlength")
-                length = (length / BaseWidth) * windowWidth;
+            Vector2 scaledPos = ScalePosition(rawPosition, windowWidth, windowHeight);
+            float scaledLength = (lengthVal / BaseWidth) * windowWidth;
 
-            PlatformData.Add((scaledPosition, (int)length, hasMonster, isDisappearing));
-
-            // Debugging Info
-            Console.WriteLine($"Platform Added: Pos={scaledPosition}, Length={length}, Monster={hasMonster}, Disappearing={isDisappearing}");
+            PlatformData.Add((scaledPos, (int)scaledLength, hasMonster, isDisappearing));
         }
 
+        /// <summary>
+        /// Parses raw value which might be:
+        ///   - a numeric ("300")
+        ///   - "groundY" or "groundY+10", "groundY-25"
+        ///   - "groundLength" or "groundLength-50"
+        ///   - returns 0 if unknown
+        /// </summary>
         private float ParseValue(string raw, int windowWidth, int windowHeight)
         {
             raw = raw.Trim().ToLowerInvariant();
 
-            if (raw == "groundy")
+            if (raw.StartsWith("groundy"))
             {
-                float groundVal = windowHeight - 50;
-                GroundY = groundVal; // Store groundY globally
-                return groundVal;
+                // groundY => the bottom of the screen
+                float baseVal = windowHeight;
+                float offset = 0f;
+
+                string leftover = raw.Substring("groundy".Length).Trim(); // Handle "+10", "-20"
+                if (!string.IsNullOrEmpty(leftover) && float.TryParse(leftover, out float parsedOffset))
+                    offset = parsedOffset;
+
+                return baseVal + offset;  // Absolute value, not in base resolution
             }
-            else if (raw == "groundlength")
+            else if (raw.StartsWith("groundlength"))
             {
-                float groundLen = GroundLengthMultiplier * windowWidth;
-                return groundLen;
+                // groundLength => 1.50 * windowWidth
+                float baseVal = GroundLengthMultiplier * windowWidth;
+                float offset = 0f;
+
+                string leftover = raw.Substring("groundlength".Length).Trim();
+                if (!string.IsNullOrEmpty(leftover) && float.TryParse(leftover, out float parsedOffset))
+                    offset = parsedOffset;
+
+                return baseVal + offset;  // Screen-relative length
             }
-            else if (float.TryParse(raw, out float numericVal))
+            else
             {
-                return numericVal; // Numeric values are in base-resolution coordinates
+                if (float.TryParse(raw, out float numericVal))
+                    return numericVal;  // Base-resolution value
             }
 
-            return 0f; // Default for invalid inputs
+            return 0f;  // Default if parsing fails
         }
 
         private Vector2 ScalePosition(Vector2 basePos, int windowWidth, int windowHeight)
@@ -131,10 +162,21 @@ namespace JumpScape
             float scaledX = basePos.X;
             float scaledY = basePos.Y;
 
-            if (basePos.X >= 0 && basePos.X <= BaseWidth)
-                scaledX = (basePos.X / BaseWidth) * windowWidth;
-            if (basePos.Y >= 0 && basePos.Y <= BaseHeight)
+            // Skip scaling for absolute Y-coordinates like groundY
+            if (basePos.Y == windowHeight)
+            {
+                scaledY = basePos.Y-100;  // Ensure it remains at the screen bottom
+            }
+            else if (basePos.Y >= 0 && basePos.Y <= BaseHeight)
+            {
                 scaledY = (basePos.Y / BaseHeight) * windowHeight;
+            }
+
+            // Scale X-coordinates normally
+            if (basePos.X >= 0 && basePos.X <= BaseWidth)
+            {
+                scaledX = (basePos.X / BaseWidth) * windowWidth;
+            }
 
             return new Vector2(scaledX, scaledY);
         }
