@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Audio;
 using System.IO;
 
 namespace JumpScape.Classes
@@ -17,49 +18,86 @@ namespace JumpScape.Classes
         private bool _movingLeft;
 
         // Adjust scale to make the monster smaller
-        private const float Scale = 0.06f;  // Reduced scale for smaller monster size
+        private const float Scale = 0.06f;
+        private const float BoundingBoxScale = 0.06f;
 
-        // Bounding Box Adjustments
-        private const float BoundingBoxScale = 0.06f;  // Adjust the bounding box size relative to the monster's scale
-
-        // Enum for Facing Direction
         public enum FacingDirection
         {
             Left,
             Right
         }
-
-        // The current facing direction of the monster
         public FacingDirection Direction { get; private set; }
+
+        // --- Monster Sound ---
+        private SoundEffect _monsterSound;
+        private SoundEffectInstance _monsterSoundLoop; // Looped instance
+        private bool _soundStarted;                    // Ensures we only play once
 
         public Monster(GraphicsDevice graphicsDevice, Vector2 position, Rectangle platformBounds)
         {
+            // Load textures
             _textureLeft = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_left.png"));
             _textureRight = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_right.png"));
-
             _textureLeftYellow = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_left_yellow.png"));
             _textureRightYellow = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Monsters", "frog_monster_right_yellow.png"));
-            
-            _currentTexture = _textureRight; // Start facing right
-            _position = new Vector2(position.X, position.Y - _textureLeft.Height / 19);;
+
+            // Start facing right
+            _currentTexture = _textureRight;
+            _position = new Vector2(position.X, position.Y - _textureLeft.Height / 19);
             _platformBounds = platformBounds;
             _speed = 1.0f;
             _movingLeft = false;
+            Direction = FacingDirection.Right;
 
-            Direction = FacingDirection.Right; // Initially facing right
+            // Load the monster sound
+            _monsterSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "MonsterSound.wav"));
+            _monsterSoundLoop = _monsterSound.CreateInstance();
+            _monsterSoundLoop.IsLooped = true;
+            _soundStarted = false;
         }
 
-        // Adjusted Bounding Box to be smaller than the texture
+        // Adjusted Bounding Box
         public Rectangle BoundingBox => new Rectangle(
-            (int)(_position.X + _currentTexture.Width * Scale / 2), // Offset horizontally to center the box
-            (int)(_position.Y + _currentTexture.Height * Scale / 2), // Offset vertically to center the box
-            (int)(_currentTexture.Width * Scale * BoundingBoxScale),  // Smaller width
-            (int)(_currentTexture.Height * Scale * BoundingBoxScale)  // Smaller height
+            (int)(_position.X + _currentTexture.Width * Scale / 2),
+            (int)(_position.Y + _currentTexture.Height * Scale / 2),
+            (int)(_currentTexture.Width * Scale * BoundingBoxScale),
+            (int)(_currentTexture.Height * Scale * BoundingBoxScale)
         );
 
         public void Update(GameTime gameTime, Player player)
         {
-            // Update the facing direction based on the player's position
+            // 1) Update monster movement & sprite
+            UpdateMonsterMovement(player);
+
+            // 2) Check collision with player
+            if (player.BoundingBox.Intersects(BoundingBox))
+            {
+                bool isMonsterFacingPlayer = IsFacingPlayer(player.Position);
+
+                if (!player.IsInvincible)
+                {
+                    // Determine monster's facing direction for knockback
+                    int monsterDirection = (Direction == FacingDirection.Right) ? 1 : -1;
+
+                    // Apply damage
+                    if (isMonsterFacingPlayer)
+                    {
+                        player.LoseHeart(1, monsterDirection);
+                    }
+                    else
+                    {
+                        player.LoseHeart(0.5f, monsterDirection);
+                    }
+                }
+            }
+
+            // 3) Manually set volume & panning based on distance from player
+            UpdateMonsterSoundVolume(player);
+        }
+
+        private void UpdateMonsterMovement(Player player)
+        {
+            // Decide facing direction based on player position
             if (player.Position.X < _position.X)
             {
                 Direction = FacingDirection.Left;
@@ -69,20 +107,15 @@ namespace JumpScape.Classes
                 Direction = FacingDirection.Right;
             }
 
-            // Move the monster
+            // Move left or right, flipping texture
             if (_movingLeft)
             {
                 _position.X -= _speed;
 
-                // Check if player is on the same platform and to the left
                 if (IsPlayerInSight(player.Position) && player.Position.X < _position.X)
-                {
-                    _currentTexture = _textureLeftYellow;  // Change texture when facing the player
-                }
+                    _currentTexture = _textureLeftYellow;
                 else
-                {
-                    _currentTexture = _textureLeft; // Default texture when not facing the player
-                }
+                    _currentTexture = _textureLeft;
 
                 if (_position.X <= _platformBounds.Left)
                 {
@@ -93,72 +126,72 @@ namespace JumpScape.Classes
             {
                 _position.X += _speed;
 
-                // Check if player is on the same platform and to the right
                 if (IsPlayerInSight(player.Position) && player.Position.X > _position.X)
-                {
-                    _currentTexture = _textureRightYellow;  // Change texture when facing the player
-                }
+                    _currentTexture = _textureRightYellow;
                 else
-                {
-                    _currentTexture = _textureRight; // Default texture when not facing the player
-                }
+                    _currentTexture = _textureRight;
 
                 if (_position.X + _currentTexture.Width * Scale >= _platformBounds.Right)
                 {
                     _movingLeft = true;
                 }
             }
+        }
 
-            // Check for collisions between the player and monsters
-
-            if (player.BoundingBox.Intersects(BoundingBox))
+        /// <summary>
+        /// Dynamically adjust the monster's sound volume and panning based on how far the player is.
+        /// </summary>
+        private void UpdateMonsterSoundVolume(Player player)
+        {
+            // Start the looped monster sound if not started yet
+            if (!_soundStarted)
             {
-                bool isMonsterFacingPlayer = IsFacingPlayer(player.Position);
-
-                if (!player.IsInvincible)
-                {
-                    int monsterDirection = 0;
-
-                    // Determine the direction the monster is facing
-                    if (Direction == Monster.FacingDirection.Right)
-                    {
-                        monsterDirection = 1;  // Monster is facing right
-                    }
-                    else if (Direction == Monster.FacingDirection.Left)
-                    {
-                        monsterDirection = -1;  // Monster is facing left
-                    }
-
-                    // Apply damage and knockback
-                    if (isMonsterFacingPlayer)
-                    {
-                        // If the monster is facing the player, apply knockback based on the direction the monster is facing
-                        player.LoseHeart(1, monsterDirection);
-                    }
-                    else
-                    {
-                        // If the monster is not facing the player, apply lesser damage
-                        player.LoseHeart(0.5f, monsterDirection);
-                    }
-                }
+                _monsterSoundLoop.Play();
+                _soundStarted = true;
             }
+
+            // Calculate distance to player
+            float distance = Vector2.Distance(_position, player.Position);
+
+            // Values you can tweak:
+            float minDistance = 20f;   // If closer than this, volume = 1.0
+            float maxDistance = 400f;  // If farther than this, volume = 0.0
+
+            // Clamp distance so it doesn't go below minDistance or above maxDistance
+            float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
+
+            // Compute a volume from 0.0 to 1.0 (linear fade)
+            // distance = minDistance  -> volume = 1
+            // distance = maxDistance  -> volume = 0
+            float distanceVolume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
+
+            // --- Apply 80% maximum volume ---
+            float finalVolume = distanceVolume * 0.5f;
+
+            // Compute panning from -1 (full left) to 1 (full right)
+            // If monster is left of player -> negative pan; if right -> positive pan
+            // The divisor (maxDistance * 0.5f) controls how quickly panning moves from center to extremes
+            float pan = (_position.X - player.Position.X) / (maxDistance * 0.5f);
+            pan = MathHelper.Clamp(pan, -1f, 1f);
+
+            // Assign volume and pan to the looped sound
+            _monsterSoundLoop.Volume = finalVolume;  // Now capped at 80% of full volume
+            _monsterSoundLoop.Pan = pan;
         }
 
         private bool IsPlayerInSight(Vector2 playerPosition)
         {
-            int detectionMargin = 200; // Allow detection up to 1000 pixels beyond the monster bounds
-            int verticalMargin = 80; // Allow some vertical margin for detection (e.g., for standing or jumping)
+            int detectionMargin = 200;
+            int verticalMargin = 80;
 
-            // Check if the player is vertically aligned with the monster
-            // This ensures the player is within the vertical range of the monster's position
-            bool playerOnSamePlatform = playerPosition.Y >= _position.Y - verticalMargin && playerPosition.Y <= _position.Y + verticalMargin;
+            bool playerOnSamePlatform =
+                playerPosition.Y >= _position.Y - verticalMargin &&
+                playerPosition.Y <= _position.Y + verticalMargin;
 
-            // Check if the player is within the extended horizontal detection margin
             bool playerInHorizontalBounds =
                 playerPosition.X >= _platformBounds.Left - detectionMargin &&
                 playerPosition.X <= _platformBounds.Right + detectionMargin;
 
-            // The player is considered to be in sight if both conditions are true
             return playerOnSamePlatform && playerInHorizontalBounds;
         }
 
@@ -168,13 +201,23 @@ namespace JumpScape.Classes
                 return true;
             else if (!_movingLeft && playerPosition.X > _position.X)
                 return true;
+
             return false;
         }
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            // Apply scale factor to make the texture appear smaller
-            spriteBatch.Draw(_currentTexture, _position, null, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(
+                _currentTexture,
+                _position,
+                null,
+                Color.White,
+                0f,
+                Vector2.Zero,
+                Scale,
+                SpriteEffects.None,
+                0f
+            );
         }
     }
 }
