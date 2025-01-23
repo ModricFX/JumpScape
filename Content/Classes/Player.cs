@@ -20,7 +20,7 @@ namespace JumpScape.Classes
         public bool IsJumping { get; set; }
 
         // Heart System Variables
-        private const int MaxHearts = 1;
+        private const int MaxHearts = 5;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
@@ -275,6 +275,10 @@ namespace JumpScape.Classes
                 {
                     _walkingSoundInstance.Stop();
                 }
+            }
+            if (isDead) {
+                if (_walkingSoundInstance.State == SoundState.Playing)
+                    _walkingSoundInstance.Stop();
             }
 
             // Inventory selection

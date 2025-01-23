@@ -316,7 +316,7 @@ namespace JumpScape
                     if (isPaused)
                     {
                         // Update pause menu and handle selection
-                        int pauseSelection = pauseMenu.Update(gameTime, GraphicsDevice);
+                        int pauseSelection = pauseMenu.Update(gameTime, GraphicsDevice, cameraPosition);
 
                         if (pauseSelection == 0) // Resume
                         {
@@ -537,7 +537,7 @@ namespace JumpScape
 
                     if (isPaused)
                     {
-                        pauseMenu.Draw(_spriteBatch, GraphicsDevice);
+                        pauseMenu.Draw(_spriteBatch, GraphicsDevice, cameraPosition);
                     }
 
                     deathMenu.Draw(_spriteBatch, GraphicsDevice);
