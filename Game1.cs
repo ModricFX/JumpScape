@@ -56,6 +56,8 @@ namespace JumpScape
         private int currentLevel = 1;       // Track the current level to play
         private KeyboardState previousKeyboardState;
 
+        private int currentFPS;
+
 
 
 
@@ -155,6 +157,16 @@ namespace JumpScape
             currentGameState = GameState.MainMenu;
         }
 
+        private readonly int[] frameRates = { 30, 60, 120, -1 }; // -1 is unlimited
+        private void getCurrentFPS()
+        {
+            GameSettings GameSettings = GameSettings.Load();
+            int fps = GameSettings.FrameRateIndex;
+            // i get index of fps, i need value
+            int desiredFPS = frameRates[fps];
+            currentFPS = desiredFPS;
+        }
+
 
 
         private void LoadLevelData()
@@ -223,6 +235,7 @@ namespace JumpScape
         protected override void Update(GameTime gameTime)
         {
 
+            getCurrentFPS();
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
             if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))
@@ -497,6 +510,12 @@ namespace JumpScape
 
         protected override void Draw(GameTime gameTime)
         {
+            // add delay based on fps currentFPS
+            if (currentFPS != -1)
+            {
+                System.Threading.Thread.Sleep(1000 / currentFPS);
+            }
+
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
             switch (currentGameState)
