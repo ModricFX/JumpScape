@@ -4,6 +4,7 @@ NEEDED:
 - Implement sounds (platform breaking, key pickup, key use, door enter)
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
+- SETUP FOR ZAGOVOR
 
 CAN DO LATER:
 - if item picked up, remove it from existing
