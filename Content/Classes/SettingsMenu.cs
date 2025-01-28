@@ -37,11 +37,12 @@ namespace JumpScape
         private float boxWidth = 800;
         private float boxHeight = 800;
         private bool isFullscreen = false; // Track whether fullscreen is enabled
+        private float backgroundScale;
 
         private GameSettings settings;
 
 
-    public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
+        public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
         {
             this.font = font;
             this.smallFont = smallFont;
@@ -65,6 +66,7 @@ namespace JumpScape
             _backgroundTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
+            CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
         }
 
 
@@ -104,9 +106,60 @@ namespace JumpScape
         {
             spriteBatch.Draw(
                 _backgroundTexture,
-                new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
+                new Rectangle(
+                    (int)-_backgroundPosition.X,
+                    (int)-_backgroundPosition.Y,
+                    (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)(_backgroundTexture.Height * backgroundScale)
+                ),
                 Color.White
             );
+
+            // Draw a second copy of the background for seamless wrapping
+            spriteBatch.Draw(
+                _backgroundTexture,
+                new Rectangle(
+                    (int)-_backgroundPosition.X + (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)-_backgroundPosition.Y,
+                    (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)(_backgroundTexture.Height * backgroundScale)
+                ),
+                Color.White
+            );
+        }
+        private void CalculateBackgroundScale(int screenWidth, int screenHeight)
+        {
+            // Determine the scaling factor for the background to fit the screen
+            float scaleX = (float)screenWidth / _backgroundTexture.Width * 1.1f;
+            float scaleY = (float)screenHeight / _backgroundTexture.Height * 1.1f;
+
+            // Use the larger scale to ensure the background covers the entire screen
+            backgroundScale = Math.Max(scaleX, scaleY);
+        }
+
+        private void UpdateBackgroundPosition(GameTime gameTime)
+        {
+            // Move the background
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            _backgroundPosition.X += 0.3f * elapsed * 100; // Adjust the speed as needed
+            _backgroundPosition.Y += 0.1f * elapsed * 100;
+
+            // Calculate the scaled background width and height
+            float scaledWidth = _backgroundTexture.Width * backgroundScale;
+            float scaledHeight = _backgroundTexture.Height * backgroundScale;
+
+            // Wrap the background position horizontally
+            if (_backgroundPosition.X >= scaledWidth)
+                _backgroundPosition.X -= scaledWidth;
+            else if (_backgroundPosition.X <= -scaledWidth)
+                _backgroundPosition.X += scaledWidth;
+
+            // Wrap the background position vertically
+            if (_backgroundPosition.Y >= scaledHeight)
+                _backgroundPosition.Y -= scaledHeight;
+            else if (_backgroundPosition.Y <= -scaledHeight)
+                _backgroundPosition.Y += scaledHeight;
         }
 
         private void HandleMouseInput(MouseState currentMouseState)
@@ -265,7 +318,9 @@ namespace JumpScape
         }
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
         {
+            CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
             _backgroundPosition = backgroundPosition;
+            UpdateBackgroundPosition(gameTime);
 
             MouseState currentMouseState = Mouse.GetState();
             HandleMouseInput(currentMouseState);
@@ -485,13 +540,7 @@ namespace JumpScape
                 }
             }
         }
-
-
-
-
-
-
-
+        
         private void DrawOutline(SpriteBatch spriteBatch, Rectangle rect, Color color)
         {
             // Top

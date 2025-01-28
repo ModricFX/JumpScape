@@ -24,6 +24,12 @@ namespace JumpScape
         private KeyboardState previousKeyboardState;
         private MouseState previousMouseState;
 
+        private float backgroundScale;
+
+        // Background movement variables
+        private float _backgroundSpeedX = 0.5f; // Speed of background movement along X
+        private float _backgroundSpeedY = 0.2f; // Speed of background movement along Y
+
         public MainMenu(SpriteFont font, GraphicsDevice graphicsDevice)
         {
             this.font = font;
@@ -36,6 +42,9 @@ namespace JumpScape
             _gameLogoTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "GameLogo", "JumpScapeLogo.png"));
             _buttonTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "buttonBackground.png"));
             _backgroundTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "background.png"));
+
+            // Calculate initial background scale
+            CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
         }
 
         public void AddMenuItem(string item)
@@ -51,10 +60,16 @@ namespace JumpScape
 
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
+            // Update the background scale if the resolution changes
+            CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
+
             _logoPosition = new Vector2(
                 (graphicsDevice.Viewport.Width - (_gameLogoTexture.Width * 0.4f)) / 2, // Centered X position
                 graphicsDevice.Viewport.Height * 0.01f // Y position
             );
+
+            // Update background position for movement
+            UpdateBackgroundPosition(gameTime);
 
             KeyboardState currentKeyboardState = Keyboard.GetState();
             MouseState currentMouseState = Mouse.GetState();
@@ -97,6 +112,31 @@ namespace JumpScape
             return -1; // No selection yet
         }
 
+        private void UpdateBackgroundPosition(GameTime gameTime)
+        {
+            // Move the background
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            _backgroundPosition.X += _backgroundSpeedX * elapsed * 100;
+            _backgroundPosition.Y += _backgroundSpeedY * elapsed * 100;
+
+            // Calculate the scaled background width and height
+            float scaledWidth = _backgroundTexture.Width * backgroundScale;
+            float scaledHeight = _backgroundTexture.Height * backgroundScale;
+
+            // Wrap the background position horizontally
+            if (_backgroundPosition.X >= scaledWidth)
+                _backgroundPosition.X -= scaledWidth;
+            else if (_backgroundPosition.X <= -scaledWidth)
+                _backgroundPosition.X += scaledWidth;
+
+            // Wrap the background position vertically
+            if (_backgroundPosition.Y >= scaledHeight)
+                _backgroundPosition.Y -= scaledHeight;
+            else if (_backgroundPosition.Y <= -scaledHeight)
+                _backgroundPosition.Y += scaledHeight;
+        }
+
         private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)
         {
             return current.IsKeyDown(key) && previous.IsKeyUp(key);
@@ -131,7 +171,7 @@ namespace JumpScape
 
         public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 1.0f)
         {
-            DrawBackground(spriteBatch);
+            DrawBackground(spriteBatch, graphicsDevice);
 
             float spacing = _buttonTexture.Height + 20;
             Vector2 basePosition = GetBasePosition(graphicsDevice, spacing, scale);
@@ -172,11 +212,29 @@ namespace JumpScape
             }
         }
 
-        private void DrawBackground(SpriteBatch spriteBatch)
+        private void DrawBackground(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice)
         {
+            // Draw the moving background with scaling
             spriteBatch.Draw(
                 _backgroundTexture,
-                new Rectangle((int)-_backgroundPosition.X, 0, _backgroundTexture.Width, _backgroundTexture.Height),
+                new Rectangle(
+                    (int)-_backgroundPosition.X,
+                    (int)-_backgroundPosition.Y,
+                    (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)(_backgroundTexture.Height * backgroundScale)
+                ),
+                Color.White
+            );
+
+            // Draw a second copy of the background for seamless wrapping
+            spriteBatch.Draw(
+                _backgroundTexture,
+                new Rectangle(
+                    (int)-_backgroundPosition.X + (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)-_backgroundPosition.Y,
+                    (int)(_backgroundTexture.Width * backgroundScale),
+                    (int)(_backgroundTexture.Height * backgroundScale)
+                ),
                 Color.White
             );
 
@@ -194,6 +252,16 @@ namespace JumpScape
                 SpriteEffects.None,
                 0f
             );
+        }
+
+        private void CalculateBackgroundScale(int screenWidth, int screenHeight)
+        {
+            // Determine the scaling factor for the background to fit the screen
+            float scaleX = (float)screenWidth / _backgroundTexture.Width * 1.1f;
+            float scaleY = (float)screenHeight / _backgroundTexture.Height * 1.1f;
+
+            // Use the larger scale to ensure the background covers the entire screen
+            backgroundScale = Math.Max(scaleX, scaleY);
         }
 
         public string GetSelectedItem()
