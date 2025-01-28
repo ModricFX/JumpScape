@@ -49,7 +49,7 @@ namespace JumpScape.Classes
         public bool isOnPlatform = false;   // Check if the player is on a platform
         public bool isDead = false;
         private float deathRotationSpeed = 4f; // Speed at which the player rotates after death
-        private float jumpStrength = -15f;
+        private float jumpStrength;
         private bool gravityStop = false;
         public bool endLevel = false;
         private bool isEKeyReleased = true; // Check if the E key is released
@@ -57,6 +57,8 @@ namespace JumpScape.Classes
 
         private float _scaleFactorX;
         private float _scaleFactorY;
+
+        private const float BaseJumpStrength = -15f;
 
         // Walking sound (looped instance)
         private SoundEffectInstance _walkingSoundInstance;
@@ -87,7 +89,8 @@ namespace JumpScape.Classes
             const float BaseHeight = 1080f;
             _scaleFactorX = screenWidth / BaseWidth * 0.15f;
             _scaleFactorY = screenHeight / BaseHeight * 0.15f;
-            Console.WriteLine($"Scale factor: {_scaleFactorX}, {_scaleFactorY}");
+
+            jumpStrength = BaseJumpStrength * _scaleFactorY * 9.5f;
         }
 
         public Rectangle BoundingBox
@@ -276,7 +279,6 @@ namespace JumpScape.Classes
             {
                 if (_walkingSoundInstance.State != SoundState.Playing)
                 {
-                    System.Diagnostics.Debug.WriteLine("Playing walking sound now!");
                     _walkingSoundInstance.Play();
                 }
             }
@@ -396,7 +398,6 @@ namespace JumpScape.Classes
                     door.Unlock();
                     _inventory.RemoveFirstKey();
                     HasKey = false;
-                    Console.WriteLine("Key removed from inventory.");
                 }
             }
         }
