@@ -62,6 +62,8 @@ namespace JumpScape.Classes
 
         // Walking sound (looped instance)
         private SoundEffectInstance _walkingSoundInstance;
+        private SoundEffectInstance _jumpingSoundInstance;
+
 
         public Player(GraphicsDevice graphicsDevice, Vector2 startPosition, int screenWidth, int screenHeight)
         {
@@ -84,6 +86,10 @@ namespace JumpScape.Classes
             var walkingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerWalking.wav"));
             _walkingSoundInstance = walkingSound.CreateInstance();
             _walkingSoundInstance.IsLooped = true;
+
+            var jumpingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerJump.wav"));
+            _jumpingSoundInstance = jumpingSound.CreateInstance();
+            _jumpingSoundInstance.Volume = 0.5f;
 
             const float BaseWidth = 1920f;
             const float BaseHeight = 1080f;
@@ -249,6 +255,8 @@ namespace JumpScape.Classes
                 if (_walkingSoundInstance.State == SoundState.Playing)
                     _walkingSoundInstance.Stop();
 
+                if (_jumpingSoundInstance.State == SoundState.Playing)
+                    _jumpingSoundInstance.Stop();
                 Jump(jumpStrength);
             }
 
@@ -314,6 +322,7 @@ namespace JumpScape.Classes
         public void Jump(float jumpStrength)
         {
             if (isDead) return;
+            _jumpingSoundInstance.Play();
             Velocity = new Vector2(Velocity.X, jumpStrength);
             IsJumping = true;
             isOnPlatform = false;
