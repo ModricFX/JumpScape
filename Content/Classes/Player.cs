@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Xna.Framework.Audio; // Add this import at the top
+using Microsoft.Xna.Framework.Audio;
 
 namespace JumpScape.Classes
 {
@@ -55,21 +55,24 @@ namespace JumpScape.Classes
         private bool isEKeyReleased = true; // Check if the E key is released
         private float previousY = 0;
 
+        private float _scaleFactorX;
+        private float _scaleFactorY;
+
         // Walking sound (looped instance)
         private SoundEffectInstance _walkingSoundInstance;
 
-        public Player(GraphicsDevice graphicsDevice, Vector2 startPosition)
+        public Player(GraphicsDevice graphicsDevice, Vector2 startPosition, int screenWidth, int screenHeight)
         {
             _textureRight = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Player", "player_right.png"));
-            _textureLeft  = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Player", "player_left.png"));
+            _textureLeft = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Player", "player_left.png"));
 
             _currentTexture = _textureRight;
             Position = startPosition;
             Velocity = Vector2.Zero;
 
             _currentHearts = MaxHearts * 2;
-            _heartFullTexture  = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_full.png"));
-            _heartHalfTexture  = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_half.png"));
+            _heartFullTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_full.png"));
+            _heartHalfTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_half.png"));
             _heartEmptyTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_empty.png"));
 
             // Inventory
@@ -79,17 +82,26 @@ namespace JumpScape.Classes
             var walkingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerWalking.wav"));
             _walkingSoundInstance = walkingSound.CreateInstance();
             _walkingSoundInstance.IsLooped = true;
+
+            const float BaseWidth = 1920f;
+            const float BaseHeight = 1080f;
+            _scaleFactorX = screenWidth / BaseWidth * 0.15f;
+            _scaleFactorY = screenHeight / BaseHeight * 0.15f;
+            Console.WriteLine($"Scale factor: {_scaleFactorX}, {_scaleFactorY}");
         }
 
-        public Rectangle BoundingBox 
-            => new Rectangle((int)Position.X, (int)Position.Y,
-                             (int)(_currentTexture.Width * 0.1f),
-                             (int)(_currentTexture.Height * 0.1f));
+        public Rectangle BoundingBox
+        => new Rectangle(
+            (int)Position.X,
+            (int)Position.Y,
+            (int)(_currentTexture.Width * _scaleFactorX),
+            (int)(_currentTexture.Height * _scaleFactorY)
+        );
 
         private float previousYUpdateTimer = 0f;
         private const float previousYUpdateDelay = 0.2f;
 
-        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition, 
+        public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition,
                            int screenWidth, float groundLevel, Item key, Door door)
         {
             // Keep player within left/right screen bounds
@@ -276,7 +288,8 @@ namespace JumpScape.Classes
                     _walkingSoundInstance.Stop();
                 }
             }
-            if (isDead) {
+            if (isDead)
+            {
                 if (_walkingSoundInstance.State == SoundState.Playing)
                     _walkingSoundInstance.Stop();
             }
@@ -321,8 +334,8 @@ namespace JumpScape.Classes
             if (_currentHearts < 0) _currentHearts = 0;
 
             // Determine knockback direction
-            Vector2 knockbackDirection = (damageDirection == 1) 
-                ? new Vector2(1, 0) 
+            Vector2 knockbackDirection = (damageDirection == 1)
+                ? new Vector2(1, 0)
                 : new Vector2(-1, 0);
 
             ApplyKnockback(knockbackDirection);
@@ -396,13 +409,13 @@ namespace JumpScape.Classes
 
         private bool isDeadAnimation = false;
 
-        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth, 
+        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth,
                          float groundLevel, float topLeftScreenY, GameTime gameTime)
         {
             // Flashing color if invincible
             Color drawColor = (IsInvincible && _isFlashing) ? Color.Orange : Color.White;
 
-            Vector2 origin           = new Vector2(0, _currentTexture.Height);
+            Vector2 origin = new Vector2(0, _currentTexture.Height);
             Vector2 adjustedPosition = new Vector2(Position.X, Position.Y + _currentTexture.Height * 0.1f);
 
             // If playing the death animation
@@ -415,7 +428,7 @@ namespace JumpScape.Classes
                     drawColor,
                     _rotation,
                     origin,
-                    0.1f,
+                    new Vector2(_scaleFactorX, _scaleFactorY), // Scale the texture
                     SpriteEffects.None,
                     0f
                 );
@@ -429,7 +442,7 @@ namespace JumpScape.Classes
                     drawColor,
                     _rotation,
                     Vector2.Zero,
-                    0.1f,
+                    new Vector2(_scaleFactorX, _scaleFactorY), // Scale the texture
                     SpriteEffects.None,
                     0f
                 );
@@ -439,7 +452,7 @@ namespace JumpScape.Classes
             float heartScale = 0.1f;
             for (int i = 0; i < MaxHearts; i++)
             {
-                Texture2D heartTexture = _currentHearts >= (i + 1) * 2 
+                Texture2D heartTexture = _currentHearts >= (i + 1) * 2
                     ? _heartFullTexture
                     : _currentHearts >= (i * 2) + 1
                         ? _heartHalfTexture

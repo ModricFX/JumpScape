@@ -164,7 +164,7 @@ namespace JumpScape
             levelLoader.LoadLevel(levelFile, GraphicsDevice.Viewport.Height, GraphicsDevice.Viewport.Width);
             groundLevel = LevelLoader.GroundY;
 
-            player = new Player(GraphicsDevice, levelLoader.PlayerSpawn);
+            player = new Player(GraphicsDevice, levelLoader.PlayerSpawn, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             door = new Door(GraphicsDevice, levelLoader.DoorData.Item1, levelLoader.DoorData.Item2);
 
             if (levelLoader.KeyPosition != Vector2.Zero)
