@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Audio;
 using System.IO;
+using System.Collections.Generic;
 
 namespace JumpScape.Classes
 {
@@ -10,8 +11,8 @@ namespace JumpScape.Classes
     {
         public Texture2D Texture { get; set; }
         public Vector2 Position { get; set; }
-        public int Length { get; set; } 
-        public bool IsDisappearing { get; set; } 
+        public int Length { get; set; }
+        public bool IsDisappearing { get; set; }
         private float CountdownTimer { get; set; }
         private float ReappearTimer { get; set; }
         private bool IsCountingDown { get; set; }
@@ -30,15 +31,73 @@ namespace JumpScape.Classes
         // Reference to GameSettings for Volume
         private GameSettings _settings;
 
+        // ------------------------------
+        // Particle Stuff
+        // ------------------------------
+        private Texture2D _particleTexture;        // The texture for debris
+        private List<Particle> _particles;         // Active debris
+
         public Rectangle BoundingBox => new Rectangle(
-            (int)Position.X, 
-            (int)Position.Y, 
-            Length, 
+            (int)Position.X,
+            (int)Position.Y,
+            Length,
             Texture.Height
         );
 
         /// <summary>
-        /// Constructor for Platform. Pass in your GameSettings so we can factor in Volume.
+        /// Particle class representing a piece of debris.
+        /// </summary>
+        private class Particle
+        {
+            public Vector2 Position;
+            public Vector2 Velocity;
+            public float Lifetime;
+            public float MaxLifetime;
+            public Color Color;
+            public float Scale;
+
+            public Particle(Vector2 position, Vector2 velocity, float lifetime, Color color, float scale)
+            {
+                Position = position;
+                Velocity = velocity;
+                Lifetime = lifetime;
+                MaxLifetime = lifetime;
+                Color = color;
+                Scale = scale;
+            }
+
+            public bool IsDead => Lifetime <= 0f;
+
+            public void Update(GameTime gameTime)
+            {
+                float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                Lifetime -= dt;
+                // Simple gravity
+                Velocity += new Vector2(0, 9.8f) * dt;
+                Position += Velocity * dt;
+            }
+
+            public void Draw(SpriteBatch spriteBatch, Texture2D texture)
+            {
+                float alpha = MathHelper.Clamp(Lifetime / MaxLifetime, 0f, 1f);
+                spriteBatch.Draw(
+                    texture,
+                    Position,
+                    null,
+                    Color * alpha,
+                    0f,
+                    Vector2.Zero,
+                    Scale,
+                    SpriteEffects.None,
+                    0f
+                );
+            }
+        }
+
+        /// <summary>
+        /// Constructor for Platform.
+        /// Pass in your GameSettings so we can factor in Volume.
+        /// We also load a small "particle.png" for debris.
         /// </summary>
         public Platform(Texture2D texture, Vector2 position, int length, bool isDisappearing)
         {
@@ -52,7 +111,8 @@ namespace JumpScape.Classes
             IsCountingDown = false;
             IsReappearing = false;
 
-            _settings = GameSettings.Load(); // store the reference to settings
+            _settings = GameSettings.Load(); // or pass it in from outside if you prefer
+            _particles = new List<Particle>();
 
             // Load sound effects
             _platformBreakingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlatformBreaking.wav"));
@@ -61,6 +121,13 @@ namespace JumpScape.Classes
 
             _platformBreakSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlatformBreak.wav"));
             _platformBreakInstance = _platformBreakSound.CreateInstance();
+
+            // Load the particle texture from file (must be in your Content folder).
+            // Suppose you have a 1x1 pixel named "particle.png"
+            // If that doesn't exist, you can generate a 1x1 texture in code, see note below.
+            var gd = texture.GraphicsDevice;
+            _particleTexture = new Texture2D(gd, 1, 1);
+            _particleTexture.SetData(new[] { Color.Red });
         }
 
         public void StartCountdown()
@@ -74,6 +141,17 @@ namespace JumpScape.Classes
 
         public void Update(GameTime gameTime, Player player)
         {
+            // Update existing particles
+            for (int i = 0; i < _particles.Count; i++)
+            {
+                _particles[i].Update(gameTime);
+                if (_particles[i].IsDead)
+                {
+                    _particles.RemoveAt(i);
+                    i--;
+                }
+            }
+
             // If this platform is disappearing and the countdown has started
             if (IsCountingDown && isVisible)
             {
@@ -100,6 +178,10 @@ namespace JumpScape.Classes
 
                     // Play the single break sound, factoring in distance & game volume
                     PlayBreakSound(player);
+
+                    // Generate some debris
+                    GenerateBreakParticles(8);
+                    // ^ pick any number of particles you'd like
                 }
             }
 
@@ -117,20 +199,48 @@ namespace JumpScape.Classes
         }
 
         /// <summary>
+        /// Spawn some debris around the platform's position.
+        /// </summary>
+        private void GenerateBreakParticles(int count)
+        {
+            Random rand = new Random();
+
+            // We'll pick random points along the top of the platform
+            float topY = Position.Y - 4; // slightly above the platform
+
+            for (int i = 0; i < count; i++)
+            {
+                float x = Position.X + (float)rand.NextDouble() * Length;
+                Vector2 pos = new Vector2(x, topY);
+
+                // random velocity
+                // e.g. debris flies up a bit, then gravity pulls it down
+                float vx = (float)(rand.NextDouble() * 200 - 100); // -100..+100
+                float vy = (float)(-100 - rand.NextDouble() * 50); // upward
+                Vector2 vel = new Vector2(vx, vy) * 0.5f;
+
+                float lifetime = 1.0f + (float)rand.NextDouble() * 1.5f; // 1-2.5s
+                Color color = Color.Brown; // or random color
+                float scale = 3f;
+
+                _particles.Add(new Particle(pos, vel, lifetime, color, scale));
+            }
+        }
+
+        /// <summary>
         /// Adjust the looped "cracking" volume based on distance & GameSettings.Volume.
         /// </summary>
         private void UpdatePlatformSoundVolume(Player player)
         {
             float distance = Vector2.Distance(Position, player.Position);
 
-            float minDistance = 20f;  
+            float minDistance = 20f;
             float maxDistance = 500f;
 
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
             float volume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
             volume *= 0.8f; // local max 80%
 
-            // Incorporate the global Game Volume (0-100 -> 0.0-1.0)
             if (_settings != null)
             {
                 float gameVolumeFactor = _settings.Volume / 100f;
@@ -156,7 +266,7 @@ namespace JumpScape.Classes
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
 
             float volume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
-            volume *= 0.8f; 
+            volume *= 0.8f;
 
             if (_settings != null)
             {
@@ -174,7 +284,13 @@ namespace JumpScape.Classes
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            if (!isVisible) 
+            // Draw existing particles
+            foreach (var particle in _particles)
+            {
+                particle.Draw(spriteBatch, _particleTexture);
+            }
+
+            if (!isVisible)
                 return;
 
             int textureWidth = Texture.Width;
@@ -186,14 +302,14 @@ namespace JumpScape.Classes
                 Vector2 position = new Vector2(Position.X + i * textureWidth + origin.X, Position.Y + origin.Y);
 
                 spriteBatch.Draw(
-                    Texture, 
-                    position, 
-                    null, 
-                    Color.White, 
-                    RotationAngle, 
-                    origin, 
-                    1.0f, 
-                    SpriteEffects.None, 
+                    Texture,
+                    position,
+                    null,
+                    Color.White,
+                    RotationAngle,
+                    origin,
+                    1.0f,
+                    SpriteEffects.None,
                     0f
                 );
             }
@@ -207,14 +323,14 @@ namespace JumpScape.Classes
                 Vector2 position = new Vector2(Position.X + (Length / textureWidth) * textureWidth + origin.X, Position.Y + origin.Y);
 
                 spriteBatch.Draw(
-                    Texture, 
-                    position, 
-                    sourceRectangle, 
-                    Color.White, 
-                    RotationAngle, 
-                    origin, 
-                    1.0f, 
-                    SpriteEffects.None, 
+                    Texture,
+                    position,
+                    sourceRectangle,
+                    Color.White,
+                    RotationAngle,
+                    origin,
+                    1.0f,
+                    SpriteEffects.None,
                     0f
                 );
             }
