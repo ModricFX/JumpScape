@@ -32,6 +32,8 @@ namespace JumpScape.Classes
         private SoundEffect _monsterSound;
         private SoundEffectInstance _monsterSoundLoop; // Looped instance
         private bool _soundStarted;                    // Ensures we only play once
+        
+        private GameSettings settings;
 
         public Monster(GraphicsDevice graphicsDevice, Vector2 position, Rectangle platformBounds)
         {
@@ -54,6 +56,8 @@ namespace JumpScape.Classes
             _monsterSoundLoop = _monsterSound.CreateInstance();
             _monsterSoundLoop.IsLooped = true;
             _soundStarted = false;
+
+            settings = GameSettings.Load();
         }
 
         // Adjusted Bounding Box
@@ -141,44 +145,49 @@ namespace JumpScape.Classes
         /// <summary>
         /// Dynamically adjust the monster's sound volume and panning based on how far the player is.
         /// </summary>
-        private void UpdateMonsterSoundVolume(Player player)
+       
+       private void UpdateMonsterSoundVolume(Player player)
         {
-            // Start the looped monster sound if not started yet
+            // Start the looped monster sound if not already started
             if (!_soundStarted)
             {
                 _monsterSoundLoop.Play();
                 _soundStarted = true;
             }
 
-            // Calculate distance to player
+            // distance-based volume
             float distance = Vector2.Distance(_position, player.Position);
 
-            // Values you can tweak:
-            float minDistance = 20f;   // If closer than this, volume = 1.0
-            float maxDistance = 400f;  // If farther than this, volume = 0.0
+            float minDistance = 20f;   // volume = 1.0 if below this
+            float maxDistance = 400f;  // volume = 0.0 if above this
 
-            // Clamp distance so it doesn't go below minDistance or above maxDistance
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
 
-            // Compute a volume from 0.0 to 1.0 (linear fade)
-            // distance = minDistance  -> volume = 1
-            // distance = maxDistance  -> volume = 0
+            // Distance-based fade from 1.0 down to 0.0
             float distanceVolume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
 
-            // --- Apply 80% maximum volume ---
-            float finalVolume = distanceVolume * 0.5f;
+            // "local max" for the monster's own volume
+            float monsterLocalMax = 0.5f; // 50% base max volume
+
+            // Combine with the global "Game Volume" from settings (0 - 100)
+            float gameVolumeFactor = (settings.Volume / 100f);
+
+            // final volume = distance fade * monster local max * game volume factor
+            float finalVolume = distanceVolume * monsterLocalMax * gameVolumeFactor;
 
             // Compute panning from -1 (full left) to 1 (full right)
-            // If monster is left of player -> negative pan; if right -> positive pan
-            // The divisor (maxDistance * 0.5f) controls how quickly panning moves from center to extremes
             float pan = (_position.X - player.Position.X) / (maxDistance * 0.5f);
             pan = MathHelper.Clamp(pan, -1f, 1f);
 
-            // Assign volume and pan to the looped sound
-            _monsterSoundLoop.Volume = finalVolume;  // Now capped at 80% of full volume
+            // Apply to the SoundEffectInstance
+            _monsterSoundLoop.Volume = finalVolume;
             _monsterSoundLoop.Pan = pan;
         }
 
+        public void stopSound()
+        {
+            _monsterSoundLoop.Stop();
+        }
         private bool IsPlayerInSight(Vector2 playerPosition)
         {
             int detectionMargin = 200;

@@ -19,15 +19,13 @@ namespace JumpScape.Classes
         public bool HasKey { get; set; }
         public bool IsJumping { get; set; }
 
-        // Heart System Variables
         private const int MaxHearts = 5;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
         private readonly Texture2D _heartEmptyTexture;
-        private float _rotation = 0f; // Rotation angle for the player
+        private float _rotation = 0f;
 
-        // Damage Cooldown and Flashing Variables
         public bool IsInvincible { get; private set; }
         private float _invincibilityTimer;
         private const float InvincibilityDuration = 1.4f;
@@ -35,24 +33,22 @@ namespace JumpScape.Classes
         private float _flashTimer;
         private const float FlashInterval = 0.2f;
 
-        // Inventory System
         private Inventory _inventory;
-        private int selectedIndex = 0; // The currently selected inventory item (0, 1, or 2)
+        private int selectedIndex = 0;
 
-        // Knockback variables
-        private float knockbackTimer = 0f;          // Timer for controlling knockback duration
+        private float knockbackTimer = 0f;
         private const float knockbackDuration = 0.4f;
         private const float knockbackStrengthX = 5f;
         private const float knockbackStrengthY = -8f;
 
-        public bool playerOnGround = true;  // Check if the player is on the ground
-        public bool isOnPlatform = false;   // Check if the player is on a platform
+        public bool playerOnGround = true;
+        public bool isOnPlatform = false;
         public bool isDead = false;
-        private float deathRotationSpeed = 4f; // Speed at which the player rotates after death
+        private float deathRotationSpeed = 4f; 
         private float jumpStrength;
         private bool gravityStop = false;
         public bool endLevel = false;
-        private bool isEKeyReleased = true; // Check if the E key is released
+        private bool isEKeyReleased = true; 
         private float previousY = 0;
 
         private float _scaleFactorX;
@@ -60,12 +56,13 @@ namespace JumpScape.Classes
 
         private const float BaseJumpStrength = -15f;
 
-        // Walking sound (looped instance)
+        // Sound instances
         private SoundEffectInstance _walkingSoundInstance;
         private SoundEffectInstance _jumpingSoundInstance;
         private SoundEffectInstance _playerHitSoundInstance;
 
-
+        // Reference to GameSettings
+        private GameSettings settings;
 
         public Player(GraphicsDevice graphicsDevice, Vector2 startPosition, int screenWidth, int screenHeight)
         {
@@ -81,32 +78,43 @@ namespace JumpScape.Classes
             _heartHalfTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_half.png"));
             _heartEmptyTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Hearts", "Heart_empty.png"));
 
-            // Inventory
             _inventory = new Inventory(graphicsDevice);
 
-            // Load walking sound as a looped instance
+            // Load sounds
             var walkingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerWalking.wav"));
             _walkingSoundInstance = walkingSound.CreateInstance();
             _walkingSoundInstance.IsLooped = true;
 
             var jumpingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerJump.wav"));
             _jumpingSoundInstance = jumpingSound.CreateInstance();
-            _jumpingSoundInstance.Volume = 0.5f;
 
             var playerHitSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerHit.wav"));
             _playerHitSoundInstance = playerHitSound.CreateInstance();
-            _playerHitSoundInstance.Volume = 0.5f;
 
+            // Scale calculation
             const float BaseWidth = 1920f;
             const float BaseHeight = 1080f;
             _scaleFactorX = screenWidth / BaseWidth * 0.15f;
             _scaleFactorY = screenHeight / BaseHeight * 0.15f;
-
             jumpStrength = BaseJumpStrength * _scaleFactorY * 9.5f;
+
+            // Load settings & apply volume
+            settings = GameSettings.Load();
+            setVolume();
         }
 
-        public Rectangle BoundingBox
-        => new Rectangle(
+        // ----------------------------------------------------------------------------
+        //  Set SFX volume based on settings.Volume (0 - 100) => (0.0 - 1.0)
+        // ----------------------------------------------------------------------------
+        private void setVolume()
+        {
+            float volumeFactor = settings.Volume / 100f; // 0..1
+            _walkingSoundInstance.Volume = volumeFactor;
+            _jumpingSoundInstance.Volume = volumeFactor;
+            _playerHitSoundInstance.Volume = volumeFactor;
+        }
+
+        public Rectangle BoundingBox => new Rectangle(
             (int)Position.X,
             (int)Position.Y,
             (int)(_currentTexture.Width * _scaleFactorX),
@@ -119,6 +127,9 @@ namespace JumpScape.Classes
         public void Update(GameTime gameTime, KeyboardState keyboardState, Vector2 cameraPosition,
                            int screenWidth, float groundLevel, Item key, Door door)
         {
+            // -- (1) Ensure volume is always up-to-date (in case user changed it mid-level):
+            setVolume();
+
             // Keep player within left/right screen bounds
             if (Position.X < 0)
             {
@@ -139,7 +150,6 @@ namespace JumpScape.Classes
                         key.Collect();
                         HasKey = true;
                         AddItemToInventory("Key");
-                        System.Diagnostics.Debug.WriteLine("Key collected and added to inventory!");
                     }
                 }
             }
@@ -149,60 +159,58 @@ namespace JumpScape.Classes
             {
                 if (keyboardState.IsKeyDown(Keys.E) && isEKeyReleased)
                 {
-                    isEKeyReleased = false; // Prevent holding key for multiple triggers
+                    isEKeyReleased = false; 
 
                     if (door.IsLocked && !HasKey)
                     {
-                        System.Diagnostics.Debug.WriteLine("You need a key!");
+                        // Needs key
                     }
                     else if (door.IsLocked && HasKey)
                     {
                         UnlockDoor(door);
-                        System.Diagnostics.Debug.WriteLine("Door unlocked. Press E to open.");
                     }
                     else if (door.IsUnlocked)
                     {
                         door.Open();
-                        System.Diagnostics.Debug.WriteLine("Door opened. Press E to enter.");
                     }
                     else if (door.IsOpened)
                     {
-                        System.Diagnostics.Debug.WriteLine("Entering the door...");
-                        endLevel = true; // Start fading out or level transition
+                        endLevel = true; 
                     }
                 }
             }
+            if (keyboardState.IsKeyUp(Keys.E))
+            {
+                isEKeyReleased = true;
+            }
 
-            // Update previousY every 0.2 seconds (for isFalling detection)
+            // Update previousY
             previousYUpdateTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (previousYUpdateTimer >= previousYUpdateDelay)
             {
                 previousY = Position.Y;
                 previousYUpdateTimer = 0f;
             }
-
-            // Correctly set playerOnGround based on falling
             playerOnGround = !isFalling();
 
-            // Knockback timer
+            // Knockback countdown
             if (knockbackTimer > 0)
             {
                 knockbackTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
             else if (playerOnGround)
             {
-                // Stop horizontal movement after knockback ends
                 Velocity = new Vector2(0, Velocity.Y);
             }
 
-            // Update horizontal movement and sound
+            // Horizontal movement & jump
             UpdateMovement(keyboardState);
 
-            // Update inventory (position only if needed)
+            // Update inventory position
             int topRightScreenX = (int)(cameraPosition.X + screenWidth - _inventory._selectTextures[selectedIndex].Width * 0.7f - 20);
             _inventory.Update(gameTime, topRightScreenX, selectedIndex);
 
-            // Handle invincibility flashing
+            // Invincibility flashing
             if (IsInvincible)
             {
                 _invincibilityTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -213,19 +221,17 @@ namespace JumpScape.Classes
                     _isFlashing = !_isFlashing;
                     _flashTimer = 0f;
                 }
-
                 if (_invincibilityTimer >= InvincibilityDuration)
                 {
                     ResetInvincibility();
                 }
             }
 
-            // Handle death falling
+            // Death
             if (isDead)
             {
                 if (knockbackTimer <= 0)
                 {
-                    // If not falling & not on any platform/ground, slowly move down until ground reached
                     if ((!isFalling() && !isOnPlatform) || (!isFalling() && !playerOnGround))
                     {
                         if (Position.Y + BoundingBox.Height / 2 <= groundLevel)
@@ -254,25 +260,18 @@ namespace JumpScape.Classes
         {
             if (isDead) return;
 
-            // Jump only if on a platform
+            // Jump
             if (keyboardState.IsKeyDown(Keys.Space) && !IsJumping && isOnPlatform)
             {
-                // Stop walking sound when jumping
                 if (_walkingSoundInstance.State == SoundState.Playing)
                     _walkingSoundInstance.Stop();
 
                 if (_jumpingSoundInstance.State == SoundState.Playing)
                     _jumpingSoundInstance.Stop();
+
                 Jump(jumpStrength);
             }
 
-            // Door interaction re-allow
-            if (keyboardState.IsKeyUp(Keys.E))
-            {
-                isEKeyReleased = true;
-            }
-
-            // Horizontal movement
             bool isMovingHorizontally = false;
 
             if (keyboardState.IsKeyDown(Keys.Left))
@@ -288,7 +287,7 @@ namespace JumpScape.Classes
                 isMovingHorizontally = true;
             }
 
-            // Play walking sound if moving and on ground or platform
+            // Walking sound
             if (!isDead && isMovingHorizontally && (playerOnGround || isOnPlatform))
             {
                 if (_walkingSoundInstance.State != SoundState.Playing)
@@ -298,16 +297,14 @@ namespace JumpScape.Classes
             }
             else
             {
-                // Stop if not moving or in the air
                 if (_walkingSoundInstance.State == SoundState.Playing)
                 {
                     _walkingSoundInstance.Stop();
                 }
             }
-            if (isDead)
+            if (isDead && _walkingSoundInstance.State == SoundState.Playing)
             {
-                if (_walkingSoundInstance.State == SoundState.Playing)
-                    _walkingSoundInstance.Stop();
+                _walkingSoundInstance.Stop();
             }
 
             // Inventory selection
@@ -350,7 +347,6 @@ namespace JumpScape.Classes
             _currentHearts -= amount * 2;
             if (_currentHearts < 0) _currentHearts = 0;
 
-            // Determine knockback direction
             Vector2 knockbackDirection = (damageDirection == 1)
                 ? new Vector2(1, 0)
                 : new Vector2(-1, 0);
@@ -369,7 +365,6 @@ namespace JumpScape.Classes
         {
             if (isDead)
             {
-                // Rotate counterclockwise to -90 degrees
                 if (_rotation > -Math.PI / 2)
                 {
                     _rotation -= deathRotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -389,18 +384,15 @@ namespace JumpScape.Classes
             _isFlashing = false;
         }
 
-        // Add item to inventory
         public void AddItemToInventory(string itemName)
         {
             _inventory.AddItem(itemName);
         }
 
-        // When the door is unlocked, remove the first key from inventory
         public void UnlockDoor(Door door)
         {
             if (door.IsLocked && HasKey)
             {
-                // find the key index in the inventory
                 int keyIndex;
                 for (keyIndex = 0; keyIndex < _inventory.MaxInventoryItems; keyIndex++)
                 {
@@ -418,7 +410,6 @@ namespace JumpScape.Classes
             }
         }
 
-        // Returns true if the player's Y is increasing (falling downward)
         public bool isFalling()
         {
             return (int)Position.Y > (int)previousY;
@@ -429,13 +420,11 @@ namespace JumpScape.Classes
         public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int viewportWidth,
                          float groundLevel, float topLeftScreenY, GameTime gameTime)
         {
-            // Flashing color if invincible
             Color drawColor = (IsInvincible && _isFlashing) ? Color.Orange : Color.White;
 
             Vector2 origin = new Vector2(0, _currentTexture.Height);
             Vector2 adjustedPosition = new Vector2(Position.X, Position.Y + _currentTexture.Height * 0.1f);
 
-            // If playing the death animation
             if (isDeadAnimation)
             {
                 spriteBatch.Draw(
@@ -445,7 +434,7 @@ namespace JumpScape.Classes
                     drawColor,
                     _rotation,
                     origin,
-                    new Vector2(_scaleFactorX, _scaleFactorY), // Scale the texture
+                    new Vector2(_scaleFactorX, _scaleFactorY),
                     SpriteEffects.None,
                     0f
                 );
@@ -459,7 +448,7 @@ namespace JumpScape.Classes
                     drawColor,
                     _rotation,
                     Vector2.Zero,
-                    new Vector2(_scaleFactorX, _scaleFactorY), // Scale the texture
+                    new Vector2(_scaleFactorX, _scaleFactorY),
                     SpriteEffects.None,
                     0f
                 );
@@ -469,11 +458,10 @@ namespace JumpScape.Classes
             float heartScale = 0.1f;
             for (int i = 0; i < MaxHearts; i++)
             {
-                Texture2D heartTexture = _currentHearts >= (i + 1) * 2
-                    ? _heartFullTexture
-                    : _currentHearts >= (i * 2) + 1
-                        ? _heartHalfTexture
-                        : _heartEmptyTexture;
+                Texture2D heartTexture =
+                    _currentHearts >= (i + 1) * 2 ? _heartFullTexture :
+                    _currentHearts >= (i * 2) + 1 ? _heartHalfTexture :
+                    _heartEmptyTexture;
 
                 spriteBatch.Draw(
                     heartTexture,
@@ -488,7 +476,7 @@ namespace JumpScape.Classes
                 );
             }
 
-            // Draw the inventory
+            // Inventory
             _inventory.Draw(spriteBatch, topLeftScreenY);
         }
 
@@ -503,10 +491,8 @@ namespace JumpScape.Classes
 
                 Rectangle platformRect = platform.BoundingBox;
 
-                // If we are not already on the ground, check if we should set it
                 if (!playerOnGround)
                 {
-                    // If Y is at or below the ground or on a platform
                     playerOnGround = (Position.Y >= groundLevel - BoundingBox.Height) || isOnPlatform;
                     if (Position.Y >= groundLevel - BoundingBox.Height)
                     {
@@ -514,31 +500,26 @@ namespace JumpScape.Classes
                     }
                 }
 
-                // Check collision with this platform
                 if (BoundingBox.Intersects(platformRect))
                 {
                     Rectangle intersection = Rectangle.Intersect(BoundingBox, platformRect);
 
-                    // Horizontal collision
                     if (intersection.Width < intersection.Height)
                     {
                         if (BoundingBox.Center.X < platformRect.Center.X)
                         {
-                            // Collided from left side
                             Position = new Vector2(Position.X - intersection.Width, Position.Y);
                         }
                         else
                         {
-                            // Collided from right side
                             Position = new Vector2(Position.X + intersection.Width, Position.Y);
                         }
                     }
                     else
                     {
-                        // Vertical collision
                         if (BoundingBox.Center.Y < platformRect.Center.Y)
                         {
-                            // Landed on top of the platform
+                            // Landed on top
                             Position = new Vector2(Position.X, platformRect.Top - BoundingBox.Height);
                             Velocity = new Vector2(Velocity.X, 0);
                             IsJumping = false;
@@ -547,7 +528,6 @@ namespace JumpScape.Classes
                             if (platform.IsDisappearing)
                                 platform.StartCountdown();
 
-                            // Reset previousY to avoid flickering in isFalling
                             previousY = Position.Y;
                         }
                         else
@@ -557,12 +537,10 @@ namespace JumpScape.Classes
                             Velocity = new Vector2(Velocity.X, 0);
                         }
                     }
-
                     resolvedPlatform = true;
                 }
             }
 
-            // If we didn't resolve any platform collision, the player is not on a platform
             if (!resolvedPlatform)
             {
                 isOnPlatform = false;

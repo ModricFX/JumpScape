@@ -260,6 +260,17 @@ namespace JumpScape
             }
         }
 
+        private void stopMonsterSound()
+        {
+            if (monsters != null)
+            {
+                foreach (var monster in monsters)
+                {
+                    monster.stopSound();
+                }
+            }
+        }
+
         protected override void Update(GameTime gameTime)
         {
 
@@ -295,6 +306,7 @@ namespace JumpScape
 
             if (currentGameState != GameState.Playing)
             {
+                stopMonsterSound();
                 backgroundMovement(gameTime, _graphics.GraphicsDevice);
             }
 
