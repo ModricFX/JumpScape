@@ -558,7 +558,7 @@ namespace JumpScape
             }
 
             GraphicsDevice.Clear(Color.CornflowerBlue);
-
+            Platform.DrawnPlatforms = 0;
             switch (currentGameState)
             {
                 case GameState.MainMenu:
@@ -582,7 +582,9 @@ namespace JumpScape
                     _spriteBatch.Begin(transformMatrix: cameraTransform);
 
                     foreach (var platform in platforms)
-                        platform.Draw(_spriteBatch);
+                        platform.Draw(_spriteBatch, cameraPosition, 
+                      GraphicsDevice.Viewport.Width, 
+                      GraphicsDevice.Viewport.Height);
 
                     foreach (var monster in monsters)
                         monster.Draw(_spriteBatch);

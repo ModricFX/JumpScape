@@ -9,6 +9,12 @@ namespace JumpScape.Classes
 {
     public class Platform
     {
+        // ------------------------------
+        // Static counters for logging
+        // ------------------------------
+        public static int TotalPlatforms { get; private set; } = 0;
+        public static int DrawnPlatforms { get; set; } = 0;
+
         public Texture2D Texture { get; set; }
         public Vector2 Position { get; set; }
         public int Length { get; set; }
@@ -34,8 +40,8 @@ namespace JumpScape.Classes
         // ------------------------------
         // Particle Stuff
         // ------------------------------
-        private Texture2D _particleTexture;        // The texture for debris
-        private List<Particle> _particles;         // Active debris
+        private Texture2D _particleTexture; // The texture for debris
+        private List<Particle> _particles;  // Active debris
 
         public Rectangle BoundingBox => new Rectangle(
             (int)Position.X,
@@ -45,7 +51,7 @@ namespace JumpScape.Classes
         );
 
         /// <summary>
-        /// Particle class representing a piece of debris.
+        /// Nested Particle class representing a piece of debris.
         /// </summary>
         private class Particle
         {
@@ -96,8 +102,6 @@ namespace JumpScape.Classes
 
         /// <summary>
         /// Constructor for Platform.
-        /// Pass in your GameSettings so we can factor in Volume.
-        /// We also load a small "particle.png" for debris.
         /// </summary>
         public Platform(Texture2D texture, Vector2 position, int length, bool isDisappearing)
         {
@@ -111,8 +115,11 @@ namespace JumpScape.Classes
             IsCountingDown = false;
             IsReappearing = false;
 
-            _settings = GameSettings.Load(); // or pass it in from outside if you prefer
+            _settings = GameSettings.Load();
             _particles = new List<Particle>();
+
+            // Increase static total
+            TotalPlatforms++;
 
             // Load sound effects
             _platformBreakingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlatformBreaking.wav"));
@@ -122,9 +129,7 @@ namespace JumpScape.Classes
             _platformBreakSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlatformBreak.wav"));
             _platformBreakInstance = _platformBreakSound.CreateInstance();
 
-            // Load the particle texture from file (must be in your Content folder).
-            // Suppose you have a 1x1 pixel named "particle.png"
-            // If that doesn't exist, you can generate a 1x1 texture in code, see note below.
+            // Create a 1x1 red pixel for debris
             var gd = texture.GraphicsDevice;
             _particleTexture = new Texture2D(gd, 1, 1);
             _particleTexture.SetData(new[] { Color.Red });
@@ -160,8 +165,6 @@ namespace JumpScape.Classes
                 RotationAngle = (float)Math.Sin(gameTime.TotalGameTime.TotalMilliseconds * 0.03) * 0.02f;
 
                 CountdownTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-                // Update the loop's distance-based volume
                 UpdatePlatformSoundVolume(player);
 
                 if (CountdownTimer <= 0)
@@ -173,15 +176,9 @@ namespace JumpScape.Classes
                     Position = OriginalPosition;
                     RotationAngle = 0;
 
-                    // Stop the looped cracking
                     _platformBreakingLoop.Stop();
-
-                    // Play the single break sound, factoring in distance & game volume
                     PlayBreakSound(player);
-
-                    // Generate some debris
                     GenerateBreakParticles(8);
-                    // ^ pick any number of particles you'd like
                 }
             }
 
@@ -204,42 +201,34 @@ namespace JumpScape.Classes
         private void GenerateBreakParticles(int count)
         {
             Random rand = new Random();
-
-            // We'll pick random points along the top of the platform
-            float topY = Position.Y - 4; // slightly above the platform
+            float topY = Position.Y - 4;
 
             for (int i = 0; i < count; i++)
             {
                 float x = Position.X + (float)rand.NextDouble() * Length;
                 Vector2 pos = new Vector2(x, topY);
 
-                // random velocity
-                // e.g. debris flies up a bit, then gravity pulls it down
-                float vx = (float)(rand.NextDouble() * 200 - 100); // -100..+100
-                float vy = (float)(-100 - rand.NextDouble() * 50); // upward
+                float vx = (float)(rand.NextDouble() * 200 - 100);
+                float vy = (float)(-100 - rand.NextDouble() * 50);
                 Vector2 vel = new Vector2(vx, vy) * 0.5f;
 
-                float lifetime = 1.0f + (float)rand.NextDouble() * 1.5f; // 1-2.5s
-                Color color = Color.Brown; // or random color
+                float lifetime = 1.0f + (float)rand.NextDouble() * 1.5f;
+                Color color = Color.Brown;
                 float scale = 3f;
 
                 _particles.Add(new Particle(pos, vel, lifetime, color, scale));
             }
         }
 
-        /// <summary>
-        /// Adjust the looped "cracking" volume based on distance & GameSettings.Volume.
-        /// </summary>
         private void UpdatePlatformSoundVolume(Player player)
         {
             float distance = Vector2.Distance(Position, player.Position);
-
             float minDistance = 20f;
             float maxDistance = 500f;
 
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
             float volume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
-            volume *= 0.8f; // local max 80%
+            volume *= 0.8f;
 
             if (_settings != null)
             {
@@ -254,13 +243,9 @@ namespace JumpScape.Classes
             _platformBreakingLoop.Pan = pan;
         }
 
-        /// <summary>
-        /// Plays the one-time break sound, factoring distance & settings volume.
-        /// </summary>
         private void PlayBreakSound(Player player)
         {
             float distance = Vector2.Distance(Position, player.Position);
-
             float minDistance = 20f;
             float maxDistance = 500f;
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
@@ -282,20 +267,43 @@ namespace JumpScape.Classes
             _platformBreakInstance.Play();
         }
 
-        public void Draw(SpriteBatch spriteBatch)
-        {
-            // Draw existing particles
-            foreach (var particle in _particles)
-            {
-                particle.Draw(spriteBatch, _particleTexture);
-            }
+        /// <summary>
+        /// Draw the platform only if it's visible AND intersects the camera's viewport.
+        /// Logs 'drawn_objects / all_objects' each time we do draw it.
+        /// </summary>
+        /// <param name="spriteBatch">The sprite batch.</param>
+        /// <param name="cameraBounds">
+        /// A rectangle describing the camera's viewport in world coordinates.
+        /// For example: new Rectangle((int)cameraPos.X, (int)cameraPos.Y, screenWidth, screenHeight)
+        /// </param>
 
+        public void Draw(SpriteBatch spriteBatch, Vector2 cameraPosition, int screenWidth, int screenHeight)
+        {
+            // 1) Build the camera bounds from position + viewport dimensions
+            Rectangle cameraBounds = new Rectangle(
+                (int)cameraPosition.X,
+                (int)cameraPosition.Y,
+                screenWidth,
+                screenHeight
+            );
+
+            // 2) Draw the particles first
+            foreach (var particle in _particles)
+                particle.Draw(spriteBatch, _particleTexture);
+
+            // 3) Skip if not visible
             if (!isVisible)
                 return;
 
-            int textureWidth = Texture.Width;
+            // 4) Cull if bounding box doesn't intersect camera
+            if (!BoundingBox.Intersects(cameraBounds))
+                return;
 
-            // Draw the platform in segments
+            // Increment drawn counter
+            DrawnPlatforms++;
+
+            // 5) Draw the platform
+            int textureWidth = Texture.Width;
             for (int i = 0; i < Length / textureWidth; i++)
             {
                 Vector2 origin = new Vector2(Texture.Width / 2, Texture.Height / 2);
@@ -314,7 +322,6 @@ namespace JumpScape.Classes
                 );
             }
 
-            // If there's a remainder piece
             int remainder = Length % textureWidth;
             if (remainder > 0)
             {
@@ -334,6 +341,9 @@ namespace JumpScape.Classes
                     0f
                 );
             }
+
+            // Print console log
+            //Console.WriteLine($"drawn_objects: {DrawnPlatforms}/{TotalPlatforms}");
         }
     }
-}
+ }
