@@ -1,6 +1,7 @@
 {
-    "Volume": 80,
-    "FrameRateIndex": 1,
-    "IsFullscreen": false
-  }
-  
+  "Volume": 80,
+  "MusicVolume": 80,
+  "IsMuted": false,
+  "FrameRateIndex": 1,
+  "IsFullscreen": false
+}

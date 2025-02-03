@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.IO;
 using JumpScape.Classes;
 using System;
+using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
 
 namespace JumpScape
 {
@@ -36,6 +38,7 @@ namespace JumpScape
 
         private bool isPaused;
         private DeathMenu deathMenu;
+        private GameSettings settings;
 
         public enum GameState
         {
@@ -58,6 +61,8 @@ namespace JumpScape
 
         private int currentFPS;
 
+        private SoundEffect themeSoundEffect;
+        private SoundEffectInstance themeSoundEffectInstance;
 
 
 
@@ -90,6 +95,7 @@ namespace JumpScape
             };
 
             _graphics.ApplyChanges();
+            settings = GameSettings.Load();
         }
 
 
@@ -155,6 +161,28 @@ namespace JumpScape
             deathMenu = new DeathMenu(menuFont, GraphicsDevice);
 
             currentGameState = GameState.MainMenu;
+
+            // music
+            themeSoundEffect = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "ThemeSong.wav"));
+
+            // Create an instance so we can loop it
+            themeSoundEffectInstance = themeSoundEffect.CreateInstance();
+            themeSoundEffectInstance.IsLooped = true;
+
+            ApplyMusicSettings();
+            themeSoundEffectInstance.Play();
+        }
+
+        private void ApplyMusicSettings()
+        {
+            settings = GameSettings.Load();
+            if (themeSoundEffectInstance != null && settings != null)
+            {
+                if (settings.IsMuted)
+                    themeSoundEffectInstance.Volume = 0f;
+                else
+                    themeSoundEffectInstance.Volume = settings.MusicVolume / 100f; // e.g. 80 => 0.8
+            }
         }
 
         private readonly int[] frameRates = { 30, 60, 120, -1 }; // -1 is unlimited
@@ -236,6 +264,7 @@ namespace JumpScape
         {
 
             getCurrentFPS();
+            ApplyMusicSettings();
             KeyboardState ks = Keyboard.GetState();
             // Only trigger if Escape is newly pressed this frame
             if (IsKeyPressed(ks, previousKeyboardState, Keys.Escape))

@@ -23,24 +23,28 @@ namespace JumpScape
         private Vector2 _backgroundPosition;
 
         private MouseState previousMouseState;
+
+        // Store these so we can modify them in sliders and checkboxes
         private int frameRateIndex = 1;
         private int volume = 80;
+        private int musicVolume = 80;
+        private bool isMuted = false;
+        private bool isFullscreen = false; 
+
+        private bool isDraggingVolume = false;
+        private bool isDraggingMusicVolume = false;
 
         private readonly string[] frameRates = { "30 FPS", "60 FPS", "120 FPS", "Unlimited" };
-        string[] categories = { "Graphics", "Audio", "Miscellaneous" };
+        string[] categories = { "Graphics", "Audio"};
 
-        private const int SLIDER_WIDTH = 200;
-        private bool isDraggingVolume = false;
-
-        private GraphicsDevice graphicsDevice; // Store this so we can use it in HandleMouseInput
+        private GraphicsDevice graphicsDevice; 
         private GraphicsDeviceManager graphicsDeviceManager;
+        
         private float boxWidth = 800;
         private float boxHeight = 800;
-        private bool isFullscreen = false; // Track whether fullscreen is enabled
         private float backgroundScale;
 
         private GameSettings settings;
-
 
         public SettingsMenu(SpriteFont font, SpriteFont smallFont, GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
         {
@@ -52,9 +56,11 @@ namespace JumpScape
             // Load settings
             settings = GameSettings.Load();
 
-            // Initialize settings from loaded values
+            // Initialize fields from loaded settings
             frameRateIndex = settings.FrameRateIndex;
             volume = settings.Volume;
+            musicVolume = settings.MusicVolume;
+            isMuted = settings.IsMuted;
             isFullscreen = settings.IsFullscreen;
 
             // Apply fullscreen and frame rate settings
@@ -69,32 +75,31 @@ namespace JumpScape
             CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
         }
 
-
-
         public void ResetPreviousState()
         {
             previousMouseState = Mouse.GetState();
         }
 
-        private int hoveredIndex = -1; // Track which dropdown item is hovered
-
+        private int hoveredIndex = -1; 
 
         private void ApplyGraphicsChanges()
         {
-            // graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
-            // {
-            //     0 => PresentInterval.Two,       // 30 FPS
-            //     1 => PresentInterval.One,       // 60 FPS
-            //     2 => PresentInterval.Immediate, // 120 FPS
-            //     3 => PresentInterval.Immediate, // Unlimited
-            //     _ => PresentInterval.One
-            // };
+            // Restore the frame rate code. 
+            // For actual 30, 60, 120 FPS, etc., you may need to manually set the targetElapsedTime 
+            // or refresh logic in your Game1.cs. 
+            // Using PresentInterval is one approach:
+            graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
+            {
+                0 => PresentInterval.Two,       // ~30 FPS (actually half the monitor refresh if 60Hz)
+                1 => PresentInterval.One,       // 60 FPS
+                2 => PresentInterval.Immediate, // 120 FPS (best-effort)
+                3 => PresentInterval.Immediate, // Unlimited
+                _ => PresentInterval.One
+            };
 
             graphicsDeviceManager.IsFullScreen = isFullscreen;
             graphicsDeviceManager.ApplyChanges();
         }
-
-
 
         private bool IsMouseOverRectangle(Vector2 mousePosition, Rectangle rect)
         {
@@ -127,6 +132,7 @@ namespace JumpScape
                 Color.White
             );
         }
+        
         private void CalculateBackgroundScale(int screenWidth, int screenHeight)
         {
             // Determine the scaling factor for the background to fit the screen
@@ -139,23 +145,21 @@ namespace JumpScape
 
         private void UpdateBackgroundPosition(GameTime gameTime)
         {
-            // Move the background
             float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            _backgroundPosition.X += 0.3f * elapsed * 100; // Adjust the speed as needed
+            _backgroundPosition.X += 0.3f * elapsed * 100; 
             _backgroundPosition.Y += 0.1f * elapsed * 100;
 
-            // Calculate the scaled background width and height
             float scaledWidth = _backgroundTexture.Width * backgroundScale;
             float scaledHeight = _backgroundTexture.Height * backgroundScale;
 
-            // Wrap the background position horizontally
+            // Wrap horizontally
             if (_backgroundPosition.X >= scaledWidth)
                 _backgroundPosition.X -= scaledWidth;
             else if (_backgroundPosition.X <= -scaledWidth)
                 _backgroundPosition.X += scaledWidth;
 
-            // Wrap the background position vertically
+            // Wrap vertically
             if (_backgroundPosition.Y >= scaledHeight)
                 _backgroundPosition.Y -= scaledHeight;
             else if (_backgroundPosition.Y <= -scaledHeight)
@@ -168,8 +172,7 @@ namespace JumpScape
             bool mouseClicked = (currentMouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed);
             bool mouseDown = (currentMouseState.LeftButton == ButtonState.Pressed);
 
-            // Match these values with Draw()
-            float categoryBlockHeight = 150f; // same as in Draw()
+            float categoryBlockHeight = 150f; 
             float scale = 1.0f;
 
             // Calculate boxPosition as in Draw()
@@ -188,27 +191,37 @@ namespace JumpScape
                 titlePosition.Y + titleSize.Y + 60
             );
 
-            // Audio category is index 1
+            // AUDIO CATEGORY (Index = 1)
             int audioIndex = 1;
             Vector2 audioCategoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + audioIndex * categoryBlockHeight);
             Vector2 audioCatTextSize = font.MeasureString(categories[audioIndex]) * scale;
-            Vector2 childStart = audioCategoryPosition + new Vector2(30, audioCatTextSize.Y + 10);
+            Vector2 audioChildStart = audioCategoryPosition + new Vector2(30, audioCatTextSize.Y + 10);
+
+            // We'll lay out: 
+            //   [Game Volume slider]
+            //   [Music Volume slider]
+            //   [Mute checkbox]
+
+            // 1) GAME VOLUME
             float textScale = 0.5f;
             string volumeLabel = "Game Volume";
-            Vector2 gvSize = font.MeasureString(volumeLabel) * textScale;
+            Vector2 volumeLabelSize = font.MeasureString(volumeLabel) * textScale;
+            Vector2 volumeLabelPos = audioChildStart;
 
             int sliderWidth = 200;
             int sliderHeight = 4;
-            Vector2 sliderPos = childStart + new Vector2(0, 20) + new Vector2(gvSize.X + 40, (gvSize.Y - sliderHeight) / 2);
-            Rectangle sliderRect = new Rectangle((int)sliderPos.X, (int)sliderPos.Y, sliderWidth, sliderHeight);
 
+            // Position the slider to the right of the label
+            Vector2 gameVolumeSliderPos = volumeLabelPos + new Vector2(volumeLabelSize.X + 40, (volumeLabelSize.Y - sliderHeight) / 2);
+
+            Rectangle gameVolumeSliderRect = new Rectangle((int)gameVolumeSliderPos.X, (int)gameVolumeSliderPos.Y, sliderWidth, sliderHeight);
             float volumePercent = volume / 100f;
             int knobRadius = 8;
-            int knobX = (int)(sliderPos.X + volumePercent * sliderWidth);
-            int knobY = (int)(sliderPos.Y + sliderHeight / 2);
+            int knobX = (int)(gameVolumeSliderPos.X + volumePercent * sliderWidth);
+            int knobY = (int)(gameVolumeSliderPos.Y + sliderHeight / 2);
             Rectangle knobRect = new Rectangle(knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2);
 
-            // Volume dragging logic
+            // Volume dragging
             if (mouseDown && !isDraggingVolume)
             {
                 if (knobRect.Contains(mousePosition.ToPoint()))
@@ -216,24 +229,67 @@ namespace JumpScape
                     isDraggingVolume = true;
                 }
             }
-
-            if (!mouseDown)
-            {
-                isDraggingVolume = false;
-            }
-
+            if (!mouseDown) isDraggingVolume = false;
             if (isDraggingVolume)
             {
-                float relativeX = MathHelper.Clamp(mousePosition.X, sliderRect.X, sliderRect.X + sliderRect.Width);
-                volume = (int)(((relativeX - sliderRect.X) / sliderRect.Width) * 100f);
+                float relativeX = MathHelper.Clamp(mousePosition.X, gameVolumeSliderRect.X, gameVolumeSliderRect.X + gameVolumeSliderRect.Width);
+                volume = (int)(((relativeX - gameVolumeSliderRect.X) / gameVolumeSliderRect.Width) * 100f);
                 volume = MathHelper.Clamp(volume, 0, 100);
 
-                // Update settings
                 settings.Volume = volume;
                 settings.Save();
             }
 
-            // Dropdown logic for the Graphics category (index 0)
+            // 2) MUSIC VOLUME
+            // Offset the next row by ~40 pixels from the top of the game volume slider
+            Vector2 musicVolumeOffset = new Vector2(0, 40);
+            Vector2 musicLabelPos = volumeLabelPos + musicVolumeOffset;
+            string musicLabel = "Music Volume";
+            Vector2 musicLabelSize = font.MeasureString(musicLabel) * textScale;
+            Vector2 musicVolumeSliderPos = musicLabelPos + new Vector2(musicLabelSize.X + 40, (musicLabelSize.Y - sliderHeight) / 2);
+
+            Rectangle musicVolumeSliderRect = new Rectangle((int)musicVolumeSliderPos.X, (int)musicVolumeSliderPos.Y, sliderWidth, sliderHeight);
+            float musicVolumePercent = musicVolume / 100f;
+            knobX = (int)(musicVolumeSliderPos.X + musicVolumePercent * sliderWidth);
+            knobY = (int)(musicVolumeSliderPos.Y + sliderHeight / 2);
+            Rectangle musicKnobRect = new Rectangle(knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2);
+
+            // Music volume dragging
+            if (mouseDown && !isDraggingMusicVolume)
+            {
+                if (musicKnobRect.Contains(mousePosition.ToPoint()))
+                {
+                    isDraggingMusicVolume = true;
+                }
+            }
+            if (!mouseDown) isDraggingMusicVolume = false;
+            if (isDraggingMusicVolume)
+            {
+                float relativeX = MathHelper.Clamp(mousePosition.X, musicVolumeSliderRect.X, musicVolumeSliderRect.X + musicVolumeSliderRect.Width);
+                musicVolume = (int)(((relativeX - musicVolumeSliderRect.X) / musicVolumeSliderRect.Width) * 100f);
+                musicVolume = MathHelper.Clamp(musicVolume, 0, 100);
+
+                settings.MusicVolume = musicVolume;
+                settings.Save();
+            }
+
+            // 3) MUTE CHECKBOX
+            Vector2 muteOffset = new Vector2(0, 80);
+            Vector2 muteLabelPos = volumeLabelPos + muteOffset;
+            float checkboxScale = 0.5f;
+            string muteLabel = "Mute:";
+            Vector2 muteLabelSize = font.MeasureString(muteLabel) * checkboxScale;
+            Vector2 muteCheckboxPos = muteLabelPos + new Vector2(muteLabelSize.X + 20, (muteLabelSize.Y - 20) / 2);
+
+            Rectangle muteCheckboxRect = new Rectangle((int)muteCheckboxPos.X, (int)muteCheckboxPos.Y, 20, 20);
+            if (IsMouseOverRectangle(mousePosition, muteCheckboxRect) && mouseClicked)
+            {
+                isMuted = !isMuted;
+                settings.IsMuted = isMuted;
+                settings.Save();
+            }
+
+            // GRAPHICS CATEGORY (Index = 0) - handle dropdown & fullscreen
             int graphicsIndex = 0;
             Vector2 categoryPosition = new Vector2(categoriesStart.X, categoriesStart.Y + graphicsIndex * categoryBlockHeight);
             Vector2 categoryTextSize = font.MeasureString(categories[graphicsIndex]) * scale;
@@ -249,7 +305,6 @@ namespace JumpScape
             );
 
             hoveredIndex = -1;
-
             if (isDropdownOpen)
             {
                 bool clickedItem = false;
@@ -272,17 +327,16 @@ namespace JumpScape
                             isDropdownOpen = false;
                             clickedItem = true;
 
-                            // Update settings
                             settings.FrameRateIndex = frameRateIndex;
                             settings.Save();
 
-                            //ApplyGraphicsChanges();
-
+                            ApplyGraphicsChanges();
                             break;
                         }
                     }
                 }
 
+                // Close dropdown if clicked outside
                 if (!clickedItem && mouseClicked && !IsMouseOverRectangle(mousePosition, dropdownRect))
                 {
                     isDropdownOpen = false;
@@ -297,25 +351,24 @@ namespace JumpScape
                 }
             }
 
-            // Fullscreen checkbox logic
+            // Fullscreen checkbox
             Vector2 fullscreenOffset = new Vector2(0, 40);
             Vector2 fullscreenLabelPos = childStartGraphics + fullscreenOffset;
-            float checkboxScale = 0.5f;
+            checkboxScale = 0.5f;
             string fullscreenLabel = "Fullscreen:";
             Vector2 fsLabelSize = font.MeasureString(fullscreenLabel) * checkboxScale;
             Vector2 fsCheckboxPos = fullscreenLabelPos + new Vector2(fsLabelSize.X + 20, (fsLabelSize.Y - 20) / 2);
 
             Rectangle fsCheckboxRect = new Rectangle((int)fsCheckboxPos.X, (int)fsCheckboxPos.Y, 20, 20);
-
             if (IsMouseOverRectangle(mousePosition, fsCheckboxRect) && mouseClicked)
             {
                 isFullscreen = !isFullscreen;
-                // Update settings
                 settings.IsFullscreen = isFullscreen;
                 settings.Save();
                 ApplyGraphicsChanges();
             }
         }
+
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition, SpriteBatch spriteBatch)
         {
             CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
@@ -327,7 +380,7 @@ namespace JumpScape
 
             int backIndex = menuItems.Count - 1;
 
-            // Recalculate the "Back" button's position exactly as in Draw()
+            // Calculate the position of the "Back" text for collision detection
             Viewport viewport = graphicsDevice.Viewport;
             Vector2 boxPosition = new Vector2(
                 viewport.Bounds.Center.X - (boxWidth / 2),
@@ -348,13 +401,12 @@ namespace JumpScape
             if (backRect.Contains(mousePos) && mouseClicked)
             {
                 previousMouseState = currentMouseState;
-                return backIndex; // Return the back index to signal that "Back" was chosen
+                return backIndex; // "Back" was chosen
             }
 
             previousMouseState = currentMouseState;
             return -1;
         }
-
 
         public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphicsDevice, Vector2 position, float scale = 1.0f)
         {
@@ -366,7 +418,7 @@ namespace JumpScape
                 viewport.Bounds.Center.Y - (boxHeight / 2)
             );
 
-            // Wooden box with overlay
+            // Wooden box
             spriteBatch.Draw(
                 _woodBoxTexture,
                 new Rectangle((int)boxPosition.X, (int)boxPosition.Y, (int)boxWidth, (int)boxHeight),
@@ -415,12 +467,12 @@ namespace JumpScape
 
                 if (i == 0) // Graphics
                 {
-                    // Draw Frame rates line
+                    // Frame rates
                     spriteBatch.DrawString(font, "Frame rates:", childStart, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                     Vector2 labelSize = font.MeasureString("Frame rates:") * 0.5f;
                     Vector2 dropdownPos = new Vector2(childStart.X + labelSize.X + 20, childStart.Y);
 
-                    // Draw Fullscreen line and checkbox FIRST
+                    // Fullscreen
                     Vector2 fullscreenOffset = new Vector2(0, 40);
                     Vector2 fullscreenLabelPos = childStart + fullscreenOffset;
                     float checkboxScale = 0.5f;
@@ -430,7 +482,7 @@ namespace JumpScape
                     Vector2 fsLabelSize = font.MeasureString(fullscreenLabel) * checkboxScale;
                     Vector2 fsCheckboxPos = fullscreenLabelPos + new Vector2(fsLabelSize.X + 20, (fsLabelSize.Y - 20) / 2);
 
-                    // Draw checkbox
+                    // Checkbox
                     Color boxColor = Color.White;
                     spriteBatch.Draw(GetFilledTexture(graphicsDevice, boxColor),
                         new Rectangle((int)fsCheckboxPos.X, (int)fsCheckboxPos.Y, 20, 20),
@@ -438,52 +490,101 @@ namespace JumpScape
 
                     if (isFullscreen)
                     {
-                        // Draw a small checkmark inside the box
                         Color checkColor = Color.Green;
                         spriteBatch.Draw(GetFilledTexture(graphicsDevice, checkColor),
                             new Rectangle((int)fsCheckboxPos.X + 4, (int)fsCheckboxPos.Y + 4, 12, 12),
                             checkColor);
                     }
 
-                    // NOW draw the dropdown on top, so it covers the checkbox if opened
+                    // Draw the dropdown last so it appears on top
                     DrawDropdown(spriteBatch, dropdownPos, isDropdownOpen, frameRates, frameRateIndex, hoveredIndex, scale: 0.5f);
                 }
                 else if (i == 1) // Audio
                 {
-                    // Increase vertical spacing to avoid overlap
-                    Vector2 audioStart = childStart + new Vector2(0, 20);
-
                     float textScale = 0.5f;
-                    string volumeLabel = "Game Volume";
-                    spriteBatch.DrawString(font, volumeLabel, audioStart, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 
-                    Vector2 gvSize = font.MeasureString(volumeLabel) * textScale;
+                    // 1) Game Volume
+                    string volumeLabel = "Game Volume";
+                    Vector2 volumeLabelPos = childStart;
+                    spriteBatch.DrawString(font, volumeLabel, volumeLabelPos, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
+
+                    Vector2 volumeLabelSize = font.MeasureString(volumeLabel) * textScale;
                     int sliderWidth = 200;
                     int sliderHeight = 4;
-                    Vector2 sliderPos = audioStart + new Vector2(gvSize.X + 40, (gvSize.Y - sliderHeight) / 2);
+                    Vector2 gameVolumeSliderPos = volumeLabelPos + new Vector2(volumeLabelSize.X + 40, (volumeLabelSize.Y - sliderHeight) / 2);
 
-                    // Draw slider line
                     spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.Gray),
-                        new Rectangle((int)sliderPos.X, (int)sliderPos.Y, sliderWidth, sliderHeight),
+                        new Rectangle((int)gameVolumeSliderPos.X, (int)gameVolumeSliderPos.Y, sliderWidth, sliderHeight),
                         Color.Gray);
 
-                    // Calculate knob position from current volume
                     float volumePercent = volume / 100f;
                     int knobRadius = 8;
-                    int knobX = (int)(sliderPos.X + volumePercent * sliderWidth);
-                    int knobY = (int)(sliderPos.Y + sliderHeight / 2);
+                    int knobX = (int)(gameVolumeSliderPos.X + volumePercent * sliderWidth);
+                    int knobY = (int)(gameVolumeSliderPos.Y + sliderHeight / 2);
 
-                    // Draw knob (rectangle as placeholder)
+                    // Knob
                     spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.White),
                         new Rectangle(knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2),
                         Color.White);
 
-                    // Draw volume percentage to the right of the slider
-                    string volText = volume.ToString() + "%";
+                    // Volume text
+                    string volText = volume + "%";
                     Vector2 volTextSize = font.MeasureString(volText) * 0.5f;
-                    Vector2 volTextPos = new Vector2(sliderPos.X + sliderWidth + 20, sliderPos.Y + (sliderHeight / 2) - (volTextSize.Y / 2));
+                    Vector2 volTextPos = new Vector2(gameVolumeSliderPos.X + sliderWidth + 20, gameVolumeSliderPos.Y + (sliderHeight / 2) - (volTextSize.Y / 2));
                     spriteBatch.DrawString(font, volText, volTextPos + new Vector2(1, 1), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                     spriteBatch.DrawString(font, volText, volTextPos, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+                    // 2) Music Volume
+                    Vector2 musicVolumeOffset = new Vector2(0, 40);
+                    Vector2 musicLabelPos = volumeLabelPos + musicVolumeOffset;
+                    string musicLabel = "Music Volume";
+                    spriteBatch.DrawString(font, musicLabel, musicLabelPos, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
+
+                    Vector2 musicLabelSize = font.MeasureString(musicLabel) * textScale;
+                    Vector2 musicVolumeSliderPos = musicLabelPos + new Vector2(musicLabelSize.X + 40, (musicLabelSize.Y - sliderHeight) / 2);
+
+                    // Slider line
+                    spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.Gray),
+                        new Rectangle((int)musicVolumeSliderPos.X, (int)musicVolumeSliderPos.Y, sliderWidth, sliderHeight),
+                        Color.Gray);
+
+                    float musicPercent = musicVolume / 100f;
+                    knobX = (int)(musicVolumeSliderPos.X + musicPercent * sliderWidth);
+                    knobY = (int)(musicVolumeSliderPos.Y + sliderHeight / 2);
+
+                    // Knob
+                    spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.White),
+                        new Rectangle(knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2),
+                        Color.White);
+
+                    // Music volume text
+                    string musicVolText = musicVolume + "%";
+                    Vector2 musicVolTextSize = font.MeasureString(musicVolText) * 0.5f;
+                    Vector2 musicVolTextPos = new Vector2(musicVolumeSliderPos.X + sliderWidth + 20, musicVolumeSliderPos.Y + (sliderHeight / 2) - (musicVolTextSize.Y / 2));
+                    spriteBatch.DrawString(font, musicVolText, musicVolTextPos + new Vector2(1, 1), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(font, musicVolText, musicVolTextPos, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+                    // 3) Mute Checkbox
+                    Vector2 muteOffset = new Vector2(0, 80);
+                    Vector2 muteLabelPos = volumeLabelPos + muteOffset;
+                    string muteLabel = "Mute:";
+                    spriteBatch.DrawString(font, muteLabel, muteLabelPos, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
+
+                    Vector2 muteLabelSize = font.MeasureString(muteLabel) * textScale;
+                    Vector2 muteCheckboxPos = muteLabelPos + new Vector2(muteLabelSize.X + 20, (muteLabelSize.Y - 20) / 2);
+
+                    // Draw the checkbox
+                    spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.White),
+                        new Rectangle((int)muteCheckboxPos.X, (int)muteCheckboxPos.Y, 20, 20),
+                        Color.White);
+
+                    if (isMuted)
+                    {
+                        Color checkColor = Color.Red;
+                        spriteBatch.Draw(GetFilledTexture(graphicsDevice, checkColor),
+                            new Rectangle((int)muteCheckboxPos.X + 4, (int)muteCheckboxPos.Y + 4, 12, 12),
+                            checkColor);
+                    }
                 }
 
             }
@@ -503,7 +604,6 @@ namespace JumpScape
             spriteBatch.DrawString(font, menuItems[backIndex], backPosition + new Vector2(1, 1), Color.Black * 0.5f, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
             spriteBatch.DrawString(font, menuItems[backIndex], backPosition, hoveringBack ? Color.Yellow : Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
-
 
         private void DrawDropdown(SpriteBatch spriteBatch, Vector2 position, bool isOpen, string[] items, int selectedIndex, int hoveredIndex, float scale = 0.5f)
         {
@@ -540,7 +640,7 @@ namespace JumpScape
                 }
             }
         }
-        
+
         private void DrawOutline(SpriteBatch spriteBatch, Rectangle rect, Color color)
         {
             // Top

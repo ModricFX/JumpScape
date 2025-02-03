@@ -5,11 +5,12 @@ using System.IO;
 public class GameSettings
 {
     public int Volume { get; set; } = 80;
+    public int MusicVolume { get; set; } = 80;
+    public bool IsMuted { get; set; } = false;
     public int FrameRateIndex { get; set; } = 1;
     public bool IsFullscreen { get; set; } = false;
 
     public static string FilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
-
 
     // Save settings to file
     public void Save()
