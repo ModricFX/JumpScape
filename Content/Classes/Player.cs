@@ -63,6 +63,8 @@ namespace JumpScape.Classes
         // Walking sound (looped instance)
         private SoundEffectInstance _walkingSoundInstance;
         private SoundEffectInstance _jumpingSoundInstance;
+        private SoundEffectInstance _playerHitSoundInstance;
+
 
 
         public Player(GraphicsDevice graphicsDevice, Vector2 startPosition, int screenWidth, int screenHeight)
@@ -90,6 +92,10 @@ namespace JumpScape.Classes
             var jumpingSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerJump.wav"));
             _jumpingSoundInstance = jumpingSound.CreateInstance();
             _jumpingSoundInstance.Volume = 0.5f;
+
+            var playerHitSound = SoundEffect.FromFile(Path.Combine("Content", "Sounds", "PlayerHit.wav"));
+            _playerHitSoundInstance = playerHitSound.CreateInstance();
+            _playerHitSoundInstance.Volume = 0.5f;
 
             const float BaseWidth = 1920f;
             const float BaseHeight = 1080f;
@@ -351,6 +357,7 @@ namespace JumpScape.Classes
 
             ApplyKnockback(knockbackDirection);
             TriggerInvincibility();
+            _playerHitSoundInstance.Play();
 
             if (_currentHearts <= 0)
             {

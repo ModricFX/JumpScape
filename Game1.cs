@@ -483,7 +483,7 @@ namespace JumpScape
         private void UpdatePlatforms(GameTime gameTime)
         {
             foreach (var platform in platforms)
-                platform.Update(gameTime);
+                platform.Update(gameTime, player);
         }
 
         private void UpdateCamera()
