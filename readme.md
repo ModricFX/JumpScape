@@ -2,12 +2,6 @@
 
 JumpScape is a 2D platformer game developed using the **MonoGame** framework. It offers smooth gameplay, customizable frame rates, and fullscreen mode to adapt to various devices and player preferences.
 
-## Features
-- **Custom Frame Rate Options**: Choose between 30 FPS, 60 FPS, 120 FPS, or unlimited frame rate for the best performance.
-- **Fullscreen and Windowed Mode Support**: Switch seamlessly between fullscreen and windowed modes.
-- **Optimized Performance**: Smooth rendering and responsive controls for an engaging gaming experience.
-- **Cross-Platform**: Compatible with Windows, macOS, and Linux.
-
 ## Installation and Setup
 1. **Download the Project**
    - Clone the repository or download the ZIP file.
