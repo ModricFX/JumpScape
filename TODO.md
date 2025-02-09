@@ -1,7 +1,6 @@
 TODO:
 NEEDED:
 - Death Screen - add fade out when player clicks retry
-- Implement sounds (platform breaking, key pickup, key use, door enter)
 - Add weapons for player, attack by clicking mouse button in direction
 - Add special abilities for player to pick up (extra health, double jump, bigger jump, etc)
 - SETUP FOR ZAGOVOR
