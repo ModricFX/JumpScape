@@ -29,17 +29,17 @@ namespace JumpScape
         private int volume = 80;
         private int musicVolume = 80;
         private bool isMuted = false;
-        private bool isFullscreen = false; 
+        private bool isFullscreen = false;
 
         private bool isDraggingVolume = false;
         private bool isDraggingMusicVolume = false;
 
         private readonly string[] frameRates = { "30 FPS", "60 FPS", "120 FPS", "Unlimited" };
-        string[] categories = { "Graphics", "Audio"};
+        string[] categories = { "Graphics", "Audio" };
 
-        private GraphicsDevice graphicsDevice; 
+        private GraphicsDevice graphicsDevice;
         private GraphicsDeviceManager graphicsDeviceManager;
-        
+
         private float boxWidth = 800;
         private float boxHeight = 800;
         private float backgroundScale;
@@ -80,26 +80,42 @@ namespace JumpScape
             previousMouseState = Mouse.GetState();
         }
 
-        private int hoveredIndex = -1; 
+        private int hoveredIndex = -1;
 
         private void ApplyGraphicsChanges()
         {
-            // Restore the frame rate code. 
-            // For actual 30, 60, 120 FPS, etc., you may need to manually set the targetElapsedTime 
-            // or refresh logic in your Game1.cs. 
-            // Using PresentInterval is one approach:
-            graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = frameRateIndex switch
+            // Figure out the new presentation interval based on frameRateIndex
+            var newInterval = frameRateIndex switch
             {
-                0 => PresentInterval.Two,       // ~30 FPS (actually half the monitor refresh if 60Hz)
+                0 => PresentInterval.Two,       // ~30 FPS (half refresh if 60Hz)
                 1 => PresentInterval.One,       // 60 FPS
-                2 => PresentInterval.Immediate, // 120 FPS (best-effort)
+                2 => PresentInterval.Immediate, // 120 FPS (best effort)
                 3 => PresentInterval.Immediate, // Unlimited
                 _ => PresentInterval.One
             };
 
-            graphicsDeviceManager.IsFullScreen = isFullscreen;
-            graphicsDeviceManager.ApplyChanges();
+            // We'll track if we actually need to apply changes
+            bool changesNeeded = false;
+
+            // Only set the new PresentationInterval if it is different
+            if (graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval != newInterval)
+            {
+                graphicsDeviceManager.GraphicsDevice.PresentationParameters.PresentationInterval = newInterval;
+                changesNeeded = true;
+            }
+
+            // Only update the fullscreen setting if it is different
+            if (graphicsDeviceManager.IsFullScreen != isFullscreen)
+            {
+                graphicsDeviceManager.IsFullScreen = isFullscreen;
+                changesNeeded = true;
+            }
+
+            // Call ApplyChanges() only if something changed
+            if (changesNeeded)
+                graphicsDeviceManager.ApplyChanges();
         }
+
 
         private bool IsMouseOverRectangle(Vector2 mousePosition, Rectangle rect)
         {
@@ -132,7 +148,7 @@ namespace JumpScape
                 Color.White
             );
         }
-        
+
         private void CalculateBackgroundScale(int screenWidth, int screenHeight)
         {
             // Determine the scaling factor for the background to fit the screen
@@ -147,7 +163,7 @@ namespace JumpScape
         {
             float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            _backgroundPosition.X += 0.3f * elapsed * 100; 
+            _backgroundPosition.X += 0.3f * elapsed * 100;
             _backgroundPosition.Y += 0.1f * elapsed * 100;
 
             float scaledWidth = _backgroundTexture.Width * backgroundScale;
@@ -172,7 +188,7 @@ namespace JumpScape
             bool mouseClicked = (currentMouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed);
             bool mouseDown = (currentMouseState.LeftButton == ButtonState.Pressed);
 
-            float categoryBlockHeight = 150f; 
+            float categoryBlockHeight = 150f;
             float scale = 1.0f;
 
             // Calculate boxPosition as in Draw()
@@ -451,7 +467,7 @@ namespace JumpScape
                 (int)categoriesStart.X - 20,
                 (int)categoriesStart.Y - 20,
                 (int)(boxWidth - (60 * 2) + 40),
-                totalPanelHeight
+                totalPanelHeight + 20
             );
             spriteBatch.Draw(GetFilledTexture(graphicsDevice, Color.Black), categoriesPanel, Color.Black * 0.3f);
             DrawOutline(spriteBatch, categoriesPanel, Color.White);
