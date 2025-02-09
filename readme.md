@@ -21,20 +21,12 @@ JumpScape is a 2D platformer game developed using the **MonoGame** framework. It
     dotnet add package MonoGame.Framework.DesktopGL
 
 4. **Build and Run**
-- Press `F5` in Visual Studio to build and launch the game.
+- Write `dotnet run` in Visual Studio code terminal to build and launch the game.
 
 ## Controls
 - **Arrow Keys/WASD** – Move your character
 - **Spacebar** – Jump
-- **Esc** – Pause the game or exit fullscreen
-
-## Graphics Settings
-The game supports dynamic graphics settings with frame rate control and fullscreen options. Adjust the settings in the `GraphicsSettings` section of the game.
-
-- **30 FPS Mode:** Energy-efficient and ideal for low-spec systems.
-- **60 FPS Mode:** Default for smooth gameplay.
-- **120 FPS Mode:** For high-performance systems.
-- **Unlimited:** No frame rate limit for maximum responsiveness.
+- **Esc** – Pause the game or exit the game
 
 ## License
 This project is licensed under the MIT License. See `LICENSE` for details.
