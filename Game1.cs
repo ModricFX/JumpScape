@@ -403,6 +403,8 @@ namespace JumpScape
 
                         if (player.isDead)
                         {
+                            stopMonsterSound();
+                            stopPlayerSound();
                             deathMenu.Show();
                             int selection = deathMenu.Update(gameTime, GraphicsDevice);
 
@@ -511,6 +513,10 @@ namespace JumpScape
             base.Update(gameTime);
         }
 
+        private void stopPlayerSound()
+        {
+            player.stopSound();
+        }
 
         private void UpdateMonstersAndGhosts(GameTime gameTime)
         {

@@ -19,7 +19,7 @@ namespace JumpScape.Classes
         public bool HasKey { get; set; }
         public bool IsJumping { get; set; }
 
-        private const int MaxHearts = 5;
+        private const int MaxHearts = 3;
         private float _currentHearts;
         private readonly Texture2D _heartFullTexture;
         private readonly Texture2D _heartHalfTexture;
@@ -413,6 +413,12 @@ namespace JumpScape.Classes
         public bool isFalling()
         {
             return (int)Position.Y > (int)previousY;
+        }
+
+        public void stopSound() {
+            _walkingSoundInstance.Stop();
+            _jumpingSoundInstance.Stop();
+            _playerHitSoundInstance.Stop();
         }
 
         private bool isDeadAnimation = false;
