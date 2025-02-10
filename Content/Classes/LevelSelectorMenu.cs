@@ -22,6 +22,9 @@ namespace JumpScape
         private Texture2D _levelBoxTexture;
         private Texture2D _starTexture;
 
+        private bool _waitForMouseRelease = true;
+
+
         private Vector2 _logoPosition;
         private Vector2 _backgroundPosition;
 
@@ -47,7 +50,7 @@ namespace JumpScape
             _woodBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "woodBackground.png"));
             _levelBoxTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "levelBox.png"));
             _starTexture = Texture2D.FromFile(graphicsDevice, Path.Combine("Content", "Graphics", "Menu", "star.png"));
-
+            _waitForMouseRelease = true;
             CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
         }
 
@@ -125,18 +128,16 @@ namespace JumpScape
         /// </summary>
         public int Update(GameTime gameTime, GraphicsDevice graphicsDevice, Vector2 backgroundPosition)
         {
-            // Update background scale, position, and scroll effect
             CalculateBackgroundScale(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
             _backgroundPosition = backgroundPosition;
             UpdateBackgroundPosition(gameTime);
 
-            // Also calculate the logo scale & position
             CalculateLogoScaleAndPosition(graphicsDevice);
 
             KeyboardState currentKeyboardState = Keyboard.GetState();
             MouseState currentMouseState = Mouse.GetState();
 
-            // Keyboard navigation
+            // 4. Keyboard navigation
             if (IsKeyPressed(currentKeyboardState, previousKeyboardState, Keys.Up))
             {
                 selectedIndex--;
@@ -151,55 +152,80 @@ namespace JumpScape
             {
                 previousKeyboardState = currentKeyboardState;
                 previousMouseState = currentMouseState;
-                return selectedIndex;
+                return selectedIndex; // Return the item selected by pressing Enter
             }
 
-            // Dynamic box size (central wooden box)
-            float boxWidth = graphicsDevice.Viewport.Width * 0.5f;
-            float boxHeight = graphicsDevice.Viewport.Height * 0.5f;
+            float boxWidth = graphicsDevice.Viewport.Width * 0.5f;  // 50% of screen
+            float boxHeight = graphicsDevice.Viewport.Height * 0.5f; // 50% of screen
 
-            // Level box arrangement
             float levelBoxScale = 0.2f;
             float horizontalSpacing = 90f;
             float verticalSpacing = 20f;
 
-            // Mouse logic: check if cursor is over a box
+            // We'll use this for collision checks
             Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
 
-            // For each level except the last item (which is "Back")
-            for (int i = 0; i < menuItems.Count - 1; i++)
+            if (_waitForMouseRelease)
             {
-                if (GetLevelBoxBounds(i, graphicsDevice, boxWidth, boxHeight, levelBoxScale, horizontalSpacing, verticalSpacing)
-                    .Contains(mousePos))
+                // If the mouse is currently not pressed, we're good—stop waiting
+                if (currentMouseState.LeftButton == ButtonState.Released)
                 {
-                    selectedIndex = i;
-                    if (currentMouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+                    _waitForMouseRelease = false;
+                }
+            }
+            else
+            {
+                // Normal mouse-based selection logic
+                // Level boxes (except the last "Back" item)
+                for (int i = 0; i < menuItems.Count - 1; i++)
+                {
+                    Rectangle levelBoxBounds = GetLevelBoxBounds(
+                        i,
+                        graphicsDevice,
+                        boxWidth,
+                        boxHeight,
+                        levelBoxScale,
+                        horizontalSpacing,
+                        verticalSpacing
+                    );
+
+                    if (levelBoxBounds.Contains(mousePos))
+                    {
+                        selectedIndex = i;
+                        if (currentMouseState.LeftButton == ButtonState.Pressed &&
+                            previousMouseState.LeftButton == ButtonState.Released)
+                        {
+                            // Player actually clicked on level i
+                            previousKeyboardState = currentKeyboardState;
+                            previousMouseState = currentMouseState;
+                            return selectedIndex;
+                        }
+                    }
+                }
+
+                // Handle the "Back" button (the last item in the list)
+                int backIndex = menuItems.Count - 1;
+                Rectangle backBounds = GetBackButtonBounds(graphicsDevice, boxWidth, boxHeight, 1.0f);
+
+                // Check if we hover over back and click
+                if (backBounds.Contains(mousePos))
+                {
+                    selectedIndex = backIndex; // highlight the back item
+                    if (currentMouseState.LeftButton == ButtonState.Pressed &&
+                        previousMouseState.LeftButton == ButtonState.Released)
                     {
                         previousKeyboardState = currentKeyboardState;
                         previousMouseState = currentMouseState;
-                        return selectedIndex; // Return the index of the clicked level
+                        return selectedIndex;  // The "Back" item
                     }
-                }
-            }
-
-            // Handle the "Back" button (last item)
-            int backIndex = menuItems.Count - 1;
-            bool backSelected = (backIndex == selectedIndex);
-            float backScale = backSelected ? 1.1f : 1.0f;
-            if (GetBackButtonBounds(graphicsDevice, boxWidth, boxHeight, backScale).Contains(mousePos))
-            {
-                selectedIndex = backIndex;
-                if (currentMouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
-                {
-                    previousKeyboardState = currentKeyboardState;
-                    previousMouseState = currentMouseState;
-                    return selectedIndex;
                 }
             }
 
             previousKeyboardState = currentKeyboardState;
             previousMouseState = currentMouseState;
-            return -1; // No selection this frame
+
+            // 8. Return -1 if no selection occurred
+            return -1;
         }
 
         private bool IsKeyPressed(KeyboardState current, KeyboardState previous, Keys key)

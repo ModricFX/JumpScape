@@ -30,8 +30,8 @@ namespace JumpScape.Classes
 
         // --- Monster Sound ---
         private SoundEffect _monsterSound;
-        private SoundEffectInstance _monsterSoundLoop; // Looped instance
-        private bool _soundStarted;                    // Ensures we only play once
+        private SoundEffectInstance _monsterSoundLoop;
+        private bool _soundStarted;                   
         
         private GameSettings settings;
 
@@ -70,10 +70,10 @@ namespace JumpScape.Classes
 
         public void Update(GameTime gameTime, Player player)
         {
-            // 1) Update monster movement & sprite
+            // Update monster movement & sprite
             UpdateMonsterMovement(player);
 
-            // 2) Check collision with player
+            // Check collision with player
             if (player.BoundingBox.Intersects(BoundingBox))
             {
                 bool isMonsterFacingPlayer = IsFacingPlayer(player.Position);
@@ -95,7 +95,7 @@ namespace JumpScape.Classes
                 }
             }
 
-            // 3) Manually set volume & panning based on distance from player
+            // 3D SOUND
             UpdateMonsterSoundVolume(player);
         }
 
@@ -158,18 +158,17 @@ namespace JumpScape.Classes
             // distance-based volume
             float distance = Vector2.Distance(_position, player.Position);
 
-            float minDistance = 20f;   // volume = 1.0 if below this
-            float maxDistance = 400f;  // volume = 0.0 if above this
+            float minDistance = 20f;  
+            float maxDistance = 400f;  
 
             float clampedDist = MathHelper.Clamp(distance, minDistance, maxDistance);
 
-            // Distance-based fade from 1.0 down to 0.0
+            // Distance-based fade 
             float distanceVolume = 1.0f - ((clampedDist - minDistance) / (maxDistance - minDistance));
 
-            // "local max" for the monster's own volume
-            float monsterLocalMax = 0.5f; // 50% base max volume
+            float monsterLocalMax = 0.5f;
 
-            // Combine with the global "Game Volume" from settings (0 - 100)
+            // "Game Volume" from settings (0 - 100)
             float gameVolumeFactor = (settings.Volume / 100f);
 
             // final volume = distance fade * monster local max * game volume factor
