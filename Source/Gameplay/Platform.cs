@@ -126,8 +126,8 @@ namespace JumpScape.Gameplay
             _breakSound?.Stop();
         }
 
-        /// <summary>Draws the platform by repeating the grass texture along its length.</summary>
-        public void Draw(SpriteBatch spriteBatch, Rectangle visibleArea)
+        /// <summary>Draws the platform by repeating the grass texture along its length, tinted with the area's color.</summary>
+        public void Draw(SpriteBatch spriteBatch, Rectangle visibleArea, Color tint)
         {
             foreach (Particle particle in _debris)
                 particle.Draw(spriteBatch);
@@ -141,7 +141,7 @@ namespace JumpScape.Gameplay
                 int tileWidth = Math.Min(texture.Width, Length - x);
                 var source = new Rectangle(0, 0, tileWidth, texture.Height);
                 var origin = new Vector2(tileWidth / 2f, texture.Height / 2f);
-                spriteBatch.Draw(texture, Position + new Vector2(x, 0) + origin, source, Color.White, _shakeAngle, origin, 1f, SpriteEffects.None, 0f);
+                spriteBatch.Draw(texture, Position + new Vector2(x, 0) + origin, source, tint, _shakeAngle, origin, 1f, SpriteEffects.None, 0f);
             }
         }
     }

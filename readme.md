@@ -8,7 +8,8 @@ glowing orb), and for platforms that crumble under your feet. Some doors are loc
 
 ## Features
 
-- Three levels, plus a simple text format for making your own ([Levels/README.md](Levels/README.md)).
+- Four levels, plus a simple text format for making your own ([Levels/README.md](Levels/README.md)).
+- Levels can have several areas joined by glowing portal doors. Level 4 hides its key in a dark red nether.
 - Frogs that patrol platforms, ghosts that chase you, crumbling platforms, and locked doors with keys.
 - Throw glowing orbs at enemies by clicking where you want them to go.
 - Power-ups: hearts that heal you, plus double jump and high jump orbs that last 15 seconds.
@@ -71,7 +72,9 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 
 - Reach the door at the end of the level and press **E** to open it, then **E** again to go through.
 - A locked door needs a key. Pick up the key, select its inventory slot with **1–3**, and press **E** next
-  to the door to unlock it. Press **Q** to drop the selected key again.
+  to the door to unlock it. Each locked door uses up one key. Press **Q** to drop the selected key again.
+- Glowing doors are portals to another part of the level. Open one with **E** and press **E** again to go
+  through. The portal on the other side brings you back.
 - Frogs take a whole heart if they walk into you and half a heart if you bump into them from behind.
   Ghosts take half a heart. After a hit you flash orange and can't be hurt for a moment.
 - Click to throw an orb towards the mouse. One orb defeats a frog or a ghost. Orbs stop when they hit a

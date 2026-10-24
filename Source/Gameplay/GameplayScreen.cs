@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JumpScape.Core;
 using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Gameplay
 {
@@ -14,14 +16,13 @@ namespace JumpScape.Gameplay
         LevelCompleted,
     }
 
-    /// <summary>One level being played: the world, the camera, and the pause and death menus.</summary>
+    /// <summary>One level being played: its areas, the camera, and the pause and death menus.</summary>
     public sealed class GameplayScreen
     {
-        public static readonly Color SkyColor = Color.CornflowerBlue;
-
         private const float FadeInSpeed = 0.005f;
         private const float FadeOutSpeed = 0.01f;
         private const float RetryFadeOutSpeed = 0.02f;
+        private const float PortalFadeSpeed = 0.06f;
         private const float BlackScreenTime = 0.5f;
         private const float CameraSmoothing = 0.1f;
         private const float MessageTime = 2f;
@@ -33,22 +34,21 @@ namespace JumpScape.Gameplay
             titleY: 0.1f, itemsY: 0.4f, dimAmount: 0.7f, fadeInTime: 0f);
         private readonly OverlayMenu _deathMenu = new OverlayMenu("DIED", Color.Red, new[] { "Retry", "Quit" },
             titleY: 0.3f, itemsY: 0.5f, dimAmount: 0.8f, fadeInTime: 0.6f);
+        private readonly List<Projectile> _projectiles = new List<Projectile>();
+        private readonly List<Particle> _effects = new List<Particle>();
 
+        private List<Area> _areas;
+        private Area _area;
         private Player _player;
-        private Door _door;
-        private List<KeyPickup> _keys;
-        private List<Platform> _platforms;
-        private List<Monster> _monsters;
-        private List<Ghost> _ghosts;
-        private List<PowerUp> _powerUps;
-        private List<Projectile> _projectiles;
-        private List<Particle> _effects;
         private string _message;
         private float _messageTimer;
         private float _cameraTop;
         private float _fade;
+        private float _fadeInSpeed;
         private float _blackScreenTimer;
         private bool _isRetrying;
+        private Door _portalDestination;
+        private Area _portalDestinationArea;
 
         public GameplayScreen(LevelData level)
         {
@@ -58,6 +58,9 @@ namespace JumpScape.Gameplay
 
         public int LevelNumber => _level.Number;
 
+        /// <summary>Background color of the area the player is in.</summary>
+        public Color SkyColor => _area.Sky;
+
         /// <summary>
         /// The top of the view when the camera isn't following the player. The ground stays at the bottom of
         /// the window, so a window taller than 16:9 shows extra sky above the level.
@@ -66,39 +69,20 @@ namespace JumpScape.Gameplay
 
         private void Restart()
         {
+            _areas = _level.Areas.Select(data => new Area(data)).ToList();
+            _area = _areas[_level.StartArea];
             _player = new Player(_level.PlayerSpawn);
-            _door = new Door(_level.DoorPosition, _level.IsDoorLocked);
-            _keys = new List<KeyPickup>();
-            _platforms = new List<Platform>();
-            _monsters = new List<Monster>();
-            _ghosts = new List<Ghost>();
-            _powerUps = new List<PowerUp>();
-            _projectiles = new List<Projectile>();
-            _effects = new List<Particle>();
+            _projectiles.Clear();
+            _effects.Clear();
             _messageTimer = 0f;
-
-            foreach (Vector2 keyPosition in _level.KeyPositions)
-                _keys.Add(new KeyPickup(keyPosition));
-
-            foreach (PlatformInfo info in _level.Platforms)
-            {
-                var platform = new Platform(info.Position, info.Length, info.IsCrumbling);
-                _platforms.Add(platform);
-                if (info.HasMonster)
-                    _monsters.Add(new Monster(platform.Bounds));
-            }
-
-            foreach (GhostInfo info in _level.Ghosts)
-                _ghosts.Add(new Ghost(info.Position, info.Radius));
-
-            foreach (PowerUpInfo info in _level.PowerUps)
-                _powerUps.Add(new PowerUp(info.Position, info.Type));
 
             _deathMenu.Close();
             _cameraTop = RestingCameraTop;
             _fade = 1f;
+            _fadeInSpeed = FadeInSpeed;
             _blackScreenTimer = 0f;
             _isRetrying = false;
+            _portalDestination = null;
         }
 
         public GameplayResult Update(GameTime gameTime)
@@ -111,6 +95,15 @@ namespace JumpScape.Gameplay
                 _fade = MathHelper.Min(_fade + RetryFadeOutSpeed, 1f);
                 if (_fade >= 1f)
                     Restart();
+                return GameplayResult.None;
+            }
+
+            if (_portalDestination != null)
+            {
+                // Fade to black, move the player through the portal, then fade back in.
+                _fade = MathHelper.Min(_fade + PortalFadeSpeed, 1f);
+                if (_fade >= 1f)
+                    ArriveThroughPortal();
                 return GameplayResult.None;
             }
 
@@ -156,9 +149,9 @@ namespace JumpScape.Gameplay
                     }
                 }
             }
-            else
+            else if (_portalDestination == null)
             {
-                _fade = MathHelper.Max(_fade - FadeInSpeed, 0f);
+                _fade = MathHelper.Max(_fade - _fadeInSpeed, 0f);
             }
 
             return GameplayResult.None;
@@ -189,30 +182,104 @@ namespace JumpScape.Gameplay
                 _projectiles.Add(_player.Throw(mouseInWorld));
             }
 
-            _player.Update(deltaTime, _keys, _door);
-            foreach (Monster monster in _monsters)
+            if (Input.WasPressed(Keys.E) && !_player.IsDead && !_player.ReachedExit)
+            {
+                Door door = _area.Doors.FirstOrDefault(d => _player.Bounds.Intersects(d.Bounds));
+                if (door != null)
+                    UseDoor(door);
+            }
+
+            _player.Update(deltaTime, _area.Keys);
+            foreach (Monster monster in _area.Monsters)
                 monster.Update(_player);
-            foreach (Ghost ghost in _ghosts)
+            foreach (Ghost ghost in _area.Ghosts)
                 ghost.Update(deltaTime, _player);
-            foreach (KeyPickup key in _keys)
+            foreach (KeyPickup key in _area.Keys)
                 key.Update(deltaTime);
+            foreach (Door door in _area.Doors)
+                door.Update(deltaTime);
 
             _player.ApplyGravity();
-            _player.ResolveCollisions(_platforms);
-            foreach (Platform platform in _platforms)
+            _player.ResolveCollisions(_area.Platforms);
+            foreach (Platform platform in _area.Platforms)
                 platform.Update(gameTime, _player);
 
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
             UpdateEffects(deltaTime);
-            UpdateCamera();
+            _cameraTop = MathHelper.Lerp(_cameraTop, CameraTarget(), CameraSmoothing);
+        }
+
+        /// <summary>
+        /// E at a door: unlock it with the selected key, open it, or go through it. Each locked door
+        /// uses up one key.
+        /// </summary>
+        private void UseDoor(Door door)
+        {
+            switch (door.State)
+            {
+                case DoorState.Locked when _player.Inventory.SelectedItem == ItemType.Key:
+                    _player.Inventory.RemoveSelected();
+                    door.Unlock();
+                    break;
+
+                case DoorState.Closed:
+                    door.Open();
+                    break;
+
+                case DoorState.Open:
+                    if (FindPortal(door.Target, out Door destination, out Area destinationArea))
+                    {
+                        _portalDestination = destination;
+                        _portalDestinationArea = destinationArea;
+                        StopSounds();
+                    }
+                    else
+                    {
+                        // Exit doors (and portals whose target is missing) finish the level.
+                        _player.ReachExit();
+                    }
+                    break;
+            }
+        }
+
+        private bool FindPortal(string name, out Door portal, out Area area)
+        {
+            portal = null;
+            area = null;
+            if (name == null)
+                return false;
+
+            foreach (Area candidate in _areas)
+            {
+                portal = candidate.Doors.FirstOrDefault(door => string.Equals(door.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (portal != null)
+                {
+                    area = candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void ArriveThroughPortal()
+        {
+            _area = _portalDestinationArea;
+            _portalDestination.OpenFromOtherSide();
+            _player.MoveTo(_portalDestination.ArrivalPosition(_player.Bounds));
+            _portalDestination = null;
+
+            _projectiles.Clear();
+            _effects.Clear();
+            _cameraTop = CameraTarget();
+            _fadeInSpeed = PortalFadeSpeed;
         }
 
         private void UpdatePowerUps(float deltaTime)
         {
             _messageTimer = Math.Max(0f, _messageTimer - deltaTime);
 
-            foreach (PowerUp powerUp in _powerUps)
+            foreach (PowerUp powerUp in _area.PowerUps)
             {
                 powerUp.Update(deltaTime);
                 if (powerUp.IsCollected || !_player.Bounds.Intersects(powerUp.Bounds) || !_player.TryCollect(powerUp.Type))
@@ -236,7 +303,7 @@ namespace JumpScape.Gameplay
             {
                 projectile.Update(deltaTime);
 
-                foreach (Monster monster in _monsters)
+                foreach (Monster monster in _area.Monsters)
                 {
                     if (!projectile.IsFinished && projectile.Bounds.Intersects(monster.Bounds))
                     {
@@ -246,7 +313,7 @@ namespace JumpScape.Gameplay
                     }
                 }
 
-                foreach (Ghost ghost in _ghosts)
+                foreach (Ghost ghost in _area.Ghosts)
                 {
                     if (!projectile.IsFinished && projectile.Bounds.Intersects(ghost.Bounds))
                     {
@@ -256,7 +323,7 @@ namespace JumpScape.Gameplay
                     }
                 }
 
-                foreach (Platform platform in _platforms)
+                foreach (Platform platform in _area.Platforms)
                 {
                     if (!projectile.IsFinished && platform.IsSolid && platform.Bounds.Contains(projectile.Position))
                     {
@@ -267,8 +334,8 @@ namespace JumpScape.Gameplay
             }
 
             _projectiles.RemoveAll(projectile => projectile.IsFinished);
-            _monsters.RemoveAll(monster => monster.IsDefeated);
-            _ghosts.RemoveAll(ghost => ghost.IsDefeated);
+            _area.Monsters.RemoveAll(monster => monster.IsDefeated);
+            _area.Ghosts.RemoveAll(ghost => ghost.IsDefeated);
         }
 
         private void OnEnemyDefeated(Vector2 position, Color color)
@@ -297,12 +364,11 @@ namespace JumpScape.Gameplay
         }
 
         /// <summary>The camera only scrolls vertically, following the player once they climb near the top of the view.</summary>
-        private void UpdateCamera()
+        private float CameraTarget()
         {
             float restingTop = RestingCameraTop;
             float followThreshold = restingTop + VirtualScreen.ViewHeight * 0.05f;
-            float targetTop = _player.Position.Y < followThreshold ? _player.Position.Y - VirtualScreen.ViewHeight * 0.3f : restingTop;
-            _cameraTop = MathHelper.Lerp(_cameraTop, targetTop, CameraSmoothing);
+            return _player.Position.Y < followThreshold ? _player.Position.Y - VirtualScreen.ViewHeight * 0.3f : restingTop;
         }
 
         /// <summary>Briefly shows what a collected power-up does, at the top of the screen.</summary>
@@ -322,10 +388,8 @@ namespace JumpScape.Gameplay
         public void StopSounds()
         {
             _player.StopSounds();
-            foreach (Monster monster in _monsters)
-                monster.StopSounds();
-            foreach (Platform platform in _platforms)
-                platform.StopSounds();
+            foreach (Area area in _areas)
+                area.StopSounds();
         }
 
         public void Draw(SpriteBatch spriteBatch)
@@ -334,18 +398,20 @@ namespace JumpScape.Gameplay
             var visibleArea = new Rectangle(0, (int)_cameraTop, (int)VirtualScreen.ViewWidth + 1, (int)VirtualScreen.ViewHeight + 1);
 
             spriteBatch.Begin(transformMatrix: camera);
-            foreach (Platform platform in _platforms)
-                platform.Draw(spriteBatch, visibleArea);
-            foreach (Monster monster in _monsters)
+            foreach (Platform platform in _area.Platforms)
+                platform.Draw(spriteBatch, visibleArea, _area.Tint);
+            foreach (Monster monster in _area.Monsters)
                 monster.Draw(spriteBatch);
-            foreach (Ghost ghost in _ghosts)
+            foreach (Ghost ghost in _area.Ghosts)
                 ghost.Draw(spriteBatch);
-            foreach (KeyPickup key in _keys)
+            foreach (KeyPickup key in _area.Keys)
                 key.Draw(spriteBatch);
-            foreach (PowerUp powerUp in _powerUps)
+            foreach (PowerUp powerUp in _area.PowerUps)
                 powerUp.Draw(spriteBatch);
-            _door.Draw(spriteBatch);
-            _door.DrawPrompt(spriteBatch, _player);
+            foreach (Door door in _area.Doors)
+                door.Draw(spriteBatch);
+            foreach (Door door in _area.Doors)
+                door.DrawPrompt(spriteBatch, _player);
             _player.Draw(spriteBatch);
             foreach (Projectile projectile in _projectiles)
                 projectile.Draw(spriteBatch);

@@ -78,8 +78,8 @@ namespace JumpScape.Gameplay
 
         public Vector2 Center => Position + new Vector2(Width / 2f, Height / 2f);
 
-        /// <summary>Handles input, picking up and dropping keys, using the door and the hit/death timers.</summary>
-        public void Update(float deltaTime, List<KeyPickup> keys, Door door)
+        /// <summary>Handles input, picking up and dropping keys, and the power-up, hit and death timers.</summary>
+        public void Update(float deltaTime, List<KeyPickup> keys)
         {
             if (_invincibilityTimer > 0f)
                 _invincibilityTimer -= deltaTime;
@@ -113,9 +113,6 @@ namespace JumpScape.Gameplay
 
             if (Input.WasPressed(Keys.Q) && IsOnGround && Inventory.SelectedItem == ItemType.Key)
                 DropKey(keys);
-
-            if (Input.WasPressed(Keys.E) && Bounds.Intersects(door.Bounds))
-                UseDoor(door);
         }
 
         /// <summary>Puts the selected key back into the level, just in front of the player.</summary>
@@ -227,22 +224,20 @@ namespace JumpScape.Gameplay
                 Inventory.Select(2);
         }
 
-        private void UseDoor(Door door)
+        /// <summary>Called when the player goes through the level's exit door.</summary>
+        public void ReachExit()
         {
-            switch (door.State)
-            {
-                case DoorState.Locked when Inventory.SelectedItem == ItemType.Key:
-                    Inventory.RemoveSelected();
-                    door.Unlock();
-                    break;
-                case DoorState.Closed:
-                    door.Open();
-                    break;
-                case DoorState.Open:
-                    ReachedExit = true;
-                    _walkingSound.Stop();
-                    break;
-            }
+            ReachedExit = true;
+            _walkingSound.Stop();
+        }
+
+        /// <summary>Puts the player somewhere else, standing still (used when going through a portal).</summary>
+        public void MoveTo(Vector2 position)
+        {
+            Position = position;
+            _velocity = Vector2.Zero;
+            _knockbackTimer = 0f;
+            _walkingSound.Stop();
         }
 
         public void ApplyGravity()

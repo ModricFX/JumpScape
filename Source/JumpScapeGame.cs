@@ -254,7 +254,7 @@ namespace JumpScape
 
             if (_screen == Screen.Playing)
             {
-                GraphicsDevice.Clear(GameplayScreen.SkyColor);
+                GraphicsDevice.Clear(_gameplay.SkyColor);
                 _gameplay.Draw(_spriteBatch);
             }
             else

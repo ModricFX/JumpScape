@@ -1,12 +1,5 @@
 # TODO
 
-## Later
-
-- [ ] Support more than one door per level, then test:
-  - two doors and one key: only one door gets unlocked
-  - two doors and two keys: each unlock uses one key, and both doors can be opened
-  - Maybe one level with 1 door and user enters like a nether region on the other side of the door to get a key for a main door back in the overworld region? Complicated but good to have
-
 ## Ideas
 
 - [ ] An NPC the player can talk to. A tutorial level could use it to explain the controls.
@@ -15,6 +8,9 @@
 
 ## Done
 
+- [x] More than one door per level. Each locked door uses one key (tested with two doors and one key,
+      and with two doors and two keys).
+- [x] Areas and portals: Level 4 has a nether region behind a portal door, with the key for the main exit.
 - [x] Weapons: click to throw a glowing orb towards the mouse. One orb defeats a frog or a ghost.
 - [x] Power-ups: heart (+1 heart), double jump and high jump (15 s each), placed in all three levels.
 - [x] Fade out when the player clicks Retry on the death screen.
