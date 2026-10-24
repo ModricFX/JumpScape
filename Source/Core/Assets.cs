@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Media;
 
 namespace JumpScape.Core
 {
@@ -12,13 +13,20 @@ namespace JumpScape.Core
     /// </summary>
     public static class Assets
     {
+        /// <summary>Arial 32: titles, buttons and menus.</summary>
         public static SpriteFont Font { get; private set; }
+
+        /// <summary>Arial 20: hints, labels and other small text, so it stays crisp.</summary>
+        public static SpriteFont SmallFont { get; private set; }
 
         /// <summary>A 1x1 white texture for drawing solid rectangles in any color.</summary>
         public static Texture2D Pixel { get; private set; }
 
         /// <summary>A soft white circle that fades out towards the edge. Tint it to get a colored glow.</summary>
         public static Texture2D Glow { get; private set; }
+
+        /// <summary>A solid white circle with smooth edges, for slider knobs and similar.</summary>
+        public static Texture2D Circle { get; private set; }
 
         public static Texture2D PlayerLeft { get; private set; }
         public static Texture2D PlayerRight { get; private set; }
@@ -42,11 +50,17 @@ namespace JumpScape.Core
 
         public static Texture2D Logo { get; private set; }
         public static Texture2D MenuBackground { get; private set; }
+
+        /// <summary>A very soft, blurred copy of <see cref="MenuBackground"/>, used behind the levels.</summary>
+        public static Texture2D BlurredBackground { get; private set; }
         public static Texture2D MenuButton { get; private set; }
         public static Texture2D WoodPanel { get; private set; }
         public static Texture2D LevelBox { get; private set; }
+        public static Texture2D Star { get; private set; }
 
-        public static SoundEffect ThemeSong { get; private set; }
+        /// <summary>Streamed from disk by <see cref="MediaPlayer"/> instead of being held in memory.</summary>
+        public static Song ThemeSong { get; private set; }
+
         public static SoundEffect PlayerWalking { get; private set; }
         public static SoundEffect PlayerJump { get; private set; }
         public static SoundEffect PlayerHit { get; private set; }
@@ -58,10 +72,12 @@ namespace JumpScape.Core
         public static void Load(ContentManager content, GraphicsDevice graphicsDevice)
         {
             Font = content.Load<SpriteFont>("Fonts/BigFont");
+            SmallFont = content.Load<SpriteFont>("Fonts/SmallFont");
 
             Pixel = new Texture2D(graphicsDevice, 1, 1);
             Pixel.SetData(new[] { Color.White });
-            Glow = CreateGlow(graphicsDevice, 64);
+            Glow = CreateCircle(graphicsDevice, 64, distance => MathF.Pow(1f - distance, 1.5f));
+            Circle = CreateCircle(graphicsDevice, 64, distance => MathHelper.Clamp((1f - distance) * 32f, 0f, 1f));
 
             PlayerLeft = content.Load<Texture2D>("Graphics/Player/player_left");
             PlayerRight = content.Load<Texture2D>("Graphics/Player/player_right");
@@ -90,11 +106,13 @@ namespace JumpScape.Core
 
             Logo = content.Load<Texture2D>("Graphics/GameLogo/JumpScapeLogo");
             MenuBackground = content.Load<Texture2D>("Graphics/Menu/background");
+            BlurredBackground = CreateBlurred(graphicsDevice, MenuBackground, halvings: 3);
             MenuButton = content.Load<Texture2D>("Graphics/Menu/buttonBackground");
             WoodPanel = content.Load<Texture2D>("Graphics/Menu/woodBackground");
             LevelBox = content.Load<Texture2D>("Graphics/Menu/levelBox");
+            Star = content.Load<Texture2D>("Graphics/Menu/star");
 
-            ThemeSong = content.Load<SoundEffect>("Sounds/ThemeSong");
+            ThemeSong = content.Load<Song>("Sounds/ThemeSong");
             PlayerWalking = content.Load<SoundEffect>("Sounds/PlayerWalking");
             PlayerJump = content.Load<SoundEffect>("Sounds/PlayerJump");
             PlayerHit = content.Load<SoundEffect>("Sounds/PlayerHit");
@@ -104,7 +122,37 @@ namespace JumpScape.Core
             DoorOpen = content.Load<SoundEffect>("Sounds/DoorOpen");
         }
 
-        private static Texture2D CreateGlow(GraphicsDevice graphicsDevice, int size)
+        /// <summary>
+        /// Shrinks a picture to half its size a few times. Drawn stretched back to full size, the small result
+        /// looks blurred. This is done once at startup, so it costs nothing while playing.
+        /// </summary>
+        private static Texture2D CreateBlurred(GraphicsDevice graphicsDevice, Texture2D source, int halvings)
+        {
+            Texture2D current = source;
+            using (var spriteBatch = new SpriteBatch(graphicsDevice))
+            {
+                for (int i = 0; i < halvings; i++)
+                {
+                    var target = new RenderTarget2D(graphicsDevice, Math.Max(1, current.Width / 2), Math.Max(1, current.Height / 2),
+                        false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+                    graphicsDevice.SetRenderTarget(target);
+                    graphicsDevice.Clear(Color.Transparent);
+                    spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
+                    spriteBatch.Draw(current, target.Bounds, Color.White);
+                    spriteBatch.End();
+
+                    if (current != source)
+                        current.Dispose();
+                    current = target;
+                }
+            }
+
+            graphicsDevice.SetRenderTarget(null);
+            return current;
+        }
+
+        /// <summary>Makes a white circle texture. <paramref name="opacity"/> maps the distance from the center (0-1) to opacity.</summary>
+        private static Texture2D CreateCircle(GraphicsDevice graphicsDevice, int size, Func<float, float> opacity)
         {
             var pixels = new Color[size * size];
             float radius = size / 2f;
@@ -113,8 +161,7 @@ namespace JumpScape.Core
                 for (int x = 0; x < size; x++)
                 {
                     float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius)) / radius;
-                    float brightness = MathHelper.Clamp(1f - distance, 0f, 1f);
-                    pixels[y * size + x] = Color.White * MathF.Pow(brightness, 1.5f);
+                    pixels[y * size + x] = distance >= 1f ? Color.Transparent : Color.White * MathHelper.Clamp(opacity(distance), 0f, 1f);
                 }
             }
 

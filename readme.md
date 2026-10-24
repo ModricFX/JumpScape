@@ -16,7 +16,12 @@ glowing orb), and for platforms that crumble under your feet. Some doors are loc
 - Three hearts of health, knockback, and a short moment of invincibility after every hit.
 - Sounds that get quieter with distance and come from the left or right.
 - Starts in fullscreen. Settings for game volume, music volume, mute, a 30 or 60 FPS limit, and fullscreen.
-- Your progress and settings are saved. **Play** continues with the next level you haven't finished.
+- Your progress and settings are saved. **Play** continues with the next level you haven't finished, and
+  finished levels get a star in the level picker.
+- Wooden menus throughout: pause, game over, and a level complete screen with your time and a
+  **Next level** button.
+- A soft, blurred forest behind each level that scrolls slowly as you climb, plus dust puffs, a little
+  bounce when walking, and hints like **[E] Open** next to doors.
 - Levels are designed for 1920×1080 and scaled to fit any window. A window of a different shape shows a bit
   more of the world instead of black bars.
 
@@ -70,7 +75,8 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 
 ## How to play
 
-- Reach the door at the end of the level and press **E** to open it, then **E** again to go through.
+- Reach the door at the end of the level and press **E** to open it, then **E** again to go through. The
+  level complete screen shows your time and lets you go to the next level, play again or go back to the menu.
 - A locked door needs a key. Pick up the key, select its inventory slot with **1–3**, and press **E** next
   to the door to unlock it. Each locked door uses up one key. Press **Q** to drop the selected key again.
 - Glowing doors are portals to another part of the level. Open one with **E** and press **E** again to go
@@ -105,10 +111,11 @@ Delete them to reset the game.
 ```text
 Program.cs                Entry point
 Source/
-  JumpScapeGame.cs        Window, screen switching and drawing
+  JumpScapeGame.cs        Window, music, switching between screens, and drawing
   Core/                   Assets, input, settings, save files and screen scaling
-  Gameplay/               The player, platforms, enemies, door, key, inventory and level loading
-  Menus/                  Main menu, level picker, settings, and the pause and death screens
+  Gameplay/               The level being played: player, platforms, enemies, doors, items, effects, backdrop
+  Menus/                  Main menu, level picker, settings, shared wooden UI pieces, and the panel menus
+                          used for pause, game over and level complete
 Content/
   Content.mgcb            List of every image, sound and font the game uses
   Fonts/ Graphics/ Sounds/

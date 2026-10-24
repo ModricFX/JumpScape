@@ -18,6 +18,7 @@ namespace JumpScape.Gameplay
         private const float SoundRange = 500f;
         private const float SoundVolume = 0.8f;
         private const int DebrisCount = 12;
+        private static readonly Vector2 ShadowOffset = new Vector2(8, 10);
 
         private static readonly Random Random = new Random();
 
@@ -132,16 +133,26 @@ namespace JumpScape.Gameplay
             foreach (Particle particle in _debris)
                 particle.Draw(spriteBatch);
 
-            if (_isBroken || !Bounds.Intersects(visibleArea))
-                return;
+            if (!_isBroken && Bounds.Intersects(visibleArea))
+                DrawTiles(spriteBatch, Vector2.Zero, tint);
+        }
 
+        /// <summary>A see-through dark copy of the platform, a little lower and to the right. Draw all shadows before any platform.</summary>
+        public void DrawShadow(SpriteBatch spriteBatch, Rectangle visibleArea)
+        {
+            if (!_isBroken && Bounds.Intersects(visibleArea))
+                DrawTiles(spriteBatch, ShadowOffset, Color.Black * 0.25f);
+        }
+
+        private void DrawTiles(SpriteBatch spriteBatch, Vector2 offset, Color color)
+        {
             Texture2D texture = Assets.Grass;
             for (int x = 0; x < Length; x += texture.Width)
             {
                 int tileWidth = Math.Min(texture.Width, Length - x);
                 var source = new Rectangle(0, 0, tileWidth, texture.Height);
                 var origin = new Vector2(tileWidth / 2f, texture.Height / 2f);
-                spriteBatch.Draw(texture, Position + new Vector2(x, 0) + origin, source, tint, _shakeAngle, origin, 1f, SpriteEffects.None, 0f);
+                spriteBatch.Draw(texture, Position + offset + new Vector2(x, 0) + origin, source, color, _shakeAngle, origin, 1f, SpriteEffects.None, 0f);
             }
         }
     }

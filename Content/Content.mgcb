@@ -20,6 +20,13 @@
 /processorParam:TextureFormat=Color
 /build:Fonts/BigFont.spritefont
 
+#begin Fonts/SmallFont.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Color
+/build:Fonts/SmallFont.spritefont
+
 #begin Graphics/grass.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -236,6 +243,18 @@
 /processorParam:TextureFormat=Color
 /build:Graphics/Menu/levelBox.png
 
+#begin Graphics/Menu/star.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Graphics/Menu/star.png
+
 #begin Graphics/Monsters/frog_monster_left.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -376,7 +395,7 @@
 
 #begin Sounds/ThemeSong.wav
 /importer:WavImporter
-/processor:SoundEffectProcessor
+/processor:SongProcessor
 /processorParam:Quality=Best
 /build:Sounds/ThemeSong.wav
 

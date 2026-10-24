@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using JumpScape.Core;
 using JumpScape.Menus;
@@ -12,30 +13,32 @@ namespace JumpScape.Gameplay
     public enum GameplayResult
     {
         None,
-        QuitToMenu,
+
+        /// <summary>The player just finished the level. Reported once, when the level complete screen opens.</summary>
         LevelCompleted,
+
+        NextLevel,
+        QuitToMenu,
     }
 
-    /// <summary>One level being played: its areas, the camera, and the pause and death menus.</summary>
+    /// <summary>One level being played: its areas, the camera, effects, and the pause, death and level complete screens.</summary>
     public sealed class GameplayScreen
     {
-        private const float FadeInSpeed = 0.005f;
-        private const float FadeOutSpeed = 0.01f;
-        private const float RetryFadeOutSpeed = 0.02f;
+        private const float FadeInSpeed = 0.02f;
+        private const float RetryFadeOutSpeed = 0.04f;
         private const float PortalFadeSpeed = 0.06f;
-        private const float BlackScreenTime = 0.5f;
+        private const float CompleteScreenDelay = 0.6f;
         private const float CameraSmoothing = 0.1f;
-        private const float MessageTime = 2f;
-
-        private static readonly Random Random = new Random();
+        private const float MessageTime = 2.5f;
 
         private readonly LevelData _level;
-        private readonly OverlayMenu _pauseMenu = new OverlayMenu("Paused", Color.White, new[] { "Resume", "Quit" },
-            titleY: 0.1f, itemsY: 0.4f, dimAmount: 0.7f, fadeInTime: 0f);
-        private readonly OverlayMenu _deathMenu = new OverlayMenu("DIED", Color.Red, new[] { "Retry", "Quit" },
-            titleY: 0.3f, itemsY: 0.5f, dimAmount: 0.8f, fadeInTime: 0.6f);
+        private readonly bool _hasNextLevel;
+        private readonly PanelMenu _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Main menu" });
+        private readonly PanelMenu _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", "Main menu" }, fadeInTime: 0.5f);
+        private readonly PanelMenu _completeMenu;
+        private readonly Banner _banner = new Banner();
+        private readonly Effects _effects = new Effects();
         private readonly List<Projectile> _projectiles = new List<Projectile>();
-        private readonly List<Particle> _effects = new List<Particle>();
 
         private List<Area> _areas;
         private Area _area;
@@ -44,15 +47,19 @@ namespace JumpScape.Gameplay
         private float _messageTimer;
         private float _cameraTop;
         private float _fade;
-        private float _fadeInSpeed;
-        private float _blackScreenTimer;
+        private float _playTime;
+        private float _exitTimer;
         private bool _isRetrying;
         private Door _portalDestination;
         private Area _portalDestinationArea;
 
-        public GameplayScreen(LevelData level)
+        public GameplayScreen(LevelData level, bool hasNextLevel)
         {
             _level = level;
+            _hasNextLevel = hasNextLevel;
+            _completeMenu = new PanelMenu("Level complete!", UiDrawing.Highlight,
+                hasNextLevel ? new[] { "Next level", "Play again", "Main menu" } : new[] { "Play again", "Main menu" },
+                fadeInTime: 0.4f);
             Restart();
         }
 
@@ -75,12 +82,14 @@ namespace JumpScape.Gameplay
             _projectiles.Clear();
             _effects.Clear();
             _messageTimer = 0f;
+            _banner.Show("Level " + _level.Number.ToString(CultureInfo.InvariantCulture));
 
             _deathMenu.Close();
+            _completeMenu.Close();
             _cameraTop = RestingCameraTop;
             _fade = 1f;
-            _fadeInSpeed = FadeInSpeed;
-            _blackScreenTimer = 0f;
+            _playTime = 0f;
+            _exitTimer = 0f;
             _isRetrying = false;
             _portalDestination = null;
         }
@@ -107,10 +116,16 @@ namespace JumpScape.Gameplay
                 return GameplayResult.None;
             }
 
+            _fade = MathHelper.Max(_fade - FadeInSpeed, 0f);
+            _banner.Update(deltaTime);
+
+            if (_player.ReachedExit)
+                return UpdateLevelComplete(deltaTime);
+
             if (_pauseMenu.IsOpen)
                 return UpdatePauseMenu(deltaTime);
 
-            if (Input.Back && !_player.IsDead && !_player.ReachedExit)
+            if (Input.Back && !_player.IsDead)
             {
                 StopSounds();
                 _pauseMenu.Open();
@@ -119,41 +134,22 @@ namespace JumpScape.Gameplay
 
             UpdateWorld(gameTime);
 
-            if (_player.IsDead)
-            {
-                if (!_deathMenu.IsOpen)
-                    _deathMenu.Open();
+            if (!_player.IsDead)
+                return GameplayResult.None;
 
-                switch (_deathMenu.Update(deltaTime))
-                {
-                    case 0:
-                        StopSounds();
-                        _isRetrying = true;
-                        break;
-                    case 1:
-                        StopSounds();
-                        return GameplayResult.QuitToMenu;
-                }
-            }
+            if (!_deathMenu.IsOpen)
+                _deathMenu.Open();
 
-            if (_player.ReachedExit)
+            switch (_deathMenu.Update(deltaTime))
             {
-                _fade = MathHelper.Min(_fade + FadeOutSpeed, 1f);
-                if (_fade >= 1f)
-                {
-                    _blackScreenTimer += deltaTime;
-                    if (_blackScreenTimer >= BlackScreenTime)
-                    {
-                        StopSounds();
-                        return GameplayResult.LevelCompleted;
-                    }
-                }
+                case 0:
+                    StopSounds();
+                    _isRetrying = true;
+                    break;
+                case 1:
+                    StopSounds();
+                    return GameplayResult.QuitToMenu;
             }
-            else if (_portalDestination == null)
-            {
-                _fade = MathHelper.Max(_fade - _fadeInSpeed, 0f);
-            }
-
             return GameplayResult.None;
         }
 
@@ -161,20 +157,55 @@ namespace JumpScape.Gameplay
         {
             int choice = Input.Back ? 0 : _pauseMenu.Update(deltaTime);
             if (choice == 0)
-            {
                 _pauseMenu.Close();
-            }
             else if (choice == 1)
-            {
-                StopSounds();
                 return GameplayResult.QuitToMenu;
+            return GameplayResult.None;
+        }
+
+        /// <summary>After going through the exit the world stops, and a moment later the level complete screen opens.</summary>
+        private GameplayResult UpdateLevelComplete(float deltaTime)
+        {
+            if (!_completeMenu.IsOpen)
+            {
+                _exitTimer += deltaTime;
+                _effects.Update(deltaTime);
+                if (_exitTimer < CompleteScreenDelay)
+                    return GameplayResult.None;
+
+                StopSounds();
+                _completeMenu.Open("Time: " + FormatTime(_playTime));
+                return GameplayResult.LevelCompleted;
+            }
+
+            int choice = _completeMenu.Update(deltaTime);
+            if (!_hasNextLevel && choice >= 0)
+                choice++; // There is no "Next level" button.
+
+            switch (choice)
+            {
+                case 0:
+                    return GameplayResult.NextLevel;
+                case 1:
+                    _isRetrying = true;
+                    break;
+                case 2:
+                    return GameplayResult.QuitToMenu;
             }
             return GameplayResult.None;
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            var time = TimeSpan.FromSeconds(seconds);
+            return time.ToString(time.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture);
         }
 
         private void UpdateWorld(GameTime gameTime)
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (!_player.IsDead)
+                _playTime += deltaTime;
 
             if (Input.WasClicked && _player.CanThrow)
             {
@@ -182,7 +213,7 @@ namespace JumpScape.Gameplay
                 _projectiles.Add(_player.Throw(mouseInWorld));
             }
 
-            if (Input.WasPressed(Keys.E) && !_player.IsDead && !_player.ReachedExit)
+            if (Input.WasPressed(Keys.E) && !_player.IsDead)
             {
                 Door door = _area.Doors.FirstOrDefault(d => _player.Bounds.Intersects(d.Bounds));
                 if (door != null)
@@ -204,9 +235,14 @@ namespace JumpScape.Gameplay
             foreach (Platform platform in _area.Platforms)
                 platform.Update(gameTime, _player);
 
+            if (_player.JustJumped)
+                _effects.Dust(_player.Feet, 6);
+            if (_player.JustLanded)
+                _effects.Dust(_player.Feet, 10);
+
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
-            UpdateEffects(deltaTime);
+            _effects.Update(deltaTime);
             _cameraTop = MathHelper.Lerp(_cameraTop, CameraTarget(), CameraSmoothing);
         }
 
@@ -221,6 +257,7 @@ namespace JumpScape.Gameplay
                 case DoorState.Locked when _player.Inventory.SelectedItem == ItemType.Key:
                     _player.Inventory.RemoveSelected();
                     door.Unlock();
+                    _effects.Burst(door.Bounds.Center.ToVector2(), Color.Gold, 10);
                     break;
 
                 case DoorState.Closed:
@@ -238,6 +275,7 @@ namespace JumpScape.Gameplay
                     {
                         // Exit doors (and portals whose target is missing) finish the level.
                         _player.ReachExit();
+                        _effects.Burst(door.Bounds.Center.ToVector2(), UiDrawing.Highlight, 20);
                     }
                     break;
             }
@@ -272,7 +310,10 @@ namespace JumpScape.Gameplay
             _projectiles.Clear();
             _effects.Clear();
             _cameraTop = CameraTarget();
-            _fadeInSpeed = PortalFadeSpeed;
+            _fade = 1f;
+
+            if (!string.Equals(_area.Name, "main", StringComparison.OrdinalIgnoreCase))
+                _banner.Show(char.ToUpperInvariant(_area.Name[0]) + _area.Name.Substring(1), duration: 1.8f);
         }
 
         private void UpdatePowerUps(float deltaTime)
@@ -286,12 +327,12 @@ namespace JumpScape.Gameplay
                     continue;
 
                 powerUp.Collect();
-                Burst(powerUp.Bounds.Center.ToVector2(), PowerUp.GlowColorFor(powerUp.Type), 12);
+                _effects.Burst(powerUp.Bounds.Center.ToVector2(), PowerUp.GlowColorFor(powerUp.Type), 12);
                 _message = powerUp.Type switch
                 {
                     PowerUpType.Health => "+1 heart",
                     PowerUpType.DoubleJump => "Double jump! Press jump again in the air",
-                    _ => "High jump!",
+                    _ => "High jump! You jump much higher for a while",
                 };
                 _messageTimer = MessageTime;
             }
@@ -328,7 +369,7 @@ namespace JumpScape.Gameplay
                     if (!projectile.IsFinished && platform.IsSolid && platform.Bounds.Contains(projectile.Position))
                     {
                         projectile.Finish();
-                        Burst(projectile.Position, Color.Gold, 6);
+                        _effects.Burst(projectile.Position, Color.Gold, 6);
                     }
                 }
             }
@@ -340,27 +381,9 @@ namespace JumpScape.Gameplay
 
         private void OnEnemyDefeated(Vector2 position, Color color)
         {
-            Burst(position, color, 16);
+            _effects.Burst(position, color, 16);
             float pan = MathHelper.Clamp((position.X - _player.Center.X) / 500f, -1f, 1f);
             Assets.PlayerHit.Play(0.8f * GameSettings.Current.SoundVolume, 0.5f, pan);
-        }
-
-        /// <summary>A small explosion of colored squares.</summary>
-        private void Burst(Vector2 position, Color color, int count)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                var velocity = new Vector2((float)Random.NextDouble() * 300f - 150f, -60f - (float)Random.NextDouble() * 180f);
-                float lifetime = 0.4f + (float)Random.NextDouble() * 0.4f;
-                _effects.Add(new Particle(position, velocity, lifetime, color, size: 6f));
-            }
-        }
-
-        private void UpdateEffects(float deltaTime)
-        {
-            foreach (Particle particle in _effects)
-                particle.Update(deltaTime);
-            _effects.RemoveAll(particle => particle.IsDead);
         }
 
         /// <summary>The camera only scrolls vertically, following the player once they climb near the top of the view.</summary>
@@ -369,20 +392,6 @@ namespace JumpScape.Gameplay
             float restingTop = RestingCameraTop;
             float followThreshold = restingTop + VirtualScreen.ViewHeight * 0.05f;
             return _player.Position.Y < followThreshold ? _player.Position.Y - VirtualScreen.ViewHeight * 0.3f : restingTop;
-        }
-
-        /// <summary>Briefly shows what a collected power-up does, at the top of the screen.</summary>
-        private void DrawMessage(SpriteBatch spriteBatch)
-        {
-            if (_messageTimer <= 0f)
-                return;
-
-            const float scale = 0.8f;
-            float alpha = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
-            Vector2 size = Assets.Font.MeasureString(_message) * scale;
-            var position = new Vector2((VirtualScreen.ViewWidth - size.X) / 2f, 30f);
-            spriteBatch.DrawString(Assets.Font, _message, position + new Vector2(2, 2), Color.Black * (0.5f * alpha), 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(Assets.Font, _message, position, Color.White * alpha, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
         public void StopSounds()
@@ -394,41 +403,53 @@ namespace JumpScape.Gameplay
 
         public void Draw(SpriteBatch spriteBatch)
         {
+            // The forest backdrop scrolls a little as the camera climbs.
+            spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
+            Backdrop.Draw(spriteBatch, _area.Sky, RestingCameraTop - _cameraTop);
+            spriteBatch.End();
+
             Matrix camera = Matrix.CreateTranslation(0f, -_cameraTop, 0f) * VirtualScreen.Transform;
             var visibleArea = new Rectangle(0, (int)_cameraTop, (int)VirtualScreen.ViewWidth + 1, (int)VirtualScreen.ViewHeight + 1);
 
             spriteBatch.Begin(transformMatrix: camera);
             foreach (Platform platform in _area.Platforms)
+                platform.DrawShadow(spriteBatch, visibleArea);
+            foreach (Platform platform in _area.Platforms)
                 platform.Draw(spriteBatch, visibleArea, _area.Tint);
+            foreach (Door door in _area.Doors)
+                door.Draw(spriteBatch);
             foreach (Monster monster in _area.Monsters)
                 monster.Draw(spriteBatch);
-            foreach (Ghost ghost in _area.Ghosts)
-                ghost.Draw(spriteBatch);
             foreach (KeyPickup key in _area.Keys)
                 key.Draw(spriteBatch);
             foreach (PowerUp powerUp in _area.PowerUps)
                 powerUp.Draw(spriteBatch);
-            foreach (Door door in _area.Doors)
-                door.Draw(spriteBatch);
-            foreach (Door door in _area.Doors)
-                door.DrawPrompt(spriteBatch, _player);
             _player.Draw(spriteBatch);
+            foreach (Ghost ghost in _area.Ghosts)
+                ghost.Draw(spriteBatch);
             foreach (Projectile projectile in _projectiles)
                 projectile.Draw(spriteBatch);
-            foreach (Particle particle in _effects)
-                particle.Draw(spriteBatch);
+            _effects.Draw(spriteBatch);
+            foreach (Door door in _area.Doors)
+                door.DrawPrompt(spriteBatch, _player);
             spriteBatch.End();
 
             // The hearts and inventory stick to the corners of the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
             _player.DrawHud(spriteBatch);
-            DrawMessage(spriteBatch);
+            if (_messageTimer > 0f)
+            {
+                float opacity = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
+                UiDrawing.DrawHint(spriteBatch, new Vector2(VirtualScreen.ViewWidth / 2f, 90f), null, _message, opacity);
+            }
             spriteBatch.End();
 
-            // Menus are centered in the window.
+            // Banners and menus are centered in the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.CenteredTransform);
+            _banner.Draw(spriteBatch);
             _pauseMenu.Draw(spriteBatch);
             _deathMenu.Draw(spriteBatch);
+            _completeMenu.Draw(spriteBatch);
             spriteBatch.Draw(Assets.Pixel, VirtualScreen.CenteredViewBounds, Color.Black * _fade);
             spriteBatch.End();
         }

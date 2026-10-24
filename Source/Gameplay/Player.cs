@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using JumpScape.Core;
+using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
@@ -28,6 +29,8 @@ namespace JumpScape.Gameplay
         private const float ThrowCooldown = 0.4f;
         private const float PowerUpDuration = 15f;
         private const float HighJumpBoost = 1.25f; // About 1.5x as high.
+        private const float HardLandingSpeed = 6f;
+        private const float SquashDuration = 0.15f;
 
         private readonly SoundEffectInstance _walkingSound = Assets.PlayerWalking.CreateInstance();
         private readonly SoundEffectInstance _jumpSound = Assets.PlayerJump.CreateInstance();
@@ -44,6 +47,8 @@ namespace JumpScape.Gameplay
         private float _doubleJumpTimer;
         private float _highJumpTimer;
         private bool _usedAirJump;
+        private float _walkTime;
+        private float _squashTimer;
 
         public Player(Vector2 spawnPosition)
         {
@@ -70,6 +75,15 @@ namespace JumpScape.Gameplay
 
         public bool CanThrow => !IsDead && !ReachedExit && _throwCooldown <= 0f;
 
+        /// <summary>True for the one frame in which the player jumped.</summary>
+        public bool JustJumped { get; private set; }
+
+        /// <summary>True for the one frame in which the player landed after a real fall.</summary>
+        public bool JustLanded { get; private set; }
+
+        /// <summary>The bottom-middle of the player, where dust appears.</summary>
+        public Vector2 Feet => new Vector2(Position.X + Width / 2f, Position.Y + Height);
+
         private static int Width => (int)(Assets.PlayerRight.Width * Scale);
 
         private static int Height => (int)(Assets.PlayerRight.Height * Scale);
@@ -81,6 +95,8 @@ namespace JumpScape.Gameplay
         /// <summary>Handles input, picking up and dropping keys, and the power-up, hit and death timers.</summary>
         public void Update(float deltaTime, List<KeyPickup> keys)
         {
+            JustJumped = false;
+            _squashTimer = Math.Max(0f, _squashTimer - deltaTime);
             if (_invincibilityTimer > 0f)
                 _invincibilityTimer -= deltaTime;
             _throwCooldown = Math.Max(0f, _throwCooldown - deltaTime);
@@ -159,6 +175,7 @@ namespace JumpScape.Gameplay
             }
 
             bool walking = direction != 0 && IsOnGround;
+            _walkTime = walking ? _walkTime + 1f / 60f : 0f;
             if (walking && _walkingSound.State != SoundState.Playing)
                 PlaySound(_walkingSound);
             else if (!walking && _walkingSound.State == SoundState.Playing)
@@ -169,6 +186,7 @@ namespace JumpScape.Gameplay
         {
             _velocity.Y = HasHighJump ? JumpVelocity * HighJumpBoost : JumpVelocity;
             IsOnGround = false;
+            JustJumped = true;
             _walkingSound.Stop();
             _jumpSound.Stop();
             PlaySound(_jumpSound);
@@ -251,6 +269,7 @@ namespace JumpScape.Gameplay
         public void ResolveCollisions(IEnumerable<Platform> platforms)
         {
             IsOnGround = false;
+            JustLanded = false;
 
             foreach (Platform platform in platforms)
             {
@@ -272,6 +291,11 @@ namespace JumpScape.Gameplay
                 else if (bounds.Center.Y < platformBounds.Center.Y)
                 {
                     // Landed on top.
+                    if (_velocity.Y > HardLandingSpeed)
+                    {
+                        JustLanded = true;
+                        _squashTimer = SquashDuration;
+                    }
                     Position = new Vector2(Position.X, platformBounds.Top - Height);
                     _velocity.Y = 0f;
                     IsOnGround = true;
@@ -323,14 +347,29 @@ namespace JumpScape.Gameplay
 
         public void Draw(SpriteBatch spriteBatch)
         {
+            // Once through the exit door the player is inside it.
+            if (ReachedExit)
+                return;
+
             Texture2D texture = _facingRight ? Assets.PlayerRight : Assets.PlayerLeft;
             bool flashing = IsInvincible && (int)(_invincibilityTimer / FlashInterval) % 2 == 1;
             Color tint = flashing ? Color.Orange : Color.White;
 
-            // Rotate around the bottom-left corner so the player tips over onto the platform when they die.
-            var origin = new Vector2(0, texture.Height);
-            var position = new Vector2(Position.X, Position.Y + texture.Height * Scale);
-            spriteBatch.Draw(texture, position, null, tint, _deathRotation, origin, Scale, SpriteEffects.None, 0f);
+            if (IsDead)
+            {
+                // Rotate around the bottom-left corner so the player tips over onto the platform.
+                var corner = new Vector2(Position.X, Position.Y + texture.Height * Scale);
+                spriteBatch.Draw(texture, corner, null, tint, _deathRotation, new Vector2(0, texture.Height), Scale, SpriteEffects.None, 0f);
+                return;
+            }
+
+            // A short squash after landing, and a small bounce while walking.
+            float squash = _squashTimer / SquashDuration * 0.12f;
+            var scale = new Vector2(Scale * (1f + squash), Scale * (1f - squash));
+            float bounce = MathF.Abs(MathF.Sin(_walkTime * 12f)) * 4f;
+
+            var feet = new Vector2(Position.X + Width / 2f, Position.Y + texture.Height * Scale - bounce);
+            spriteBatch.Draw(texture, feet, null, tint, 0f, new Vector2(texture.Width / 2f, texture.Height), scale, SpriteEffects.None, 0f);
         }
 
         /// <summary>Draws the hearts and inventory in screen space.</summary>
@@ -369,10 +408,13 @@ namespace JumpScape.Gameplay
             const int barHeight = 8;
             float y = 20 + Assets.HeartFull.Height * HeartScale + 12;
 
-            foreach ((PowerUpType type, float timeLeft) in new[] { (PowerUpType.DoubleJump, _doubleJumpTimer), (PowerUpType.HighJump, _highJumpTimer) })
+            DrawTimer(PowerUpType.DoubleJump, _doubleJumpTimer);
+            DrawTimer(PowerUpType.HighJump, _highJumpTimer);
+
+            void DrawTimer(PowerUpType type, float timeLeft)
             {
                 if (timeLeft <= 0f)
-                    continue;
+                    return;
 
                 PowerUp.DrawIcon(spriteBatch, type, new Vector2(10 + iconSize / 2f, y + iconSize / 2f), iconSize, Color.White);
 
@@ -380,6 +422,7 @@ namespace JumpScape.Gameplay
                 spriteBatch.Draw(Assets.Pixel, bar, Color.Black * 0.5f);
                 bar.Width = (int)(barWidth * timeLeft / PowerUpDuration);
                 spriteBatch.Draw(Assets.Pixel, bar, PowerUp.GlowColorFor(type));
+                UiDrawing.DrawOutline(spriteBatch, new Rectangle(bar.X, bar.Y, barWidth, barHeight), Color.Black * 0.6f, 1);
 
                 y += iconSize + 8;
             }

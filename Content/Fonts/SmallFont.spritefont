@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Built by the MonoGame content pipeline. Arial must be installed on the machine that builds the game. -->
+<XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
+  <Asset Type="Graphics:FontDescription">
+    <FontName>Arial</FontName>
+    <Size>20</Size>
+    <Spacing>2</Spacing>
+    <UseKerning>true</UseKerning>
+    <Style>Regular</Style>
+    <CharacterRegions>
+      <CharacterRegion>
+        <Start>&#32;</Start>
+        <End>&#126;</End>
+      </CharacterRegion>
+    </CharacterRegions>
+  </Asset>
+</XnaContent>

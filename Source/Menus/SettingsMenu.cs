@@ -10,16 +10,17 @@ namespace JumpScape.Menus
     public sealed class SettingsMenu
     {
         private const int PanelSize = 800;
-        private const float TitleScale = 1.5f;
-        private const float LabelScale = 0.5f;
-        private const int CategoryHeight = 150;
-        private const int RowHeight = 40;
-        private const int SliderWidth = 200;
-        private const int SliderHeight = 4;
-        private const int KnobSize = 16;
-        private const int CheckboxSize = 20;
+        private const float TitleScale = 1.4f;
+        private const int CategoryHeight = 170;
+        private const int RowHeight = 48;
+        private const int SliderWidth = 240;
+        private const int SliderHeight = 8;
+        private const int KnobSize = 26;
+        private const int CheckboxSize = 26;
         private const int DropdownWidth = 200;
-        private const int DropdownRowHeight = 30;
+        private const int DropdownRowHeight = 34;
+
+        private static readonly Color Muted = new Color(210, 200, 185);
 
         private enum Slider
         {
@@ -30,9 +31,9 @@ namespace JumpScape.Menus
 
         private readonly GameSettings _settings = GameSettings.Current;
         private readonly Action _applySettings;
-        private readonly Rectangle _panel = MenuDrawing.CenteredPanel(PanelSize, PanelSize);
+        private readonly Rectangle _panel = UiDrawing.CenteredPanel(PanelSize, PanelSize);
 
-        private readonly Vector2 _titlePosition;
+        private readonly Vector2 _titleCenter;
         private readonly Rectangle _categoriesBox;
         private readonly Vector2 _graphicsHeading;
         private readonly Vector2 _audioHeading;
@@ -57,17 +58,17 @@ namespace JumpScape.Menus
         {
             _applySettings = applySettings;
 
-            Vector2 titleSize = Assets.Font.MeasureString("Settings") * TitleScale;
-            _titlePosition = new Vector2(_panel.X + (_panel.Width - titleSize.X) / 2f, _panel.Y + 30);
+            float titleHeight = Assets.Font.LineSpacing * TitleScale;
+            _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + titleHeight / 2f);
 
-            var categoriesStart = new Vector2(_panel.X + 60, _titlePosition.Y + titleSize.Y + 60);
-            _categoriesBox = new Rectangle((int)categoriesStart.X - 20, (int)categoriesStart.Y - 20, _panel.Width - 80, 2 * CategoryHeight + 60);
+            var categoriesStart = new Vector2(_panel.X + 80, _panel.Y + 40 + titleHeight + 50);
+            _categoriesBox = new Rectangle((int)categoriesStart.X - 30, (int)categoriesStart.Y - 24, _panel.Width - 100, 2 * CategoryHeight + 40);
             _graphicsHeading = categoriesStart;
             _audioHeading = categoriesStart + new Vector2(0, CategoryHeight);
 
-            float headingHeight = Assets.Font.MeasureString("Audio").Y;
-            Vector2 graphicsRows = _graphicsHeading + new Vector2(30, headingHeight + 10);
-            Vector2 audioRows = _audioHeading + new Vector2(30, headingHeight + 10);
+            float headingHeight = Assets.Font.LineSpacing;
+            Vector2 graphicsRows = _graphicsHeading + new Vector2(30, headingHeight + 8);
+            Vector2 audioRows = _audioHeading + new Vector2(30, headingHeight + 8);
 
             _frameRateLabel = graphicsRows;
             _fullscreenLabel = graphicsRows + new Vector2(0, RowHeight);
@@ -76,9 +77,9 @@ namespace JumpScape.Menus
             _muteLabel = audioRows + new Vector2(0, 2 * RowHeight);
 
             // All controls line up in one column to the right of the longest label.
-            float labelWidth = Assets.Font.MeasureString("Music volume:").X * LabelScale;
-            int controlX = (int)(graphicsRows.X + labelWidth + 30);
-            float labelHeight = Assets.Font.LineSpacing * LabelScale;
+            float labelWidth = Assets.SmallFont.MeasureString("Music volume").X;
+            int controlX = (int)(graphicsRows.X + labelWidth + 50);
+            float labelHeight = Assets.SmallFont.LineSpacing;
             int RowCenter(Vector2 label) => (int)(label.Y + labelHeight / 2f);
 
             _dropdown = new Rectangle(controlX, RowCenter(_frameRateLabel) - DropdownRowHeight / 2, DropdownWidth, DropdownRowHeight);
@@ -87,8 +88,9 @@ namespace JumpScape.Menus
             _musicSlider = new Rectangle(controlX, RowCenter(_musicLabel) - SliderHeight / 2, SliderWidth, SliderHeight);
             _muteBox = new Rectangle(controlX, RowCenter(_muteLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
 
-            Vector2 backSize = Assets.Font.MeasureString("Back");
-            _backButton = new Rectangle((int)(_panel.X + (_panel.Width - backSize.X) / 2f), (int)(_panel.Bottom - backSize.Y - 50), (int)backSize.X, (int)backSize.Y);
+            int backWidth = Assets.MenuButton.Width * 3 / 4;
+            int backHeight = Assets.MenuButton.Height * 3 / 4;
+            _backButton = new Rectangle(_panel.Center.X - backWidth / 2, _panel.Bottom - backHeight - 40, backWidth, backHeight);
         }
 
         /// <summary>Returns true when the player wants to leave the settings screen.</summary>
@@ -117,13 +119,13 @@ namespace JumpScape.Menus
 
             if (Input.IsMouseOver(_dropdown))
                 _dropdownOpen = true;
-            else if (Input.IsMouseOver(_fullscreenBox))
+            else if (Input.IsMouseOver(ClickArea(_fullscreenBox)))
                 Change(() => _settings.IsFullscreen = !_settings.IsFullscreen);
-            else if (Input.IsMouseOver(_muteBox))
+            else if (Input.IsMouseOver(ClickArea(_muteBox)))
                 Change(() => _settings.IsMuted = !_settings.IsMuted);
-            else if (Input.IsMouseOver(SliderHitArea(_volumeSlider)))
+            else if (Input.IsMouseOver(ClickArea(_volumeSlider)))
                 _dragging = Slider.Volume;
-            else if (Input.IsMouseOver(SliderHitArea(_musicSlider)))
+            else if (Input.IsMouseOver(ClickArea(_musicSlider)))
                 _dragging = Slider.Music;
 
             if (_dragging != Slider.None)
@@ -181,10 +183,11 @@ namespace JumpScape.Menus
             _applySettings();
         }
 
-        private static Rectangle SliderHitArea(Rectangle slider)
+        /// <summary>Controls are easier to hit with a bit of extra room around them.</summary>
+        private static Rectangle ClickArea(Rectangle control)
         {
-            Rectangle area = slider;
-            area.Inflate(KnobSize, KnobSize);
+            Rectangle area = control;
+            area.Inflate(KnobSize / 2 + 4, Math.Max(0, (KnobSize - control.Height) / 2 + 4));
             return area;
         }
 
@@ -195,69 +198,79 @@ namespace JumpScape.Menus
 
         private static string FrameRateLabel(int frameRate) => frameRate.ToString(CultureInfo.InvariantCulture) + " FPS";
 
+        private bool IsHovered(Rectangle control) => !_dropdownOpen && (_dragging == Slider.None) && Input.IsMouseOver(ClickArea(control));
+
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(Assets.WoodPanel, _panel, Color.White);
-            spriteBatch.Draw(Assets.Pixel, _panel, Color.Black * 0.4f);
-            MenuDrawing.DrawText(spriteBatch, "Settings", _titlePosition, Color.White, TitleScale);
+            UiDrawing.DrawPanel(spriteBatch, _panel);
+            UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, "Settings", _titleCenter, Color.White, TitleScale);
 
             spriteBatch.Draw(Assets.Pixel, _categoriesBox, Color.Black * 0.3f);
-            MenuDrawing.DrawOutline(spriteBatch, _categoriesBox, Color.White);
-            MenuDrawing.DrawText(spriteBatch, "Graphics", _graphicsHeading, Color.Yellow);
-            MenuDrawing.DrawText(spriteBatch, "Audio", _audioHeading, Color.Yellow);
+            UiDrawing.DrawOutline(spriteBatch, _categoriesBox, Color.White * 0.35f);
+            UiDrawing.DrawText(spriteBatch, "Graphics", _graphicsHeading, UiDrawing.Highlight);
+            UiDrawing.DrawText(spriteBatch, "Audio", _audioHeading, UiDrawing.Highlight);
 
-            DrawLabel(spriteBatch, "Frame rate:", _frameRateLabel);
-            DrawLabel(spriteBatch, "Fullscreen:", _fullscreenLabel);
-            DrawCheckbox(spriteBatch, _fullscreenBox, _settings.IsFullscreen, Color.Green);
+            DrawLabel(spriteBatch, "Frame rate", _frameRateLabel, IsHovered(_dropdown) || _dropdownOpen);
+            DrawLabel(spriteBatch, "Fullscreen", _fullscreenLabel, IsHovered(_fullscreenBox));
+            DrawCheckbox(spriteBatch, _fullscreenBox, _settings.IsFullscreen);
 
-            DrawLabel(spriteBatch, "Game volume:", _volumeLabel);
+            DrawLabel(spriteBatch, "Game volume", _volumeLabel, IsHovered(_volumeSlider) || _dragging == Slider.Volume);
             DrawSlider(spriteBatch, _volumeSlider, _settings.Volume);
-            DrawLabel(spriteBatch, "Music volume:", _musicLabel);
+            DrawLabel(spriteBatch, "Music volume", _musicLabel, IsHovered(_musicSlider) || _dragging == Slider.Music);
             DrawSlider(spriteBatch, _musicSlider, _settings.MusicVolume);
-            DrawLabel(spriteBatch, "Mute:", _muteLabel);
-            DrawCheckbox(spriteBatch, _muteBox, _settings.IsMuted, Color.Red);
+            DrawLabel(spriteBatch, "Mute", _muteLabel, IsHovered(_muteBox));
+            DrawCheckbox(spriteBatch, _muteBox, _settings.IsMuted);
 
-            bool backHovered = !_dropdownOpen && Input.IsMouseOver(_backButton);
-            MenuDrawing.DrawText(spriteBatch, "Back", _backButton.Location.ToVector2(), backHovered ? Color.Yellow : Color.White);
+            UiDrawing.DrawButton(spriteBatch, _backButton, "Back", !_dropdownOpen && Input.IsMouseOver(_backButton), textScale: 0.85f);
 
             // Drawn last so the open list appears on top of the rows below it.
             DrawDropdown(spriteBatch);
         }
 
-        private static void DrawLabel(SpriteBatch spriteBatch, string text, Vector2 position)
+        private static void DrawLabel(SpriteBatch spriteBatch, string text, Vector2 position, bool hovered)
         {
-            MenuDrawing.DrawText(spriteBatch, text, position, Color.White, LabelScale);
+            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, position, hovered ? UiDrawing.Highlight : Color.White);
         }
 
-        private static void DrawCheckbox(SpriteBatch spriteBatch, Rectangle box, bool isChecked, Color checkColor)
+        private static void DrawCheckbox(SpriteBatch spriteBatch, Rectangle box, bool isChecked)
         {
-            spriteBatch.Draw(Assets.Pixel, box, Color.White);
+            spriteBatch.Draw(Assets.Pixel, box, Color.Black * 0.5f);
+            UiDrawing.DrawOutline(spriteBatch, box, Muted);
             if (isChecked)
             {
                 Rectangle check = box;
-                check.Inflate(-4, -4);
-                spriteBatch.Draw(Assets.Pixel, check, checkColor);
+                check.Inflate(-6, -6);
+                spriteBatch.Draw(Assets.Pixel, check, UiDrawing.Highlight);
             }
         }
 
         private static void DrawSlider(SpriteBatch spriteBatch, Rectangle track, int value)
         {
-            spriteBatch.Draw(Assets.Pixel, track, Color.Gray);
+            int filled = track.Width * value / 100;
+            spriteBatch.Draw(Assets.Pixel, track, Muted * 0.35f);
+            spriteBatch.Draw(Assets.Pixel, new Rectangle(track.X, track.Y, filled, track.Height), UiDrawing.Highlight);
 
-            int knobX = track.X + track.Width * value / 100;
-            var knob = new Rectangle(knobX - KnobSize / 2, track.Center.Y - KnobSize / 2, KnobSize, KnobSize);
-            spriteBatch.Draw(Assets.Pixel, knob, Color.White);
+            var knobCenter = new Vector2(track.X + filled, track.Center.Y);
+            float scale = (KnobSize + 4f) / Assets.Circle.Width;
+            var origin = new Vector2(Assets.Circle.Width / 2f);
+            spriteBatch.Draw(Assets.Circle, knobCenter, null, Color.Black * 0.6f, 0f, origin, scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Assets.Circle, knobCenter, null, Color.White, 0f, origin, (float)KnobSize / Assets.Circle.Width, SpriteEffects.None, 0f);
 
             string text = value.ToString(CultureInfo.InvariantCulture) + "%";
-            float textHeight = Assets.Font.LineSpacing * LabelScale;
-            MenuDrawing.DrawText(spriteBatch, text, new Vector2(track.Right + 20, track.Center.Y - textHeight / 2f), Color.White, LabelScale);
+            float textHeight = Assets.SmallFont.LineSpacing;
+            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, new Vector2(track.Right + 26, track.Center.Y - textHeight / 2f), Color.White);
         }
 
         private void DrawDropdown(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(Assets.Pixel, _dropdown, Color.Black * 0.7f);
-            MenuDrawing.DrawOutline(spriteBatch, _dropdown, Color.White);
-            MenuDrawing.DrawText(spriteBatch, FrameRateLabel(_settings.FrameRateLimit), _dropdown.Location.ToVector2() + new Vector2(10, 5), Color.White, LabelScale);
+            spriteBatch.Draw(Assets.Pixel, _dropdown, Color.Black * 0.6f);
+            UiDrawing.DrawOutline(spriteBatch, _dropdown, _dropdownOpen || IsHovered(_dropdown) ? UiDrawing.Highlight : Muted);
+            DrawOptionText(spriteBatch, FrameRateLabel(_settings.FrameRateLimit), _dropdown, Color.White);
+
+            // A small arrow on the right shows that this is a list.
+            var arrow = new Vector2(_dropdown.Right - 22, _dropdown.Center.Y);
+            for (int row = 0; row < 6; row++)
+                spriteBatch.Draw(Assets.Pixel, new Rectangle((int)arrow.X - 6 + row, (int)arrow.Y - 3 + row, 12 - row * 2, 1), Muted);
 
             if (!_dropdownOpen)
                 return;
@@ -265,10 +278,17 @@ namespace JumpScape.Menus
             for (int i = 0; i < GameSettings.FrameRateOptions.Length; i++)
             {
                 Rectangle option = DropdownOption(i);
-                spriteBatch.Draw(Assets.Pixel, option, i == _hoveredOption ? Color.DarkGray : Color.Gray);
-                MenuDrawing.DrawOutline(spriteBatch, option, Color.White);
-                MenuDrawing.DrawText(spriteBatch, FrameRateLabel(GameSettings.FrameRateOptions[i]), option.Location.ToVector2() + new Vector2(10, 5), Color.White, LabelScale);
+                spriteBatch.Draw(Assets.Pixel, option, i == _hoveredOption ? new Color(90, 65, 40) : new Color(50, 35, 25));
+                UiDrawing.DrawOutline(spriteBatch, option, Muted, 1);
+                Color color = GameSettings.FrameRateOptions[i] == _settings.FrameRateLimit ? UiDrawing.Highlight : Color.White;
+                DrawOptionText(spriteBatch, FrameRateLabel(GameSettings.FrameRateOptions[i]), option, color);
             }
+        }
+
+        private static void DrawOptionText(SpriteBatch spriteBatch, string text, Rectangle area, Color color)
+        {
+            float textHeight = Assets.SmallFont.LineSpacing;
+            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, new Vector2(area.X + 12, area.Center.Y - textHeight / 2f), color);
         }
     }
 }

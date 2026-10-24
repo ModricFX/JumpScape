@@ -7,6 +7,7 @@ using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Media;
 
 namespace JumpScape
 {
@@ -24,6 +25,9 @@ namespace JumpScape
         /// <summary>The game logic is tuned for exactly 60 updates per second.</summary>
         private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(1.0 / 60.0);
 
+        /// <summary>How much the black overlay changes per frame when switching screens (about 0.15 s each way).</summary>
+        private const float ScreenFadeSpeed = 0.11f;
+
         private readonly GraphicsDeviceManager _graphics;
         private readonly GameSettings _settings = GameSettings.Current;
         private readonly GameProgress _progress = GameProgress.Load();
@@ -40,7 +44,9 @@ namespace JumpScape
         private LevelSelectMenu _levelSelectMenu;
         private SettingsMenu _settingsMenu;
         private GameplayScreen _gameplay;
-        private SoundEffectInstance _music;
+
+        private Action _pendingSwitch;
+        private float _screenFade;
 
         public JumpScapeGame()
         {
@@ -77,13 +83,12 @@ namespace JumpScape
             _levels = LevelData.FindLevelNumbers();
             _menuBackground = new MenuBackground();
             _mainMenu = new MainMenu();
-            _levelSelectMenu = new LevelSelectMenu(_levels);
+            _levelSelectMenu = new LevelSelectMenu(_levels, _progress);
             _settingsMenu = new SettingsMenu(ApplySettings);
 
-            _music = Assets.ThemeSong.CreateInstance();
-            _music.IsLooped = true;
+            MediaPlayer.IsRepeating = true;
             ApplyAudioSettings();
-            _music.Play();
+            MediaPlayer.Play(Assets.ThemeSong);
         }
 
         private void ApplySettings()
@@ -112,8 +117,8 @@ namespace JumpScape
         private void ApplyAudioSettings()
         {
             SoundEffect.MasterVolume = _settings.IsMuted ? 0f : 1f;
-            if (_music != null)
-                _music.Volume = _settings.MusicVolume / 100f;
+            MediaPlayer.IsMuted = _settings.IsMuted;
+            MediaPlayer.Volume = _settings.MusicVolume / 100f;
         }
 
         /// <summary>Keeps the back buffer the same size as the window when the player resizes it.</summary>
@@ -134,6 +139,17 @@ namespace JumpScape
             _isResizing = false;
         }
 
+        /// <summary>Fades to black, runs <paramref name="switchScreen"/>, then fades back in.</summary>
+        private void SwitchTo(Action switchScreen)
+        {
+            _pendingSwitch ??= switchScreen;
+        }
+
+        private void ShowScreen(Screen screen)
+        {
+            SwitchTo(() => _screen = screen);
+        }
+
         protected override void Update(GameTime gameTime)
         {
             PresentationParameters backBuffer = GraphicsDevice.PresentationParameters;
@@ -144,6 +160,31 @@ namespace JumpScape
             if (_screen != Screen.Playing)
                 _menuBackground.Update(deltaTime);
 
+            if (_pendingSwitch != null)
+            {
+                // While fading out, the current screen ignores input.
+                _screenFade = Math.Min(1f, _screenFade + ScreenFadeSpeed);
+                if (_screenFade >= 1f)
+                {
+                    _pendingSwitch();
+                    _pendingSwitch = null;
+                }
+            }
+            else
+            {
+                _screenFade = Math.Max(0f, _screenFade - ScreenFadeSpeed);
+                UpdateScreen(gameTime);
+            }
+
+            // At the 30 FPS limit only every other update is drawn; the game itself still runs at 60 updates per second.
+            if (_settings.FrameRateLimit == 30 && _frameCounter++ % 2 == 1)
+                SuppressDraw();
+
+            base.Update(gameTime);
+        }
+
+        private void UpdateScreen(GameTime gameTime)
+        {
             switch (_screen)
             {
                 case Screen.MainMenu:
@@ -156,19 +197,13 @@ namespace JumpScape
 
                 case Screen.Settings:
                     if (_settingsMenu.Update())
-                        _screen = Screen.MainMenu;
+                        ShowScreen(Screen.MainMenu);
                     break;
 
                 case Screen.Playing:
                     UpdatePlaying(gameTime);
                     break;
             }
-
-            // At the 30 FPS limit only every other update is drawn; the game itself still runs at 60 updates per second.
-            if (_settings.FrameRateLimit == 30 && _frameCounter++ % 2 == 1)
-                SuppressDraw();
-
-            base.Update(gameTime);
         }
 
         private void UpdateMainMenu()
@@ -185,18 +220,17 @@ namespace JumpScape
                     if (_levels.Count > 0)
                     {
                         // Continue with the first level after the highest one completed, or replay the last level.
-                        int next = _levels.FirstOrDefault(level => level > _progress.HighestCompletedLevel, _levels[^1]);
-                        StartLevel(next);
+                        StartLevel(_levels.FirstOrDefault(level => level > _progress.HighestCompletedLevel, _levels[^1]));
                     }
                     break;
 
                 case MainMenuChoice.LevelPicker:
                     _levelSelectMenu.Open();
-                    _screen = Screen.LevelSelect;
+                    ShowScreen(Screen.LevelSelect);
                     break;
 
                 case MainMenuChoice.Settings:
-                    _screen = Screen.Settings;
+                    ShowScreen(Screen.Settings);
                     break;
 
                 case MainMenuChoice.Exit:
@@ -209,7 +243,7 @@ namespace JumpScape
         {
             if (Input.Back)
             {
-                _screen = Screen.MainMenu;
+                ShowScreen(Screen.MainMenu);
                 return;
             }
 
@@ -220,31 +254,47 @@ namespace JumpScape
                     break;
 
                 case LevelSelectChoice.Back:
-                    _screen = Screen.MainMenu;
+                    ShowScreen(Screen.MainMenu);
                     break;
             }
         }
 
         private void StartLevel(int levelNumber)
         {
-            _gameplay = new GameplayScreen(LevelData.Load(levelNumber));
-            _screen = Screen.Playing;
+            SwitchTo(() =>
+            {
+                bool hasNextLevel = _levels.Any(level => level > levelNumber);
+                _gameplay = new GameplayScreen(LevelData.Load(levelNumber), hasNextLevel);
+                _screen = Screen.Playing;
+            });
         }
 
         private void UpdatePlaying(GameTime gameTime)
         {
-            GameplayResult result = _gameplay.Update(gameTime);
-            if (result == GameplayResult.None)
-                return;
-
-            if (result == GameplayResult.LevelCompleted && _gameplay.LevelNumber > _progress.HighestCompletedLevel)
+            switch (_gameplay.Update(gameTime))
             {
-                _progress.HighestCompletedLevel = _gameplay.LevelNumber;
-                _progress.Save();
-            }
+                case GameplayResult.LevelCompleted:
+                    if (_gameplay.LevelNumber > _progress.HighestCompletedLevel)
+                    {
+                        _progress.HighestCompletedLevel = _gameplay.LevelNumber;
+                        _progress.Save();
+                    }
+                    break;
 
-            _gameplay = null;
-            _screen = Screen.MainMenu;
+                case GameplayResult.NextLevel:
+                    int current = _gameplay.LevelNumber;
+                    StartLevel(_levels.FirstOrDefault(level => level > current, current));
+                    break;
+
+                case GameplayResult.QuitToMenu:
+                    _gameplay.StopSounds();
+                    SwitchTo(() =>
+                    {
+                        _gameplay = null;
+                        _screen = Screen.MainMenu;
+                    });
+                    break;
+            }
         }
 
         protected override void Draw(GameTime gameTime)
@@ -275,12 +325,20 @@ namespace JumpScape
                 _spriteBatch.End();
             }
 
+            if (_screenFade > 0f)
+            {
+                _spriteBatch.Begin(transformMatrix: VirtualScreen.CenteredTransform);
+                _spriteBatch.Draw(Assets.Pixel, VirtualScreen.CenteredViewBounds, Color.Black * _screenFade);
+                _spriteBatch.End();
+            }
+
             base.Draw(gameTime);
         }
 
         protected override void UnloadContent()
         {
             _gameplay?.StopSounds();
+            MediaPlayer.Stop();
             _spriteBatch?.Dispose();
             base.UnloadContent();
         }

@@ -1,5 +1,6 @@
 using System;
 using JumpScape.Core;
+using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
@@ -20,8 +21,6 @@ namespace JumpScape.Gameplay
     public sealed class Door
     {
         private const float Scale = 0.15f;
-        private const float PromptScale = 0.75f;
-        private const int ScreenMargin = 10;
         private static readonly Color PortalGlow = Color.Magenta;
 
         private readonly SoundEffectInstance _openSound = Assets.DoorOpen.CreateInstance();
@@ -113,32 +112,28 @@ namespace JumpScape.Gameplay
         /// <summary>Shows a hint above the door while the player is standing in front of it.</summary>
         public void DrawPrompt(SpriteBatch spriteBatch, Player player)
         {
-            if (!player.Bounds.Intersects(Bounds) || player.IsDead)
+            if (!player.Bounds.Intersects(Bounds) || player.IsDead || player.ReachedExit)
                 return;
 
-            string message = GetPrompt(player.Inventory);
-            Vector2 size = Assets.Font.MeasureString(message) * PromptScale;
-            float x = MathHelper.Clamp(Position.X, ScreenMargin, VirtualScreen.ViewWidth - size.X - ScreenMargin);
-            var position = new Vector2(x, Position.Y - size.Y - 10);
-
-            spriteBatch.DrawString(Assets.Font, message, position + new Vector2(2, 2), Color.Black * 0.5f, 0f, Vector2.Zero, PromptScale, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(Assets.Font, message, position, Color.White, 0f, Vector2.Zero, PromptScale, SpriteEffects.None, 0f);
+            (string key, string text) = GetPrompt(player.Inventory);
+            Rectangle bounds = Bounds;
+            UiDrawing.DrawHint(spriteBatch, new Vector2(bounds.Center.X, bounds.Y - 10), key, text);
         }
 
-        private string GetPrompt(Inventory inventory)
+        private (string Key, string Text) GetPrompt(Inventory inventory)
         {
             switch (State)
             {
                 case DoorState.Locked when inventory.SelectedItem == ItemType.Key:
-                    return "Press E to unlock";
+                    return ("E", "Unlock");
                 case DoorState.Locked when inventory.Contains(ItemType.Key):
-                    return "Select the key (1-3) to unlock";
+                    return ("1-3", "Select the key to unlock");
                 case DoorState.Locked:
-                    return "You need a key!";
+                    return (null, "Locked - find a key");
                 case DoorState.Closed:
-                    return "Press E to open";
+                    return ("E", "Open");
                 default:
-                    return IsPortal ? "Press E to go through" : "Press E to enter";
+                    return ("E", IsPortal ? "Go through" : "Enter");
             }
         }
     }

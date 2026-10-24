@@ -8,6 +8,10 @@
 
 ## Done
 
+- [x] Better looking game and menus in the same style: wooden pause, game over and level complete screens,
+      blurred forest backdrop, platform shadows, dust, level banners, key hints, stars for finished levels.
+- [x] Level complete screen with the time taken and Next level / Play again / Main menu.
+- [x] Music streams from a small file instead of an 18 MB sound held in memory.
 - [x] More than one door per level. Each locked door uses one key (tested with two doors and one key,
       and with two doors and two keys).
 - [x] Areas and portals: Level 4 has a nether region behind a portal door, with the key for the main exit.

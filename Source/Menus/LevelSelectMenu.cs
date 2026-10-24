@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using JumpScape.Core;
@@ -14,55 +15,56 @@ namespace JumpScape.Menus
         Level,
     }
 
-    /// <summary>A grid of numbered level boxes on a wooden panel, plus a Back button.</summary>
+    /// <summary>A grid of numbered crates on a wooden panel, one per level, plus a Back button. Finished levels get a star.</summary>
     public sealed class LevelSelectMenu
     {
-        private const string Title = "Level Selector";
-        private const float TitleScale = 1.5f;
+        private const string Title = "Choose a level";
+        private const float TitleScale = 1.4f;
         private const float LogoScale = 0.384f;
-        private const float BoxScale = 0.2f;
-        private const int Columns = 3;
-        private const int ColumnGap = 90;
-        private const int RowGap = 20;
-        private const float SelectedBackScale = 1.1f;
+        private const int BoxSize = 120;
+        private const int Columns = 5;
+        private const int Gap = 50;
+        private const int StarSize = 46;
 
         private readonly IReadOnlyList<int> _levels;
-        private readonly Rectangle _panel = MenuDrawing.CenteredPanel(VirtualScreen.Width / 2, VirtualScreen.Height / 2);
-        private readonly Vector2 _titlePosition;
+        private readonly GameProgress _progress;
+        private readonly Rectangle _panel = UiDrawing.CenteredPanel(VirtualScreen.Width / 2, VirtualScreen.Height / 2);
+        private readonly Vector2 _titleCenter;
         private readonly Rectangle[] _levelBoxes;
+        private readonly Rectangle _backButton;
         private int _selected;
 
-        public LevelSelectMenu(IReadOnlyList<int> levels)
+        public LevelSelectMenu(IReadOnlyList<int> levels, GameProgress progress)
         {
             _levels = levels;
+            _progress = progress;
+            _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + Assets.Font.LineSpacing * TitleScale / 2f);
 
-            Vector2 titleSize = Assets.Font.MeasureString(Title) * TitleScale;
-            _titlePosition = new Vector2(_panel.X + (_panel.Width - titleSize.X) / 2f, _panel.Y + 30);
-
-            int boxWidth = (int)(Assets.LevelBox.Width * BoxScale);
-            int boxHeight = (int)(Assets.LevelBox.Height * BoxScale);
-            int left = _panel.X + 50;
-            int top = (int)(_titlePosition.Y + titleSize.Y + 40);
+            // Center the grid of crates in the panel.
+            int columns = Math.Max(1, Math.Min(Columns, levels.Count));
+            int gridWidth = columns * BoxSize + (columns - 1) * Gap;
+            int left = _panel.Center.X - gridWidth / 2;
+            int top = (int)(_titleCenter.Y + Assets.Font.LineSpacing * TitleScale / 2f + 50);
 
             _levelBoxes = new Rectangle[levels.Count];
             for (int i = 0; i < levels.Count; i++)
-            {
-                int column = i % Columns;
-                int row = i / Columns;
-                _levelBoxes[i] = new Rectangle(left + column * (boxWidth + ColumnGap), top + row * (boxHeight + RowGap), boxWidth, boxHeight);
-            }
+                _levelBoxes[i] = new Rectangle(left + i % columns * (BoxSize + Gap), top + i / columns * (BoxSize + Gap), BoxSize, BoxSize);
+
+            int backWidth = Assets.MenuButton.Width * 3 / 4;
+            int backHeight = Assets.MenuButton.Height * 3 / 4;
+            _backButton = new Rectangle(_panel.Center.X - backWidth / 2, _panel.Bottom - backHeight - 40, backWidth, backHeight);
         }
 
         /// <summary>Index of the Back button in the selection order (after all levels).</summary>
         private int BackIndex => _levels.Count;
 
+        /// <summary>The level number picked when <see cref="Update"/> returns <see cref="LevelSelectChoice.Level"/>.</summary>
+        public int ChosenLevel { get; private set; }
+
         public void Open()
         {
             _selected = 0;
         }
-
-        /// <summary>The level number picked when <see cref="Update"/> returns <see cref="LevelSelectChoice.Level"/>.</summary>
-        public int ChosenLevel { get; private set; }
 
         public LevelSelectChoice Update()
         {
@@ -76,7 +78,7 @@ namespace JumpScape.Menus
 
             for (int i = 0; i < count; i++)
             {
-                Rectangle bounds = i == BackIndex ? GetBackBounds(i == _selected) : _levelBoxes[i];
+                Rectangle bounds = i == BackIndex ? _backButton : _levelBoxes[i];
                 if (!Input.IsMouseOver(bounds))
                     continue;
 
@@ -100,31 +102,33 @@ namespace JumpScape.Menus
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            MenuDrawing.DrawLogo(spriteBatch, LogoScale);
-            spriteBatch.Draw(Assets.WoodPanel, _panel, Color.White);
-            MenuDrawing.DrawText(spriteBatch, Title, _titlePosition, Color.White, TitleScale);
+            UiDrawing.DrawLogo(spriteBatch, LogoScale);
+            UiDrawing.DrawPanel(spriteBatch, _panel);
+            UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, Title, _titleCenter, Color.White, TitleScale);
 
             for (int i = 0; i < _levelBoxes.Length; i++)
             {
+                bool selected = i == _selected;
                 Rectangle box = _levelBoxes[i];
-                spriteBatch.Draw(Assets.LevelBox, box, Color.White);
+                if (selected)
+                {
+                    box.Inflate(8, 8);
+                    float glowScale = box.Width * 2.2f / Assets.Glow.Width;
+                    spriteBatch.Draw(Assets.Glow, box.Center.ToVector2(), null, UiDrawing.Highlight * 0.5f, 0f, new Vector2(Assets.Glow.Width / 2f), glowScale, SpriteEffects.None, 0f);
+                }
 
+                spriteBatch.Draw(Assets.LevelBox, box, Color.White);
                 string number = _levels[i].ToString(CultureInfo.InvariantCulture);
-                Vector2 textPosition = box.Center.ToVector2() - Assets.Font.MeasureString(number) / 2f;
-                spriteBatch.DrawString(Assets.Font, number, textPosition, i == _selected ? Color.Yellow : Color.White);
+                UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, number, box.Center.ToVector2(), selected ? UiDrawing.Highlight : Color.White, selected ? 1.3f : 1.15f);
+
+                if (_levels[i] <= _progress.HighestCompletedLevel)
+                {
+                    var star = new Rectangle(box.Right - StarSize + 12, box.Y - 12, StarSize, StarSize);
+                    spriteBatch.Draw(Assets.Star, star, Color.White);
+                }
             }
 
-            bool backSelected = _selected == BackIndex;
-            Rectangle back = GetBackBounds(backSelected);
-            MenuDrawing.DrawText(spriteBatch, "Back", back.Location.ToVector2(), backSelected ? Color.Yellow : Color.White, backSelected ? SelectedBackScale : 1f);
-        }
-
-        private Rectangle GetBackBounds(bool selected)
-        {
-            Vector2 size = Assets.Font.MeasureString("Back") * (selected ? SelectedBackScale : 1f);
-            int x = (int)(_panel.X + (_panel.Width - size.X) / 2f);
-            int y = (int)(_panel.Bottom - size.Y - 50);
-            return new Rectangle(x, y, (int)size.X, (int)size.Y);
+            UiDrawing.DrawButton(spriteBatch, _backButton, "Back", _selected == BackIndex, textScale: 0.85f);
         }
     }
 }

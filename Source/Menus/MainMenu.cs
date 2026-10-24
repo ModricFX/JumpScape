@@ -61,16 +61,10 @@ namespace JumpScape.Menus
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            MenuDrawing.DrawLogo(spriteBatch, LogoScale);
+            UiDrawing.DrawLogo(spriteBatch, LogoScale);
 
             for (int i = 0; i < _buttons.Length; i++)
-            {
-                spriteBatch.Draw(Assets.MenuButton, _buttons[i], Color.White);
-
-                Vector2 textSize = Assets.Font.MeasureString(Labels[i]);
-                Vector2 textPosition = _buttons[i].Center.ToVector2() - textSize / 2f;
-                spriteBatch.DrawString(Assets.Font, Labels[i], textPosition, i == _selected ? Color.Yellow : Color.White);
-            }
+                UiDrawing.DrawButton(spriteBatch, _buttons[i], Labels[i], i == _selected);
         }
     }
 }
