@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -16,6 +17,9 @@ namespace JumpScape.Core
         /// <summary>A 1x1 white texture for drawing solid rectangles in any color.</summary>
         public static Texture2D Pixel { get; private set; }
 
+        /// <summary>A soft white circle that fades out towards the edge. Tint it to get a colored glow.</summary>
+        public static Texture2D Glow { get; private set; }
+
         public static Texture2D PlayerLeft { get; private set; }
         public static Texture2D PlayerRight { get; private set; }
         public static Texture2D FrogLeft { get; private set; }
@@ -30,6 +34,8 @@ namespace JumpScape.Core
         public static Texture2D DoorOpened { get; private set; }
         public static Texture2D KeySpriteSheet { get; private set; }
         public static Texture2D KeyInventoryIcon { get; private set; }
+        public static Texture2D DoubleJumpOrb { get; private set; }
+        public static Texture2D HighJumpOrb { get; private set; }
         public static Texture2D HeartFull { get; private set; }
         public static Texture2D HeartEmpty { get; private set; }
         public static Texture2D[] InventorySlots { get; private set; }
@@ -55,6 +61,7 @@ namespace JumpScape.Core
 
             Pixel = new Texture2D(graphicsDevice, 1, 1);
             Pixel.SetData(new[] { Color.White });
+            Glow = CreateGlow(graphicsDevice, 64);
 
             PlayerLeft = content.Load<Texture2D>("Graphics/Player/player_left");
             PlayerRight = content.Load<Texture2D>("Graphics/Player/player_right");
@@ -70,6 +77,8 @@ namespace JumpScape.Core
             DoorOpened = content.Load<Texture2D>("Graphics/Doors/door_opened");
             KeySpriteSheet = content.Load<Texture2D>("Graphics/Items/key_sprite_sheet");
             KeyInventoryIcon = content.Load<Texture2D>("Graphics/Items/key_inventory");
+            DoubleJumpOrb = content.Load<Texture2D>("Graphics/Items/ball_green");
+            HighJumpOrb = content.Load<Texture2D>("Graphics/Items/ball_red");
             HeartFull = content.Load<Texture2D>("Graphics/Hearts/Heart_full");
             HeartEmpty = content.Load<Texture2D>("Graphics/Hearts/Heart_empty");
             InventorySlots = new[]
@@ -93,6 +102,25 @@ namespace JumpScape.Core
             PlatformCracking = content.Load<SoundEffect>("Sounds/PlatformBreaking");
             PlatformBreak = content.Load<SoundEffect>("Sounds/PlatformBreak");
             DoorOpen = content.Load<SoundEffect>("Sounds/DoorOpen");
+        }
+
+        private static Texture2D CreateGlow(GraphicsDevice graphicsDevice, int size)
+        {
+            var pixels = new Color[size * size];
+            float radius = size / 2f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius)) / radius;
+                    float brightness = MathHelper.Clamp(1f - distance, 0f, 1f);
+                    pixels[y * size + x] = Color.White * MathF.Pow(brightness, 1.5f);
+                }
+            }
+
+            var texture = new Texture2D(graphicsDevice, size, size);
+            texture.SetData(pixels);
+            return texture;
         }
     }
 }

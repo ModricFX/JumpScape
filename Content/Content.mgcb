@@ -176,6 +176,30 @@
 /processorParam:TextureFormat=Color
 /build:Graphics/Inventory/Inventory_select_3.png
 
+#begin Graphics/Items/ball_green.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Graphics/Items/ball_green.png
+
+#begin Graphics/Items/ball_red.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Graphics/Items/ball_red.png
+
 #begin Graphics/Items/key_inventory.png
 /importer:TextureImporter
 /processor:TextureProcessor

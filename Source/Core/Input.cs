@@ -15,6 +15,9 @@ namespace JumpScape.Core
         /// <summary>Mouse position in the 1920x1080 menu coordinates (see <see cref="VirtualScreen.CenteredTransform"/>).</summary>
         public static Vector2 MousePosition { get; private set; }
 
+        /// <summary>Mouse position in view coordinates: the top-left of the window is (0, 0).</summary>
+        public static Vector2 ViewMousePosition { get; private set; }
+
         public static void Update()
         {
             _previousKeyboard = _keyboard;
@@ -22,6 +25,7 @@ namespace JumpScape.Core
             _keyboard = Keyboard.GetState();
             _mouse = Mouse.GetState();
             MousePosition = VirtualScreen.ToCentered(_mouse.Position);
+            ViewMousePosition = VirtualScreen.ToView(_mouse.Position);
         }
 
         public static bool IsDown(Keys key) => _keyboard.IsKeyDown(key);

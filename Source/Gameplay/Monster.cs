@@ -7,7 +7,7 @@ namespace JumpScape.Gameplay
 {
     /// <summary>
     /// A frog that walks back and forth along its platform. It turns yellow when it sees the player.
-    /// Walking into it from the front costs a full heart, from behind half a heart.
+    /// Walking into it from the front costs a full heart, from behind half a heart. One thrown orb defeats it.
     /// </summary>
     public sealed class Monster
     {
@@ -36,7 +36,12 @@ namespace JumpScape.Gameplay
 
         private float Size => Assets.FrogRight.Width * Scale;
 
-        private Vector2 Center => _position + new Vector2(Size / 2f);
+        public Vector2 Center => _position + new Vector2(Size / 2f);
+
+        public bool IsDefeated { get; private set; }
+
+        /// <summary>The whole sprite; thrown orbs hit anywhere on it.</summary>
+        public Rectangle Bounds => new Rectangle((int)_position.X, (int)_position.Y, (int)Size, (int)Size);
 
         /// <summary>A box in the middle of the sprite, smaller than the image so near misses don't hurt.</summary>
         public Rectangle Hitbox
@@ -103,6 +108,12 @@ namespace JumpScape.Gameplay
 
         public void StopSounds()
         {
+            _growl.Stop();
+        }
+
+        public void Defeat()
+        {
+            IsDefeated = true;
             _growl.Stop();
         }
 

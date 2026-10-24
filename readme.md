@@ -3,13 +3,15 @@
 ![JumpScape logo](Content/Graphics/GameLogo/JumpScapeLogo.png)
 
 JumpScape is a 2D platformer built with [MonoGame](https://monogame.net/) and C#. Climb from the ground up
-through floating platforms to reach the exit door. Watch out for frogs and ghosts, and for platforms that
-crumble under your feet. Some doors are locked, so find the key first.
+through floating platforms to reach the exit door. Watch out for frogs and ghosts (or knock them out with a
+glowing orb), and for platforms that crumble under your feet. Some doors are locked, so find the key first.
 
 ## Features
 
 - Three levels, plus a simple text format for making your own ([Levels/README.md](Levels/README.md)).
 - Frogs that patrol platforms, ghosts that chase you, crumbling platforms, and locked doors with keys.
+- Throw glowing orbs at enemies by clicking where you want them to go.
+- Power-ups: hearts that heal you, plus double jump and high jump orbs that last 15 seconds.
 - Three hearts of health, knockback, and a short moment of invincibility after every hit.
 - Sounds that get quieter with distance and come from the left or right.
 - Starts in fullscreen. Settings for game volume, music volume, mute, a 30 or 60 FPS limit, and fullscreen.
@@ -61,6 +63,7 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | Use the door           | E                                       |
 | Select inventory slot  | 1, 2, 3                                 |
 | Drop the selected key  | Q                                       |
+| Throw an orb           | Left mouse button (aim with the mouse)  |
 | Pause / back           | Esc                                     |
 | Menus                  | Arrow keys or W / S, Enter or Space, or the mouse |
 
@@ -71,6 +74,17 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
   to the door to unlock it. Press **Q** to drop the selected key again.
 - Frogs take a whole heart if they walk into you and half a heart if you bump into them from behind.
   Ghosts take half a heart. After a hit you flash orange and can't be hurt for a moment.
+- Click to throw an orb towards the mouse. One orb defeats a frog or a ghost. Orbs stop when they hit a
+  platform, and you can throw about two per second.
+- Power-ups float in the level; touch one to collect it:
+
+  | Power-up         | Looks like  | Effect                                                         |
+  | ---------------- | ----------- | -------------------------------------------------------------- |
+  | Heart            | A red heart | Gives back one heart. It stays put if your health is full.     |
+  | Double jump      | Green orb   | Press jump again in mid-air to jump a second time. Lasts 15 s. |
+  | High jump        | Red orb     | Jump about one and a half times as high. Lasts 15 s.           |
+
+  Active power-ups show under your hearts, with a bar for the time left.
 - Crumbling platforms start shaking when you land on them, break after three seconds and come back five
   seconds later.
 

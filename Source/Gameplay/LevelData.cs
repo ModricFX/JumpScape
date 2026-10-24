@@ -14,6 +14,8 @@ namespace JumpScape.Gameplay
 
     public sealed record GhostInfo(Vector2 Position, float Radius);
 
+    public sealed record PowerUpInfo(Vector2 Position, PowerUpType Type);
+
     /// <summary>
     /// A level read from Levels/LevelN.txt. Coordinates are in the 1920x1080 game world;
     /// see Levels/README.md for the file format.
@@ -39,6 +41,7 @@ namespace JumpScape.Gameplay
         public bool IsDoorLocked { get; private set; }
         public List<PlatformInfo> Platforms { get; } = new List<PlatformInfo>();
         public List<GhostInfo> Ghosts { get; } = new List<GhostInfo>();
+        public List<PowerUpInfo> PowerUps { get; } = new List<PowerUpInfo>();
 
         private LevelData(int number)
         {
@@ -124,6 +127,13 @@ namespace JumpScape.Gameplay
                 case "Ghost":
                     RequireValues(values, 3);
                     Ghosts.Add(new GhostInfo(ParsePosition(values), ParseNumber(values[2])));
+                    break;
+
+                case "PowerUp":
+                    RequireValues(values, 3);
+                    if (!Enum.TryParse(values[2], ignoreCase: true, out PowerUpType powerUpType) || !Enum.IsDefined(powerUpType))
+                        throw new FormatException($"unknown power-up '{values[2]}' (use health, doubleJump or highJump)");
+                    PowerUps.Add(new PowerUpInfo(ParsePosition(values), powerUpType));
                     break;
 
                 default:

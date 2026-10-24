@@ -49,6 +49,9 @@ namespace JumpScape.Core
         }
 
         /// <summary>Converts a point in window pixels (e.g. the mouse) to the coordinates used by <see cref="CenteredTransform"/>.</summary>
-        public static Vector2 ToCentered(Point windowPoint) => windowPoint.ToVector2() / Scale - CenterOffset;
+        public static Vector2 ToCentered(Point windowPoint) => ToView(windowPoint) - CenterOffset;
+
+        /// <summary>Converts a point in window pixels to view coordinates (the ones used by <see cref="Transform"/>).</summary>
+        public static Vector2 ToView(Point windowPoint) => windowPoint.ToVector2() / Scale;
     }
 }

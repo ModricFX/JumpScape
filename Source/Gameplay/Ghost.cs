@@ -7,7 +7,7 @@ namespace JumpScape.Gameplay
 {
     /// <summary>
     /// A ghost that hovers in place and chases the player when they come within its radius.
-    /// Touching it costs half a heart, after which it floats back home.
+    /// Touching it costs half a heart, after which it floats back home. One thrown orb defeats it.
     /// </summary>
     public sealed class Ghost
     {
@@ -36,6 +36,13 @@ namespace JumpScape.Gameplay
 
         private Vector2 DrawPosition => _position + new Vector2(0f, MathF.Sin(_hoverTime * 2f) * 5f);
 
+        public Vector2 Center => DrawPosition + new Vector2(Size / 2f);
+
+        public bool IsDefeated { get; private set; }
+
+        /// <summary>The whole sprite; thrown orbs hit anywhere on it.</summary>
+        public Rectangle Bounds => new Rectangle((int)DrawPosition.X, (int)DrawPosition.Y, (int)Size, (int)Size);
+
         public Rectangle Hitbox
         {
             get
@@ -44,6 +51,11 @@ namespace JumpScape.Gameplay
                 Vector2 topLeft = DrawPosition + new Vector2((Size - hitboxSize) / 2f);
                 return new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)hitboxSize, (int)hitboxSize);
             }
+        }
+
+        public void Defeat()
+        {
+            IsDefeated = true;
         }
 
         public void Update(float deltaTime, Player player)

@@ -25,6 +25,9 @@ namespace JumpScape.Gameplay
         private static readonly Vector2 KnockbackVelocity = new Vector2(5f, -8f);
         private const float DeathRotationSpeed = 4f;
         private const float HeartScale = 0.1f;
+        private const float ThrowCooldown = 0.4f;
+        private const float PowerUpDuration = 15f;
+        private const float HighJumpBoost = 1.25f; // About 1.5x as high.
 
         private readonly SoundEffectInstance _walkingSound = Assets.PlayerWalking.CreateInstance();
         private readonly SoundEffectInstance _jumpSound = Assets.PlayerJump.CreateInstance();
@@ -37,6 +40,10 @@ namespace JumpScape.Gameplay
         private float _invincibilityTimer;
         private float _knockbackTimer;
         private float _deathRotation;
+        private float _throwCooldown;
+        private float _doubleJumpTimer;
+        private float _highJumpTimer;
+        private bool _usedAirJump;
 
         public Player(Vector2 spawnPosition)
         {
@@ -57,6 +64,12 @@ namespace JumpScape.Gameplay
         /// <summary>Set when the player walks through the open exit door.</summary>
         public bool ReachedExit { get; private set; }
 
+        public bool HasDoubleJump => _doubleJumpTimer > 0f;
+
+        public bool HasHighJump => _highJumpTimer > 0f;
+
+        public bool CanThrow => !IsDead && !ReachedExit && _throwCooldown <= 0f;
+
         private static int Width => (int)(Assets.PlayerRight.Width * Scale);
 
         private static int Height => (int)(Assets.PlayerRight.Height * Scale);
@@ -70,6 +83,9 @@ namespace JumpScape.Gameplay
         {
             if (_invincibilityTimer > 0f)
                 _invincibilityTimer -= deltaTime;
+            _throwCooldown = Math.Max(0f, _throwCooldown - deltaTime);
+            _doubleJumpTimer = Math.Max(0f, _doubleJumpTimer - deltaTime);
+            _highJumpTimer = Math.Max(0f, _highJumpTimer - deltaTime);
 
             if (_knockbackTimer > 0f)
                 _knockbackTimer -= deltaTime;
@@ -132,14 +148,17 @@ namespace JumpScape.Gameplay
                 Position += new Vector2(direction * WalkSpeed, 0);
             }
 
-            bool jumpPressed = Input.IsDown(Keys.Space) || Input.IsDown(Keys.W) || Input.IsDown(Keys.Up);
-            if (jumpPressed && IsOnGround)
+            // Holding jump keeps jumping whenever the player lands. The mid-air jump needs a fresh key press.
+            bool jumpHeld = Input.IsDown(Keys.Space) || Input.IsDown(Keys.W) || Input.IsDown(Keys.Up);
+            bool jumpPressed = Input.WasPressed(Keys.Space) || Input.WasPressed(Keys.W) || Input.WasPressed(Keys.Up);
+            if (jumpHeld && IsOnGround)
             {
-                _velocity.Y = JumpVelocity;
-                IsOnGround = false;
-                _walkingSound.Stop();
-                _jumpSound.Stop();
-                PlaySound(_jumpSound);
+                Jump();
+            }
+            else if (jumpPressed && !IsOnGround && HasDoubleJump && !_usedAirJump)
+            {
+                Jump();
+                _usedAirJump = true;
             }
 
             bool walking = direction != 0 && IsOnGround;
@@ -147,6 +166,55 @@ namespace JumpScape.Gameplay
                 PlaySound(_walkingSound);
             else if (!walking && _walkingSound.State == SoundState.Playing)
                 _walkingSound.Stop();
+        }
+
+        private void Jump()
+        {
+            _velocity.Y = HasHighJump ? JumpVelocity * HighJumpBoost : JumpVelocity;
+            IsOnGround = false;
+            _walkingSound.Stop();
+            _jumpSound.Stop();
+            PlaySound(_jumpSound);
+        }
+
+        /// <summary>Throws an orb from the player towards a point in the world.</summary>
+        public Projectile Throw(Vector2 target)
+        {
+            _throwCooldown = ThrowCooldown;
+
+            Vector2 start = Center;
+            Vector2 direction = target - start;
+            if (direction.LengthSquared() < 1f)
+                direction = new Vector2(_facingRight ? 1 : -1, 0);
+            _facingRight = direction.X >= 0;
+
+            Assets.PlayerJump.Play(0.5f * GameSettings.Current.SoundVolume, 0.6f, 0f);
+            return new Projectile(start, direction);
+        }
+
+        /// <summary>Applies a power-up. Returns false if it would do nothing (a heart when health is already full).</summary>
+        public bool TryCollect(PowerUpType type)
+        {
+            if (IsDead || ReachedExit)
+                return false;
+
+            switch (type)
+            {
+                case PowerUpType.Health:
+                    if (_health >= MaxHealth)
+                        return false;
+                    _health = Math.Min(MaxHealth, _health + 2);
+                    break;
+                case PowerUpType.DoubleJump:
+                    _doubleJumpTimer = PowerUpDuration;
+                    break;
+                case PowerUpType.HighJump:
+                    _highJumpTimer = PowerUpDuration;
+                    break;
+            }
+
+            Assets.PlayerJump.Play(0.6f * GameSettings.Current.SoundVolume, 1f, 0f);
+            return true;
         }
 
         private void HandleInventoryKeys()
@@ -212,6 +280,7 @@ namespace JumpScape.Gameplay
                     Position = new Vector2(Position.X, platformBounds.Top - Height);
                     _velocity.Y = 0f;
                     IsOnGround = true;
+                    _usedAirJump = false;
                     platform.OnPlayerLanded();
                 }
                 else
@@ -294,6 +363,31 @@ namespace JumpScape.Gameplay
             }
 
             Inventory.Draw(spriteBatch);
+            DrawPowerUpTimers(spriteBatch);
+        }
+
+        /// <summary>Shows each active power-up under the hearts, with a bar for the time left.</summary>
+        private void DrawPowerUpTimers(SpriteBatch spriteBatch)
+        {
+            const float iconSize = 36f;
+            const int barWidth = 120;
+            const int barHeight = 8;
+            float y = 20 + Assets.HeartFull.Height * HeartScale + 12;
+
+            foreach ((PowerUpType type, float timeLeft) in new[] { (PowerUpType.DoubleJump, _doubleJumpTimer), (PowerUpType.HighJump, _highJumpTimer) })
+            {
+                if (timeLeft <= 0f)
+                    continue;
+
+                PowerUp.DrawIcon(spriteBatch, type, new Vector2(10 + iconSize / 2f, y + iconSize / 2f), iconSize, Color.White);
+
+                var bar = new Rectangle((int)(10 + iconSize + 10), (int)(y + (iconSize - barHeight) / 2f), barWidth, barHeight);
+                spriteBatch.Draw(Assets.Pixel, bar, Color.Black * 0.5f);
+                bar.Width = (int)(barWidth * timeLeft / PowerUpDuration);
+                spriteBatch.Draw(Assets.Pixel, bar, PowerUp.GlowColorFor(type));
+
+                y += iconSize + 8;
+            }
         }
     }
 }

@@ -32,6 +32,7 @@ Empty lines and lines starting with `#` are ignored.
 | `DoorPosition: x, y, locked`                 | The exit door. `locked` = `1` means the player needs the key.                                                 |
 | `KeyPosition: x, y`                          | A key that unlocks the door. Add the line more than once for more keys.                                       |
 | `Ghost: x, y, radius`                        | A ghost that chases the player when they come within `radius` pixels.                                         |
+| `PowerUp: x, y, type`                        | A power-up, 44×44 px. `type` is `health`, `doubleJump` or `highJump`.                                         |
 
 The first platform should normally be the ground: `Platform: -50,groundY,groundLength,0,0`.
 A platform at `groundY-63` sits exactly on top of the ground. Anything between that and `groundY` overlaps
@@ -43,6 +44,9 @@ the grass and looks broken.
 - Keep the spawn point clear of platforms, or the player gets pushed out of them when the level starts.
 - The door is 123×140 px. To stand it on a platform at `groundY-N`, put the door at `groundY-(N+135)`.
 - A frog is about 60 px wide and walks back and forth across its whole platform.
+- To float a power-up where the player can grab it while standing on a platform at `groundY-N`, put it at
+  about `groundY-(N+90)`.
+- With high jump the player jumps about 580 px; with double jump, about 715 px in total.
 
 ## Example
 

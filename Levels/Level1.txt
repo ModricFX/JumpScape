@@ -9,3 +9,5 @@ Platform: 900,groundY-700,200,0,0
 Platform: 1150,groundY-850,200,0,0
 Platform: 1560,groundY-900,200,0,0
 DoorPosition: 1590,groundY-1035,0
+PowerUp: 1500,groundY-100,highJump
+PowerUp: 980,groundY-790,health

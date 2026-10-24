@@ -1,1 +1,3 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Graphics/Items/ball_green.png","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Graphics/Items/ball_green.xnb","TextureProcessor","Texture2DContent",222457,572422,1.2740935
+"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Graphics/Items/ball_red.png","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Graphics/Items/ball_red.xnb","TextureProcessor","Texture2DContent",180137,747723,1.158988

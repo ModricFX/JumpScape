@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using JumpScape.Core;
 using JumpScape.Menus;
@@ -23,6 +24,9 @@ namespace JumpScape.Gameplay
         private const float RetryFadeOutSpeed = 0.02f;
         private const float BlackScreenTime = 0.5f;
         private const float CameraSmoothing = 0.1f;
+        private const float MessageTime = 2f;
+
+        private static readonly Random Random = new Random();
 
         private readonly LevelData _level;
         private readonly OverlayMenu _pauseMenu = new OverlayMenu("Paused", Color.White, new[] { "Resume", "Quit" },
@@ -36,6 +40,11 @@ namespace JumpScape.Gameplay
         private List<Platform> _platforms;
         private List<Monster> _monsters;
         private List<Ghost> _ghosts;
+        private List<PowerUp> _powerUps;
+        private List<Projectile> _projectiles;
+        private List<Particle> _effects;
+        private string _message;
+        private float _messageTimer;
         private float _cameraTop;
         private float _fade;
         private float _blackScreenTimer;
@@ -63,6 +72,10 @@ namespace JumpScape.Gameplay
             _platforms = new List<Platform>();
             _monsters = new List<Monster>();
             _ghosts = new List<Ghost>();
+            _powerUps = new List<PowerUp>();
+            _projectiles = new List<Projectile>();
+            _effects = new List<Particle>();
+            _messageTimer = 0f;
 
             foreach (Vector2 keyPosition in _level.KeyPositions)
                 _keys.Add(new KeyPickup(keyPosition));
@@ -77,6 +90,9 @@ namespace JumpScape.Gameplay
 
             foreach (GhostInfo info in _level.Ghosts)
                 _ghosts.Add(new Ghost(info.Position, info.Radius));
+
+            foreach (PowerUpInfo info in _level.PowerUps)
+                _powerUps.Add(new PowerUp(info.Position, info.Type));
 
             _deathMenu.Close();
             _cameraTop = RestingCameraTop;
@@ -167,6 +183,12 @@ namespace JumpScape.Gameplay
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+            if (Input.WasClicked && _player.CanThrow)
+            {
+                Vector2 mouseInWorld = Input.ViewMousePosition + new Vector2(0f, _cameraTop);
+                _projectiles.Add(_player.Throw(mouseInWorld));
+            }
+
             _player.Update(deltaTime, _keys, _door);
             foreach (Monster monster in _monsters)
                 monster.Update(_player);
@@ -180,7 +202,98 @@ namespace JumpScape.Gameplay
             foreach (Platform platform in _platforms)
                 platform.Update(gameTime, _player);
 
+            UpdatePowerUps(deltaTime);
+            UpdateProjectiles(deltaTime);
+            UpdateEffects(deltaTime);
             UpdateCamera();
+        }
+
+        private void UpdatePowerUps(float deltaTime)
+        {
+            _messageTimer = Math.Max(0f, _messageTimer - deltaTime);
+
+            foreach (PowerUp powerUp in _powerUps)
+            {
+                powerUp.Update(deltaTime);
+                if (powerUp.IsCollected || !_player.Bounds.Intersects(powerUp.Bounds) || !_player.TryCollect(powerUp.Type))
+                    continue;
+
+                powerUp.Collect();
+                Burst(powerUp.Bounds.Center.ToVector2(), PowerUp.GlowColorFor(powerUp.Type), 12);
+                _message = powerUp.Type switch
+                {
+                    PowerUpType.Health => "+1 heart",
+                    PowerUpType.DoubleJump => "Double jump! Press jump again in the air",
+                    _ => "High jump!",
+                };
+                _messageTimer = MessageTime;
+            }
+        }
+
+        private void UpdateProjectiles(float deltaTime)
+        {
+            foreach (Projectile projectile in _projectiles)
+            {
+                projectile.Update(deltaTime);
+
+                foreach (Monster monster in _monsters)
+                {
+                    if (!projectile.IsFinished && projectile.Bounds.Intersects(monster.Bounds))
+                    {
+                        monster.Defeat();
+                        projectile.Finish();
+                        OnEnemyDefeated(monster.Center, Color.Crimson);
+                    }
+                }
+
+                foreach (Ghost ghost in _ghosts)
+                {
+                    if (!projectile.IsFinished && projectile.Bounds.Intersects(ghost.Bounds))
+                    {
+                        ghost.Defeat();
+                        projectile.Finish();
+                        OnEnemyDefeated(ghost.Center, Color.WhiteSmoke);
+                    }
+                }
+
+                foreach (Platform platform in _platforms)
+                {
+                    if (!projectile.IsFinished && platform.IsSolid && platform.Bounds.Contains(projectile.Position))
+                    {
+                        projectile.Finish();
+                        Burst(projectile.Position, Color.Gold, 6);
+                    }
+                }
+            }
+
+            _projectiles.RemoveAll(projectile => projectile.IsFinished);
+            _monsters.RemoveAll(monster => monster.IsDefeated);
+            _ghosts.RemoveAll(ghost => ghost.IsDefeated);
+        }
+
+        private void OnEnemyDefeated(Vector2 position, Color color)
+        {
+            Burst(position, color, 16);
+            float pan = MathHelper.Clamp((position.X - _player.Center.X) / 500f, -1f, 1f);
+            Assets.PlayerHit.Play(0.8f * GameSettings.Current.SoundVolume, 0.5f, pan);
+        }
+
+        /// <summary>A small explosion of colored squares.</summary>
+        private void Burst(Vector2 position, Color color, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var velocity = new Vector2((float)Random.NextDouble() * 300f - 150f, -60f - (float)Random.NextDouble() * 180f);
+                float lifetime = 0.4f + (float)Random.NextDouble() * 0.4f;
+                _effects.Add(new Particle(position, velocity, lifetime, color, size: 6f));
+            }
+        }
+
+        private void UpdateEffects(float deltaTime)
+        {
+            foreach (Particle particle in _effects)
+                particle.Update(deltaTime);
+            _effects.RemoveAll(particle => particle.IsDead);
         }
 
         /// <summary>The camera only scrolls vertically, following the player once they climb near the top of the view.</summary>
@@ -190,6 +303,20 @@ namespace JumpScape.Gameplay
             float followThreshold = restingTop + VirtualScreen.ViewHeight * 0.05f;
             float targetTop = _player.Position.Y < followThreshold ? _player.Position.Y - VirtualScreen.ViewHeight * 0.3f : restingTop;
             _cameraTop = MathHelper.Lerp(_cameraTop, targetTop, CameraSmoothing);
+        }
+
+        /// <summary>Briefly shows what a collected power-up does, at the top of the screen.</summary>
+        private void DrawMessage(SpriteBatch spriteBatch)
+        {
+            if (_messageTimer <= 0f)
+                return;
+
+            const float scale = 0.8f;
+            float alpha = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
+            Vector2 size = Assets.Font.MeasureString(_message) * scale;
+            var position = new Vector2((VirtualScreen.ViewWidth - size.X) / 2f, 30f);
+            spriteBatch.DrawString(Assets.Font, _message, position + new Vector2(2, 2), Color.Black * (0.5f * alpha), 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(Assets.Font, _message, position, Color.White * alpha, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
         public void StopSounds()
@@ -215,14 +342,21 @@ namespace JumpScape.Gameplay
                 ghost.Draw(spriteBatch);
             foreach (KeyPickup key in _keys)
                 key.Draw(spriteBatch);
+            foreach (PowerUp powerUp in _powerUps)
+                powerUp.Draw(spriteBatch);
             _door.Draw(spriteBatch);
             _door.DrawPrompt(spriteBatch, _player);
             _player.Draw(spriteBatch);
+            foreach (Projectile projectile in _projectiles)
+                projectile.Draw(spriteBatch);
+            foreach (Particle particle in _effects)
+                particle.Draw(spriteBatch);
             spriteBatch.End();
 
             // The hearts and inventory stick to the corners of the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
             _player.DrawHud(spriteBatch);
+            DrawMessage(spriteBatch);
             spriteBatch.End();
 
             // Menus are centered in the window.

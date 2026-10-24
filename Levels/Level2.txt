@@ -10,3 +10,5 @@ Platform: 1300,groundY-550,200,0,0
 Platform: 1650,groundY-750,250,0,0
 DoorPosition: 1680,groundY-885,0
 Ghost: 880,groundY-660,200
+PowerUp: 980,groundY-190,doubleJump
+PowerUp: 1800,groundY-440,health
