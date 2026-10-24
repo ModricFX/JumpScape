@@ -62,6 +62,8 @@ namespace JumpScape.Gameplay
 
         public bool IsOnGround { get; private set; }
 
+        public bool FacingRight => _facingRight;
+
         public bool IsInvincible => _invincibilityTimer > 0f;
 
         public bool IsDead { get; private set; }
@@ -370,6 +372,13 @@ namespace JumpScape.Gameplay
 
             var feet = new Vector2(Position.X + Width / 2f, Position.Y + texture.Height * Scale - bounce);
             spriteBatch.Draw(texture, feet, null, tint, 0f, new Vector2(texture.Width / 2f, texture.Height), scale, SpriteEffects.None, 0f);
+        }
+
+        /// <summary>Draws a see-through copy of the player, used for the best-run ghost.</summary>
+        public static void DrawGhost(SpriteBatch spriteBatch, Vector2 position, bool facingRight, Color color)
+        {
+            Texture2D texture = facingRight ? Assets.PlayerRight : Assets.PlayerLeft;
+            spriteBatch.Draw(texture, position, null, color, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
         }
 
         /// <summary>Draws the hearts and inventory in screen space.</summary>

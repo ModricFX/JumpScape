@@ -10,7 +10,7 @@ namespace JumpScape.Core
     /// </summary>
     internal static class SaveFile
     {
-        private static readonly string Folder = Path.Combine(
+        public static string Folder { get; private set; } = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JumpScape");
 
         private static readonly JsonSerializerOptions Options = new JsonSerializerOptions { WriteIndented = true };

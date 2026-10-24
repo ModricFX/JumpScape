@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JumpScape.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -37,6 +38,30 @@ namespace JumpScape.Menus
         public static void DrawCenteredText(SpriteBatch spriteBatch, SpriteFont font, string text, Vector2 center, Color color, float scale = 1f)
         {
             DrawText(spriteBatch, font, text, center - font.MeasureString(text) * scale / 2f, color, scale);
+        }
+
+        /// <summary>Splits text into lines no wider than <paramref name="maxWidth"/>, breaking between words.</summary>
+        public static List<string> WrapText(SpriteFont font, string text, float maxWidth, float scale = 1f)
+        {
+            var lines = new List<string>();
+            string current = "";
+            foreach (string word in text.Split(' '))
+            {
+                string candidate = current.Length == 0 ? word : current + " " + word;
+                if (current.Length > 0 && font.MeasureString(candidate).X * scale > maxWidth)
+                {
+                    lines.Add(current);
+                    current = word;
+                }
+                else
+                {
+                    current = candidate;
+                }
+            }
+
+            if (current.Length > 0)
+                lines.Add(current);
+            return lines;
         }
 
         public static void DrawOutline(SpriteBatch spriteBatch, Rectangle area, Color color, int thickness = 2)

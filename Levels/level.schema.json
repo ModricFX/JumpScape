@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JumpScape level",
+  "description": "A JumpScape level. See Levels/README.md. Coordinates are in a 1920x1080 world; y grows downwards and every position is an object's top-left corner.",
+  "type": "object",
+  "required": ["spawn", "areas"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string", "description": "Notes for whoever edits the level. The game ignores this." },
+    "spawn": { "$ref": "#/definitions/position", "description": "Where the player starts." },
+    "startArea": { "type": "string", "description": "Name of the area the player starts in. The first area if left out." },
+    "areas": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The parts of the level. Most levels have one area; portals connect several.",
+      "items": { "$ref": "#/definitions/area" }
+    }
+  },
+  "definitions": {
+    "number": {
+      "description": "A number, or groundY / groundLength with an optional +N or -N, like \"groundY-150\". groundY is the top of the ground (1017), groundLength is 2880.",
+      "oneOf": [
+        { "type": "number" },
+        { "type": "string", "pattern": "^\\s*((groundY|groundLength)(\\s*[+-]\\s*[0-9]+(\\.[0-9]+)?)?|[+-]?[0-9]+(\\.[0-9]+)?)\\s*$" }
+      ]
+    },
+    "color": {
+      "type": "string",
+      "description": "A hex code like \"#4A0D12\" or a color name like \"DarkRed\" or \"CornflowerBlue\"."
+    },
+    "position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "$ref": "#/definitions/number", "description": "0 is the left edge, 1920 the right edge." },
+        "y": { "$ref": "#/definitions/number", "description": "0 is the top of the first screen. Negative values are above it." }
+      }
+    },
+    "area": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "The area's name. Shown as a banner when the player arrives through a portal (except for \"main\")." },
+        "sky": { "$ref": "#/definitions/color", "description": "Background color. CornflowerBlue if left out." },
+        "tint": { "$ref": "#/definitions/color", "description": "Color the platforms are tinted with. White (no change) if left out." },
+        "platforms": {
+          "type": "array",
+          "description": "Grass platforms, 63 px thick. The first is usually the ground: { \"x\": -50, \"y\": \"groundY\", \"length\": \"groundLength\" }.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "length"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "length": { "$ref": "#/definitions/number", "description": "Width in pixels." },
+              "monster": { "type": "boolean", "description": "Puts a frog on the platform." },
+              "crumbling": { "type": "boolean", "description": "Breaks 3 s after the player lands on it, and comes back 5 s later." }
+            }
+          }
+        },
+        "doors": {
+          "type": "array",
+          "description": "Exit doors (123x140 px). Going through one finishes the level.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "locked": { "type": "boolean", "description": "Needs a key. Each locked door uses up one key." }
+            }
+          }
+        },
+        "portals": {
+          "type": "array",
+          "description": "Glowing doors that take the player to another portal, usually in another area.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "name", "leadsTo"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "locked": { "type": "boolean", "description": "Needs a key." },
+              "name": { "type": "string", "description": "This portal's name, so other portals can lead here." },
+              "leadsTo": { "type": "string", "description": "Name of the portal this one leads to." }
+            }
+          }
+        },
+        "keys": {
+          "type": "array",
+          "description": "Keys that unlock locked doors and portals.",
+          "items": { "$ref": "#/definitions/position" }
+        },
+        "ghosts": {
+          "type": "array",
+          "description": "Ghosts that chase the player when they come close.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "radius"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "radius": { "$ref": "#/definitions/number", "description": "How close (in pixels) the player must come before the ghost chases them." }
+            }
+          }
+        },
+        "powerUps": {
+          "type": "array",
+          "description": "Power-ups (44x44 px) the player collects by touching them.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "type": { "enum": ["health", "doubleJump", "highJump"], "description": "health gives back a heart; doubleJump and highJump last 15 s." }
+            }
+          }
+        },
+        "npcs": {
+          "type": "array",
+          "description": "Friendly characters the player can talk to with E. Place them anywhere above a platform; they stand on the platform below.",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "name"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "name": { "type": "string" },
+              "lines": { "type": "array", "items": { "type": "string" }, "description": "What the character says, one entry per line." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

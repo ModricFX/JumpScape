@@ -7,10 +7,23 @@
     <Spacing>2</Spacing>
     <UseKerning>true</UseKerning>
     <Style>Regular</Style>
+    <!-- Drawn instead of any character the font doesn't have, so unusual text never crashes the game. -->
+    <DefaultCharacter>?</DefaultCharacter>
     <CharacterRegions>
+      <!-- Basic Latin -->
       <CharacterRegion>
         <Start>&#32;</Start>
         <End>&#126;</End>
+      </CharacterRegion>
+      <!-- Accented letters, including Slovenian č, š and ž -->
+      <CharacterRegion>
+        <Start>&#160;</Start>
+        <End>&#383;</End>
+      </CharacterRegion>
+      <!-- Dashes, curly quotes and the ellipsis -->
+      <CharacterRegion>
+        <Start>&#8211;</Start>
+        <End>&#8230;</End>
       </CharacterRegion>
     </CharacterRegions>
   </Asset>

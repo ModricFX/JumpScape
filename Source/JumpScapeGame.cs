@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using JumpScape.Core;
 using JumpScape.Gameplay;
@@ -44,6 +46,7 @@ namespace JumpScape
         private LevelSelectMenu _levelSelectMenu;
         private SettingsMenu _settingsMenu;
         private GameplayScreen _gameplay;
+        private PanelMenu _errorMenu;
 
         private Action _pendingSwitch;
         private float _screenFade;
@@ -85,6 +88,7 @@ namespace JumpScape
             _mainMenu = new MainMenu();
             _levelSelectMenu = new LevelSelectMenu(_levels, _progress);
             _settingsMenu = new SettingsMenu(ApplySettings);
+            _errorMenu = new PanelMenu("This level can't be loaded", new Color(255, 90, 80), new[] { "OK" });
 
             MediaPlayer.IsRepeating = true;
             ApplyAudioSettings();
@@ -169,6 +173,12 @@ namespace JumpScape
                     _pendingSwitch();
                     _pendingSwitch = null;
                 }
+            }
+            else if (_errorMenu.IsOpen)
+            {
+                _screenFade = Math.Max(0f, _screenFade - ScreenFadeSpeed);
+                if (_errorMenu.Update(deltaTime) == 0 || Input.Back)
+                    _errorMenu.Close();
             }
             else
             {
@@ -261,10 +271,29 @@ namespace JumpScape
 
         private void StartLevel(int levelNumber)
         {
+            LevelData level;
+            try
+            {
+                level = LevelData.Load(levelNumber);
+            }
+            catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                // Show what is wrong with the level file instead of crashing, back on the menus.
+                Debug.WriteLine(e);
+                if (_screen == Screen.Playing)
+                {
+                    _gameplay.StopSounds();
+                    _gameplay = null;
+                    _screen = Screen.MainMenu;
+                }
+                _errorMenu.Open(e.Message);
+                return;
+            }
+
             SwitchTo(() =>
             {
-                bool hasNextLevel = _levels.Any(level => level > levelNumber);
-                _gameplay = new GameplayScreen(LevelData.Load(levelNumber), hasNextLevel);
+                bool hasNextLevel = _levels.Any(number => number > levelNumber);
+                _gameplay = new GameplayScreen(level, hasNextLevel);
                 _screen = Screen.Playing;
             });
         }
@@ -322,6 +351,7 @@ namespace JumpScape
                     _levelSelectMenu.Draw(_spriteBatch);
                 else
                     _settingsMenu.Draw(_spriteBatch);
+                _errorMenu.Draw(_spriteBatch);
                 _spriteBatch.End();
             }
 

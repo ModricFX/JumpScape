@@ -1,0 +1,41 @@
+{
+  "$schema": "level.schema.json",
+  "spawn": { "x": 100, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 200, "y": "groundY-63", "length": 250 },
+        { "x": 600, "y": "groundY-150", "length": 200, "crumbling": true },
+        { "x": 900, "y": "groundY-100", "length": 200 },
+        { "x": 1200, "y": "groundY-250", "length": 200 },
+        { "x": 1600, "y": "groundY-350", "length": 300, "monster": true },
+        { "x": 900, "y": "groundY-500", "length": 250, "crumbling": true },
+        { "x": 1300, "y": "groundY-550", "length": 200 },
+        { "x": 1650, "y": "groundY-750", "length": 250 }
+      ],
+      "doors": [
+        { "x": 1680, "y": "groundY-885" }
+      ],
+      "ghosts": [
+        { "x": 880, "y": "groundY-660", "radius": 200 }
+      ],
+      "powerUps": [
+        { "x": 980, "y": "groundY-190", "type": "doubleJump" },
+        { "x": 1800, "y": "groundY-440", "type": "health" }
+      ],
+      "npcs": [
+        {
+          "x": 330,
+          "y": "groundY-300",
+          "name": "Pip",
+          "lines": [
+            "The green orb over there gives you a double jump: press jump again while you're in the air.",
+            "A ghost floats near the top. It chases you if you get close, but one orb gets rid of it."
+          ]
+        }
+      ]
+    }
+  ]
+}

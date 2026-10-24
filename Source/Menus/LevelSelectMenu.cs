@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using JumpScape.Core;
+using JumpScape.Gameplay;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -32,12 +34,14 @@ namespace JumpScape.Menus
         private readonly Vector2 _titleCenter;
         private readonly Rectangle[] _levelBoxes;
         private readonly Rectangle _backButton;
+        private readonly string[] _bestTimes;
         private int _selected;
 
         public LevelSelectMenu(IReadOnlyList<int> levels, GameProgress progress)
         {
             _levels = levels;
             _progress = progress;
+            _bestTimes = new string[levels.Count];
             _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + Assets.Font.LineSpacing * TitleScale / 2f);
 
             // Center the grid of crates in the panel.
@@ -64,6 +68,23 @@ namespace JumpScape.Menus
         public void Open()
         {
             _selected = 0;
+
+            // Best times change after playing, so read them again each time the picker opens.
+            for (int i = 0; i < _levels.Count; i++)
+            {
+                _bestTimes[i] = null;
+                try
+                {
+                    LevelData level = LevelData.Load(_levels[i]);
+                    float? best = RunRecording.LoadBestTime(level.Number, level.ContentHash);
+                    if (best is float seconds)
+                        _bestTimes[i] = TimeSpan.FromSeconds(seconds).ToString(@"m\:ss", CultureInfo.InvariantCulture);
+                }
+                catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+                {
+                    // A broken level just shows no best time; the error appears when someone tries to play it.
+                }
+            }
         }
 
         public LevelSelectChoice Update()
@@ -125,6 +146,12 @@ namespace JumpScape.Menus
                 {
                     var star = new Rectangle(box.Right - StarSize + 12, box.Y - 12, StarSize, StarSize);
                     spriteBatch.Draw(Assets.Star, star, Color.White);
+                }
+
+                if (_bestTimes[i] != null)
+                {
+                    var below = new Vector2(_levelBoxes[i].Center.X, _levelBoxes[i].Bottom + 24);
+                    UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _bestTimes[i], below, Color.White * 0.85f);
                 }
             }
 

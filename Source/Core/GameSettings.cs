@@ -25,6 +25,9 @@ namespace JumpScape.Core
 
         public bool IsFullscreen { get; set; } = true;
 
+        /// <summary>Show a see-through ghost replaying your best run of the level.</summary>
+        public bool ShowRaceGhost { get; set; } = true;
+
         /// <summary>Sound effect volume as a 0-1 multiplier. Mute is applied globally, not here.</summary>
         [JsonIgnore]
         public float SoundVolume => Volume / 100f;

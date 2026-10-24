@@ -1,0 +1,62 @@
+{
+  "$schema": "level.schema.json",
+  "description": "The exit is locked, and the key is in the nether. Climb to the portal door, find the key on the other side, then come back through the portal and unlock the exit.",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 300, "y": "groundY-150", "length": 200 },
+        { "x": 600, "y": "groundY-300", "length": 200, "monster": true },
+        { "x": 950, "y": "groundY-450", "length": 250 }
+      ],
+      "portals": [
+        { "x": 1010, "y": "groundY-585", "name": "netherGate", "leadsTo": "overworldGate" }
+      ],
+      "doors": [
+        { "x": 1700, "y": "groundY-135", "locked": true }
+      ],
+      "powerUps": [
+        { "x": 650, "y": "groundY-390", "type": "doubleJump" }
+      ],
+      "npcs": [
+        {
+          "x": 1480,
+          "y": "groundY-300",
+          "name": "Pip",
+          "lines": [
+            "This door is locked, and its key isn't anywhere in this world.",
+            "Climb up to the glowing door. It leads to the nether, where the key is hidden.",
+            "Come back through the same door, then unlock this one. Watch out for the ghost down there!"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nether",
+      "sky": "#4A0D12",
+      "tint": "Salmon",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 450, "y": "groundY-150", "length": 200, "crumbling": true },
+        { "x": 750, "y": "groundY-300", "length": 200 },
+        { "x": 1050, "y": "groundY-450", "length": 200, "monster": true },
+        { "x": 1350, "y": "groundY-600", "length": 200, "crumbling": true },
+        { "x": 1650, "y": "groundY-750", "length": 250 }
+      ],
+      "portals": [
+        { "x": 100, "y": "groundY-135", "name": "overworldGate", "leadsTo": "netherGate" }
+      ],
+      "keys": [
+        { "x": 1780, "y": "groundY-885" }
+      ],
+      "ghosts": [
+        { "x": 1150, "y": "groundY-760", "radius": 250 }
+      ],
+      "powerUps": [
+        { "x": 800, "y": "groundY-390", "type": "health" }
+      ]
+    }
+  ]
+}

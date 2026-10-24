@@ -22,6 +22,6 @@
 
   <ItemGroup>
     <!-- Level files are read at runtime, so ship them next to the executable. -->
-    <None Update="Levels/*.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Levels/Level*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

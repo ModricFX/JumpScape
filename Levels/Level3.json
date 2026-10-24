@@ -1,0 +1,40 @@
+{
+  "$schema": "level.schema.json",
+  "spawn": { "x": 100, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 200, "y": "groundY-63", "length": 250 },
+        { "x": 600, "y": "groundY-150", "length": 200, "monster": true },
+        { "x": 1000, "y": "groundY-250", "length": 200, "crumbling": true },
+        { "x": 1200, "y": "groundY-400", "length": 200, "crumbling": true },
+        { "x": 1400, "y": "groundY-500", "length": 250, "monster": true },
+        { "x": 1650, "y": "groundY-650", "length": 250 }
+      ],
+      "keys": [
+        { "x": 1800, "y": "groundY-785" }
+      ],
+      "doors": [
+        { "x": 1680, "y": "groundY-135", "locked": true }
+      ],
+      "powerUps": [
+        { "x": 450, "y": "groundY-100", "type": "highJump" },
+        { "x": 1700, "y": "groundY-740", "type": "health" }
+      ],
+      "npcs": [
+        {
+          "x": 330,
+          "y": "groundY-300",
+          "name": "Pip",
+          "lines": [
+            "The door here is locked. The key is at the very top - go and get it!",
+            "Keys go into your inventory. Pick the key's slot with 1, 2 or 3, then press E at the door.",
+            "If you need to, press Q to drop the selected key."
+          ]
+        }
+      ]
+    }
+  ]
+}

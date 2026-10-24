@@ -34,6 +34,13 @@ namespace JumpScape.Gameplay
 
             foreach (DoorInfo info in data.Doors)
                 Doors.Add(new Door(info.Position, info.IsLocked, info.Name, info.Target));
+
+            foreach (NpcInfo info in data.Npcs)
+            {
+                var npc = new Npc(info.Position, info.Name, info.Lines);
+                npc.StandOn(Platforms);
+                Npcs.Add(npc);
+            }
         }
 
         public string Name { get; }
@@ -46,6 +53,7 @@ namespace JumpScape.Gameplay
         public List<PowerUp> PowerUps { get; } = new List<PowerUp>();
         public List<KeyPickup> Keys { get; } = new List<KeyPickup>();
         public List<Door> Doors { get; } = new List<Door>();
+        public List<Npc> Npcs { get; } = new List<Npc>();
 
         public void StopSounds()
         {

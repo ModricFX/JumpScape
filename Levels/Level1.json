@@ -1,0 +1,41 @@
+{
+  "$schema": "level.schema.json",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 150, "y": "groundY-63", "length": 200 },
+        { "x": 450, "y": "groundY-100", "length": 200 },
+        { "x": 700, "y": "groundY-250", "length": 200 },
+        { "x": 300, "y": "groundY-400", "length": 200, "monster": true },
+        { "x": 700, "y": "groundY-550", "length": 200, "crumbling": true },
+        { "x": 900, "y": "groundY-700", "length": 200 },
+        { "x": 1150, "y": "groundY-850", "length": 200 },
+        { "x": 1560, "y": "groundY-900", "length": 200 }
+      ],
+      "doors": [
+        { "x": 1590, "y": "groundY-1035" }
+      ],
+      "powerUps": [
+        { "x": 1500, "y": "groundY-100", "type": "highJump" },
+        { "x": 980, "y": "groundY-790", "type": "health" }
+      ],
+      "npcs": [
+        {
+          "x": 230,
+          "y": "groundY-300",
+          "name": "Pip",
+          "lines": [
+            "Hi, I'm Pip! Walk with the arrow keys or A and D, and jump with Space, W or Up.",
+            "Climb the platforms to the door at the top. Press E at a door to open it, then E again to go through.",
+            "See that red frog? Touching it hurts. Click with the mouse to throw a glowing orb at it!",
+            "Glowing things are power-ups. Hearts heal you, and the red orb makes you jump much higher for a while.",
+            "Your fastest run is saved, and next time a ghost of it races you. Good luck!"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -11,8 +11,9 @@ namespace JumpScape.Menus
     {
         private const int PanelSize = 800;
         private const float TitleScale = 1.4f;
-        private const int CategoryHeight = 170;
         private const int RowHeight = 48;
+        private const int HeadingGap = 8;
+        private const int CategoryGap = 22;
         private const int SliderWidth = 240;
         private const int SliderHeight = 8;
         private const int KnobSize = 26;
@@ -21,6 +22,8 @@ namespace JumpScape.Menus
         private const int DropdownRowHeight = 34;
 
         private static readonly Color Muted = new Color(210, 200, 185);
+
+        private const string GhostText = "Race your best run";
 
         private enum Slider
         {
@@ -35,6 +38,8 @@ namespace JumpScape.Menus
 
         private readonly Vector2 _titleCenter;
         private readonly Rectangle _categoriesBox;
+        private readonly Vector2 _gameplayHeading;
+        private readonly Vector2 _ghostLabel;
         private readonly Vector2 _graphicsHeading;
         private readonly Vector2 _audioHeading;
         private readonly Vector2 _frameRateLabel;
@@ -42,6 +47,7 @@ namespace JumpScape.Menus
         private readonly Vector2 _volumeLabel;
         private readonly Vector2 _musicLabel;
         private readonly Vector2 _muteLabel;
+        private readonly Rectangle _ghostBox;
         private readonly Rectangle _dropdown;
         private readonly Rectangle _fullscreenBox;
         private readonly Rectangle _volumeSlider;
@@ -61,27 +67,42 @@ namespace JumpScape.Menus
             float titleHeight = Assets.Font.LineSpacing * TitleScale;
             _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + titleHeight / 2f);
 
+            // Lay out the headings and rows from top to bottom.
             var categoriesStart = new Vector2(_panel.X + 80, _panel.Y + 40 + titleHeight + 50);
-            _categoriesBox = new Rectangle((int)categoriesStart.X - 30, (int)categoriesStart.Y - 24, _panel.Width - 100, 2 * CategoryHeight + 40);
-            _graphicsHeading = categoriesStart;
-            _audioHeading = categoriesStart + new Vector2(0, CategoryHeight);
+            float y = categoriesStart.Y;
+            Vector2 Heading()
+            {
+                var position = new Vector2(categoriesStart.X, y);
+                y += Assets.Font.LineSpacing + HeadingGap;
+                return position;
+            }
+            Vector2 Row()
+            {
+                var position = new Vector2(categoriesStart.X + 30, y);
+                y += RowHeight;
+                return position;
+            }
 
-            float headingHeight = Assets.Font.LineSpacing;
-            Vector2 graphicsRows = _graphicsHeading + new Vector2(30, headingHeight + 8);
-            Vector2 audioRows = _audioHeading + new Vector2(30, headingHeight + 8);
-
-            _frameRateLabel = graphicsRows;
-            _fullscreenLabel = graphicsRows + new Vector2(0, RowHeight);
-            _volumeLabel = audioRows;
-            _musicLabel = audioRows + new Vector2(0, RowHeight);
-            _muteLabel = audioRows + new Vector2(0, 2 * RowHeight);
+            _gameplayHeading = Heading();
+            _ghostLabel = Row();
+            y += CategoryGap;
+            _graphicsHeading = Heading();
+            _frameRateLabel = Row();
+            _fullscreenLabel = Row();
+            y += CategoryGap;
+            _audioHeading = Heading();
+            _volumeLabel = Row();
+            _musicLabel = Row();
+            _muteLabel = Row();
+            _categoriesBox = new Rectangle((int)categoriesStart.X - 30, (int)categoriesStart.Y - 24, _panel.Width - 100, (int)(y - categoriesStart.Y) + 34);
 
             // All controls line up in one column to the right of the longest label.
-            float labelWidth = Assets.SmallFont.MeasureString("Music volume").X;
-            int controlX = (int)(graphicsRows.X + labelWidth + 50);
+            float labelWidth = Assets.SmallFont.MeasureString(GhostText).X;
+            int controlX = (int)(_ghostLabel.X + labelWidth + 50);
             float labelHeight = Assets.SmallFont.LineSpacing;
             int RowCenter(Vector2 label) => (int)(label.Y + labelHeight / 2f);
 
+            _ghostBox = new Rectangle(controlX, RowCenter(_ghostLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
             _dropdown = new Rectangle(controlX, RowCenter(_frameRateLabel) - DropdownRowHeight / 2, DropdownWidth, DropdownRowHeight);
             _fullscreenBox = new Rectangle(controlX, RowCenter(_fullscreenLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
             _volumeSlider = new Rectangle(controlX, RowCenter(_volumeLabel) - SliderHeight / 2, SliderWidth, SliderHeight);
@@ -119,6 +140,8 @@ namespace JumpScape.Menus
 
             if (Input.IsMouseOver(_dropdown))
                 _dropdownOpen = true;
+            else if (Input.IsMouseOver(ClickArea(_ghostBox)))
+                Change(() => _settings.ShowRaceGhost = !_settings.ShowRaceGhost);
             else if (Input.IsMouseOver(ClickArea(_fullscreenBox)))
                 Change(() => _settings.IsFullscreen = !_settings.IsFullscreen);
             else if (Input.IsMouseOver(ClickArea(_muteBox)))
@@ -207,8 +230,12 @@ namespace JumpScape.Menus
 
             spriteBatch.Draw(Assets.Pixel, _categoriesBox, Color.Black * 0.3f);
             UiDrawing.DrawOutline(spriteBatch, _categoriesBox, Color.White * 0.35f);
+            UiDrawing.DrawText(spriteBatch, "Gameplay", _gameplayHeading, UiDrawing.Highlight);
             UiDrawing.DrawText(spriteBatch, "Graphics", _graphicsHeading, UiDrawing.Highlight);
             UiDrawing.DrawText(spriteBatch, "Audio", _audioHeading, UiDrawing.Highlight);
+
+            DrawLabel(spriteBatch, GhostText, _ghostLabel, IsHovered(_ghostBox));
+            DrawCheckbox(spriteBatch, _ghostBox, _settings.ShowRaceGhost);
 
             DrawLabel(spriteBatch, "Frame rate", _frameRateLabel, IsHovered(_dropdown) || _dropdownOpen);
             DrawLabel(spriteBatch, "Fullscreen", _fullscreenLabel, IsHovered(_fullscreenBox));

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using JumpScape.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -10,7 +12,7 @@ namespace JumpScape.Menus
     /// </summary>
     public sealed class PanelMenu
     {
-        private const int PanelWidth = 620;
+        private const int MinimumWidth = 620;
         private const int Padding = 40;
         private const int ButtonGap = 18;
         private const float TitleScale = 1.4f;
@@ -21,10 +23,11 @@ namespace JumpScape.Menus
         private readonly string[] _items;
         private readonly float _fadeInTime;
         private readonly Rectangle[] _buttons;
+        private readonly int _panelWidth;
         private Rectangle _panel;
         private Vector2 _titleCenter;
-        private Vector2 _subtitleCenter;
-        private string _subtitle;
+        private Vector2 _subtitleTop;
+        private List<string> _subtitleLines = new List<string>();
         private float _openTime;
         private int _selected;
 
@@ -36,6 +39,9 @@ namespace JumpScape.Menus
             _items = items;
             _fadeInTime = fadeInTime;
             _buttons = new Rectangle[items.Length];
+
+            // Long titles get a wider panel instead of spilling over its edges.
+            _panelWidth = Math.Max(MinimumWidth, (int)(Assets.Font.MeasureString(title).X * TitleScale) + Padding * 2);
         }
 
         public bool IsOpen { get; private set; }
@@ -48,7 +54,7 @@ namespace JumpScape.Menus
             IsOpen = true;
             _openTime = 0f;
             _selected = 0;
-            _subtitle = subtitle;
+            _subtitleLines = subtitle == null ? new List<string>() : UiDrawing.WrapText(Assets.SmallFont, subtitle, _panelWidth - Padding * 2);
             Layout();
         }
 
@@ -62,13 +68,13 @@ namespace JumpScape.Menus
             int buttonWidth = Assets.MenuButton.Width;
             int buttonHeight = Assets.MenuButton.Height;
             float titleHeight = Assets.Font.LineSpacing * TitleScale;
-            float subtitleHeight = _subtitle == null ? 0f : Assets.SmallFont.LineSpacing + 12f;
+            float subtitleHeight = _subtitleLines.Count == 0 ? 0f : _subtitleLines.Count * Assets.SmallFont.LineSpacing + 12f;
             int buttonsHeight = _items.Length * (buttonHeight + ButtonGap) - ButtonGap;
             int height = (int)(Padding + titleHeight + subtitleHeight + 30 + buttonsHeight + Padding);
 
-            _panel = UiDrawing.CenteredPanel(PanelWidth, height);
+            _panel = UiDrawing.CenteredPanel(_panelWidth, height);
             _titleCenter = new Vector2(_panel.Center.X, _panel.Y + Padding + titleHeight / 2f);
-            _subtitleCenter = new Vector2(_panel.Center.X, _panel.Y + Padding + titleHeight + subtitleHeight / 2f + 4f);
+            _subtitleTop = new Vector2(_panel.Center.X, _panel.Y + Padding + titleHeight + 8f);
 
             int top = (int)(_panel.Y + Padding + titleHeight + subtitleHeight + 30);
             for (int i = 0; i < _items.Length; i++)
@@ -123,8 +129,11 @@ namespace JumpScape.Menus
 
             var offset = new Vector2(0, slide);
             UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, _title, _titleCenter + offset, _titleColor * visibility, TitleScale);
-            if (_subtitle != null)
-                UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _subtitle, _subtitleCenter + offset, Color.White * visibility);
+            for (int i = 0; i < _subtitleLines.Count; i++)
+            {
+                var center = _subtitleTop + offset + new Vector2(0, (i + 0.5f) * Assets.SmallFont.LineSpacing);
+                UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _subtitleLines[i], center, Color.White * visibility);
+            }
 
             for (int i = 0; i < _buttons.Length; i++)
             {

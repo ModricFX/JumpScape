@@ -30,6 +30,8 @@ namespace JumpScape.Gameplay
         private const float CompleteScreenDelay = 0.6f;
         private const float CameraSmoothing = 0.1f;
         private const float MessageTime = 2.5f;
+        private const float GhostOpacity = 0.4f;
+        private static readonly Color GhostColor = new Color(170, 210, 255);
 
         private readonly LevelData _level;
         private readonly bool _hasNextLevel;
@@ -37,6 +39,8 @@ namespace JumpScape.Gameplay
         private readonly PanelMenu _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", "Main menu" }, fadeInTime: 0.5f);
         private readonly PanelMenu _completeMenu;
         private readonly Banner _banner = new Banner();
+        private readonly DialogueBox _dialogue = new DialogueBox();
+        private readonly GameSettings _settings = GameSettings.Current;
         private readonly Effects _effects = new Effects();
         private readonly List<Projectile> _projectiles = new List<Projectile>();
 
@@ -52,11 +56,14 @@ namespace JumpScape.Gameplay
         private bool _isRetrying;
         private Door _portalDestination;
         private Area _portalDestinationArea;
+        private RunRecording _recording;
+        private RunRecording _bestRun;
 
         public GameplayScreen(LevelData level, bool hasNextLevel)
         {
             _level = level;
             _hasNextLevel = hasNextLevel;
+            _bestRun = RunRecording.LoadBest(level.Number, level.ContentHash);
             _completeMenu = new PanelMenu("Level complete!", UiDrawing.Highlight,
                 hasNextLevel ? new[] { "Next level", "Play again", "Main menu" } : new[] { "Play again", "Main menu" },
                 fadeInTime: 0.4f);
@@ -79,6 +86,7 @@ namespace JumpScape.Gameplay
             _areas = _level.Areas.Select(data => new Area(data)).ToList();
             _area = _areas[_level.StartArea];
             _player = new Player(_level.PlayerSpawn);
+            _recording = new RunRecording();
             _projectiles.Clear();
             _effects.Clear();
             _messageTimer = 0f;
@@ -86,6 +94,7 @@ namespace JumpScape.Gameplay
 
             _deathMenu.Close();
             _completeMenu.Close();
+            _dialogue.Close();
             _cameraTop = RestingCameraTop;
             _fade = 1f;
             _playTime = 0f;
@@ -124,6 +133,13 @@ namespace JumpScape.Gameplay
 
             if (_pauseMenu.IsOpen)
                 return UpdatePauseMenu(deltaTime);
+
+            // While someone is talking the world waits, and Esc closes the conversation instead of pausing.
+            if (_dialogue.IsOpen)
+            {
+                _dialogue.Update(deltaTime);
+                return GameplayResult.None;
+            }
 
             if (Input.Back && !_player.IsDead)
             {
@@ -174,7 +190,7 @@ namespace JumpScape.Gameplay
                     return GameplayResult.None;
 
                 StopSounds();
-                _completeMenu.Open("Time: " + FormatTime(_playTime));
+                _completeMenu.Open(SaveRunAndDescribe());
                 return GameplayResult.LevelCompleted;
             }
 
@@ -193,6 +209,19 @@ namespace JumpScape.Gameplay
                     return GameplayResult.QuitToMenu;
             }
             return GameplayResult.None;
+        }
+
+        /// <summary>Saves this run if it is the fastest so far, and returns the line shown under "Level complete!".</summary>
+        private string SaveRunAndDescribe()
+        {
+            string time = "Time: " + FormatTime(_playTime);
+            RunRecording previousBest = _bestRun;
+            if (previousBest != null && previousBest.Time <= _playTime)
+                return time + "   (best " + FormatTime(previousBest.Time) + ")";
+
+            _recording.SaveAsBest(_level.Number, _level.ContentHash, _playTime);
+            _bestRun = _recording;
+            return previousBest == null ? time : time + "  -  new best!";
         }
 
         private static string FormatTime(float seconds)
@@ -216,8 +245,17 @@ namespace JumpScape.Gameplay
             if (Input.WasPressed(Keys.E) && !_player.IsDead)
             {
                 Door door = _area.Doors.FirstOrDefault(d => _player.Bounds.Intersects(d.Bounds));
+                Npc npc = _area.Npcs.FirstOrDefault(n => n.CanTalkTo(_player));
                 if (door != null)
+                {
                     UseDoor(door);
+                }
+                else if (npc != null)
+                {
+                    _player.StopSounds();
+                    _dialogue.Open(npc.Name, npc.Lines);
+                    return;
+                }
             }
 
             _player.Update(deltaTime, _area.Keys);
@@ -229,6 +267,8 @@ namespace JumpScape.Gameplay
                 key.Update(deltaTime);
             foreach (Door door in _area.Doors)
                 door.Update(deltaTime);
+            foreach (Npc npc in _area.Npcs)
+                npc.Update(deltaTime, _player);
 
             _player.ApplyGravity();
             _player.ResolveCollisions(_area.Platforms);
@@ -239,6 +279,9 @@ namespace JumpScape.Gameplay
                 _effects.Dust(_player.Feet, 6);
             if (_player.JustLanded)
                 _effects.Dust(_player.Feet, 10);
+
+            if (!_player.IsDead && !_player.ReachedExit)
+                _recording.Add(_player.Position, _areas.IndexOf(_area), _player.FacingRight);
 
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
@@ -394,6 +437,39 @@ namespace JumpScape.Gameplay
             return _player.Position.Y < followThreshold ? _player.Position.Y - VirtualScreen.ViewHeight * 0.3f : restingTop;
         }
 
+        /// <summary>
+        /// Replays the best run as a see-through ghost, frame for frame, so the player can race it.
+        /// It fades out shortly after reaching the exit.
+        /// </summary>
+        private void DrawRaceGhost(SpriteBatch spriteBatch)
+        {
+            if (!_settings.ShowRaceGhost || _bestRun == null || _bestRun.Frames.Count == 0)
+                return;
+
+            int index = _recording.Frames.Count;
+            float opacity = GhostOpacity;
+            if (index >= _bestRun.Frames.Count)
+            {
+                opacity *= 1f - (index - _bestRun.Frames.Count) / 60f;
+                index = _bestRun.Frames.Count - 1;
+            }
+
+            RunRecording.Frame frame = _bestRun.Frames[index];
+            if (opacity > 0f && frame.Area == _areas.IndexOf(_area))
+                Player.DrawGhost(spriteBatch, frame.Position, frame.FacingRight, GhostColor * opacity);
+        }
+
+        /// <summary>The time so far, and the best time to beat, at the top of the screen.</summary>
+        private void DrawTimer(SpriteBatch spriteBatch)
+        {
+            string text = FormatTime(_playTime);
+            if (_bestRun != null)
+                text += "   Best " + FormatTime(_bestRun.Time);
+
+            Vector2 size = Assets.SmallFont.MeasureString(text);
+            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, new Vector2((VirtualScreen.ViewWidth - size.X) / 2f, 24f), Color.White);
+        }
+
         public void StopSounds()
         {
             _player.StopSounds();
@@ -424,6 +500,9 @@ namespace JumpScape.Gameplay
                 key.Draw(spriteBatch);
             foreach (PowerUp powerUp in _area.PowerUps)
                 powerUp.Draw(spriteBatch);
+            foreach (Npc npc in _area.Npcs)
+                npc.Draw(spriteBatch);
+            DrawRaceGhost(spriteBatch);
             _player.Draw(spriteBatch);
             foreach (Ghost ghost in _area.Ghosts)
                 ghost.Draw(spriteBatch);
@@ -432,21 +511,28 @@ namespace JumpScape.Gameplay
             _effects.Draw(spriteBatch);
             foreach (Door door in _area.Doors)
                 door.DrawPrompt(spriteBatch, _player);
+            if (!_dialogue.IsOpen && !_area.Doors.Any(door => _player.Bounds.Intersects(door.Bounds)))
+            {
+                foreach (Npc npc in _area.Npcs)
+                    npc.DrawPrompt(spriteBatch, _player);
+            }
             spriteBatch.End();
 
             // The hearts and inventory stick to the corners of the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
             _player.DrawHud(spriteBatch);
+            DrawTimer(spriteBatch);
             if (_messageTimer > 0f)
             {
                 float opacity = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
-                UiDrawing.DrawHint(spriteBatch, new Vector2(VirtualScreen.ViewWidth / 2f, 90f), null, _message, opacity);
+                UiDrawing.DrawHint(spriteBatch, new Vector2(VirtualScreen.ViewWidth / 2f, 112f), null, _message, opacity);
             }
             spriteBatch.End();
 
             // Banners and menus are centered in the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.CenteredTransform);
             _banner.Draw(spriteBatch);
+            _dialogue.Draw(spriteBatch);
             _pauseMenu.Draw(spriteBatch);
             _deathMenu.Draw(spriteBatch);
             _completeMenu.Draw(spriteBatch);

@@ -8,10 +8,14 @@ glowing orb), and for platforms that crumble under your feet. Some doors are loc
 
 ## Features
 
-- Four levels, plus a simple text format for making your own ([Levels/README.md](Levels/README.md)).
+- Four levels, plus a JSON level format for making your own, with autocomplete and error checking in
+  VS Code ([Levels/README.md](Levels/README.md)).
 - Levels can have several areas joined by glowing portal doors. Level 4 hides its key in a dark red nether.
 - Frogs that patrol platforms, ghosts that chase you, crumbling platforms, and locked doors with keys.
 - Throw glowing orbs at enemies by clicking where you want them to go.
+- Pip, a friendly explorer, explains the controls in Level 1 and gives tips in the other levels.
+- Race your best run: after you finish a level, a see-through ghost replays your fastest run while a
+  timer shows your time and your best. Best times also appear in the level picker.
 - Power-ups: hearts that heal you, plus double jump and high jump orbs that last 15 seconds.
 - Three hearts of health, knockback, and a short moment of invincibility after every hit.
 - Sounds that get quieter with distance and come from the left or right.
@@ -66,7 +70,7 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | ---------------------- | --------------------------------------- |
 | Move                   | Arrow keys or A / D                     |
 | Jump                   | Space, W or Up arrow                    |
-| Use the door           | E                                       |
+| Use the door, talk     | E                                       |
 | Select inventory slot  | 1, 2, 3                                 |
 | Drop the selected key  | Q                                       |
 | Throw an orb           | Left mouse button (aim with the mouse)  |
@@ -96,10 +100,15 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
   Active power-ups show under your hearts, with a bar for the time left.
 - Crumbling platforms start shaking when you land on them, break after three seconds and come back five
   seconds later.
+- Press **E** next to Pip to talk. **E** (or Enter, Space or a click) shows the next line, and **Esc** ends
+  the conversation. The game waits while you talk.
+- Your time is shown at the top. Finish faster than before to set a new best; the ghost of your best run
+  races you next time. You can turn the ghost off under **Settings → Gameplay**.
 
 ## Saved data
 
-Settings and progress are saved as two small files, `settings.json` and `progress.json`:
+Settings and progress are saved as small files: `settings.json`, `progress.json`, and one
+`best-run-levelN.bin` per level with your fastest run:
 
 - Windows: `%APPDATA%\JumpScape\`
 - macOS and Linux: `~/.config/JumpScape/`
@@ -119,7 +128,7 @@ Source/
 Content/
   Content.mgcb            List of every image, sound and font the game uses
   Fonts/ Graphics/ Sounds/
-Levels/                   Level files (see Levels/README.md)
+Levels/                   Level files (LevelN.json), their schema, and a guide (Levels/README.md)
 ```
 
 The images, sounds and font are built by the MonoGame content pipeline. If you add a new asset, add it to
