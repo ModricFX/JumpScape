@@ -1,6 +1,6 @@
 PlayerSpawn: 100,groundY-100
 Platform: -50,groundY,groundLength,0,0
-Platform: 200,groundY-50,250,0,0
+Platform: 200,groundY-63,250,0,0
 Platform: 600,groundY-150,200,0,1
 Platform: 900,groundY-100,200,0,0
 Platform: 1200,groundY-250,200,0,0

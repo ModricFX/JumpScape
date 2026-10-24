@@ -1,2 +1,2 @@
-﻿using var game = new JumpScape.Game1();
+﻿using var game = new JumpScape.JumpScapeGame();
 game.Run();

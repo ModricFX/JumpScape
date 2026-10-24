@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<XnaContent xmlns:ns="Microsoft.Xna.Framework">
-  <Asset Type="ns:SpriteFont">
-    <FontName>Arial</FontName> <!-- You can use a common system font like Arial -->
-    <Size>32</Size> <!-- Adjust size as needed -->
+<!-- Built by the MonoGame content pipeline. Arial must be installed on the machine that builds the game. -->
+<XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
+  <Asset Type="Graphics:FontDescription">
+    <FontName>Arial</FontName>
+    <Size>32</Size>
     <Spacing>2</Spacing>
     <UseKerning>true</UseKerning>
     <Style>Regular</Style>
     <CharacterRegions>
       <CharacterRegion>
-        <Start> </Start>
-        <End>~</End>
+        <Start>&#32;</Start>
+        <End>&#126;</End>
       </CharacterRegion>
     </CharacterRegions>
   </Asset>

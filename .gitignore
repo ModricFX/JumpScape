@@ -1,41 +1,33 @@
-# Ignore .NET build outputs
+# .NET build output
 bin/
 obj/
+publish/
 
-# Ignore Visual Studio Code settings and extensions
-.vscode/
+# Compiled MonoGame content (rebuilt from Content/Content.mgcb on every build)
+Content/bin/
+Content/obj/
 
-# Ignore user-specific files
+# IDE and user-specific files
+.vs/
+.idea/
 *.user
 *.suo
 *.userprefs
 
-# Ignore compiled MonoGame content files
-Content/bin/
-Content/obj/
-Content/Content.mgcb
-
-# Ignore build and package artifacts
+# Build and package artifacts
 *.dll
 *.exe
 *.pdb
 *.log
 *.cache
-*.tmp
-*.db
 
-# Ignore macOS system files
+# OS files
 .DS_Store
+Thumbs.db
 
-# Ignore Linux and Windows system files
+# Backup and temporary files
 *.swp
 *~
-
-# Ignore MonoDevelop/Xamarin settings
-.idea/
-*.userprefs
-
-# Ignore backup and temporary files
 *.bak
 *.old
 *.tmp
