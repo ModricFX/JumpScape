@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using JumpScape.Core;
+using JumpScape.Editor;
 using JumpScape.Gameplay;
 using JumpScape.Menus;
 using Microsoft.Xna.Framework;
@@ -23,6 +24,7 @@ namespace JumpScape
             LevelSelect,
             Settings,
             Playing,
+            Editor,
         }
 
         /// <summary>The game logic is tuned for exactly 60 updates per second.</summary>
@@ -48,6 +50,10 @@ namespace JumpScape
         private SettingsMenu _settingsMenu;
         private GameplayScreen _gameplay;
         private PanelMenu _errorMenu;
+        private LevelEditor _editor;
+
+        /// <summary>True while trying out a level from the editor; finishing or quitting goes back to the editor.</summary>
+        private bool _testingFromEditor;
 
         private Action _pendingSwitch;
         private float _screenFade;
@@ -66,6 +72,7 @@ namespace JumpScape
             Window.Title = "JumpScape";
             Window.AllowUserResizing = true;
             Window.ClientSizeChanged += OnWindowResized;
+            Window.TextInput += (sender, e) => Input.AddTypedCharacter(e.Character);
         }
 
         protected override void Initialize()
@@ -90,6 +97,7 @@ namespace JumpScape
             _levelSelectMenu = new LevelSelectMenu(_levels, _progress);
             _settingsMenu = new SettingsMenu(ApplySettings, ResetProgress);
             _errorMenu = new PanelMenu("This level can't be loaded", new Color(255, 90, 80), new[] { "OK" });
+            _editor = new LevelEditor();
 
             MediaPlayer.IsRepeating = true;
             ApplyAudioSettings();
@@ -224,6 +232,10 @@ namespace JumpScape
                 case Screen.Playing:
                     UpdatePlaying(gameTime);
                     break;
+
+                case Screen.Editor:
+                    UpdateEditor((float)gameTime.ElapsedGameTime.TotalSeconds);
+                    break;
             }
         }
 
@@ -249,6 +261,11 @@ namespace JumpScape
                 case MainMenuChoice.LevelPicker:
                     _levelSelectMenu.Open();
                     ShowScreen(Screen.LevelSelect);
+                    break;
+
+                case MainMenuChoice.LevelEditor:
+                    _editor.Open();
+                    ShowScreen(Screen.Editor);
                     break;
 
                 case MainMenuChoice.Settings:
@@ -311,10 +328,38 @@ namespace JumpScape
             });
         }
 
+        private void UpdateEditor(float deltaTime)
+        {
+            switch (_editor.Update(deltaTime))
+            {
+                case EditorResult.Back:
+                    // Saved levels may be new, so look for level files again.
+                    if (_editor.SavedSomething)
+                    {
+                        _levels = LevelData.FindLevelNumbers();
+                        _levelSelectMenu = new LevelSelectMenu(_levels, _progress);
+                    }
+                    ShowScreen(Screen.MainMenu);
+                    break;
+
+                case EditorResult.Test:
+                    SwitchTo(() =>
+                    {
+                        _gameplay = new GameplayScreen(_editor.TestLevel, hasNextLevel: false, isTest: true);
+                        _testingFromEditor = true;
+                        _screen = Screen.Playing;
+                    });
+                    break;
+            }
+        }
+
         private void UpdatePlaying(GameTime gameTime)
         {
             switch (_gameplay.Update(gameTime))
             {
+                case GameplayResult.LevelCompleted when _testingFromEditor:
+                    break;
+
                 case GameplayResult.LevelCompleted:
                     _progress.HighestCompletedLevel = Math.Max(_progress.HighestCompletedLevel, _gameplay.LevelNumber);
                     _progress.AddGems(_gameplay.LevelNumber, _gameplay.GemsFound);
@@ -331,7 +376,8 @@ namespace JumpScape
                     SwitchTo(() =>
                     {
                         _gameplay = null;
-                        _screen = Screen.MainMenu;
+                        _screen = _testingFromEditor ? Screen.Editor : Screen.MainMenu;
+                        _testingFromEditor = false;
                     });
                     break;
             }
@@ -346,6 +392,17 @@ namespace JumpScape
             {
                 GraphicsDevice.Clear(_gameplay.SkyColor);
                 _gameplay.Draw(_spriteBatch);
+            }
+            else if (_screen == Screen.Editor)
+            {
+                GraphicsDevice.Clear(Color.Black);
+                if (_editor.IsChoosingLevel)
+                {
+                    _spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
+                    _menuBackground.Draw(_spriteBatch);
+                    _spriteBatch.End();
+                }
+                _editor.Draw(_spriteBatch);
             }
             else
             {

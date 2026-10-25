@@ -13,6 +13,8 @@ first, and look out for hidden gems on the way.
   making your own, with autocomplete and error checking in VS Code ([Levels/README.md](Levels/README.md)).
   An automated player has finished every level and collected every gem, so each one is known to be
   possible ([Running the checks](#running-the-checks)).
+- A level editor in the game: draw platforms and spikes with the mouse, place doors, portals, keys, gems,
+  ghosts, springs and more, and try the level out straight away ([Level editor](#level-editor)).
 - Jumps that feel fair: tap jump for a little hop or hold it for a full jump, and a jump still works just
   after you walk off an edge or just before you land.
 - Levels can have several areas joined by glowing portal doors, like a dark red nether or a night sky.
@@ -168,6 +170,41 @@ game and what Pip says follow your keys.
 - Stuck? **Esc** pauses the game, where you can restart the level or look up the controls. If a level is
   too hard, turn on **Extra hearts** in the settings.
 
+## Level editor
+
+Choose **Level Editor** in the main menu, then a level to change or **+ New level**. A new level starts with
+the ground, a start and an exit door.
+
+- Pick a tool in the top bar, or with the keys **1–9** and **0**. **Platform** and **Spikes** draw by
+  dragging in the level. The other tools add something with a click, standing on the platform under the
+  mouse (gems and ghosts float where you click). **Start** moves where the player starts.
+- With **Select**, click something to change it in the bar at the bottom: a frog on a platform, crumbling,
+  locked doors, where a portal leads, the type of power-up, what Pip says, and so on. Drag it to move it, or
+  drag the right edge of a platform or spikes to make them longer.
+- To make a moving platform, select it, tick **Moves**, and drag the blue outline to where it should go.
+- The second portal you add leads to the first one, and back.
+- **+ Area** adds another area, like the nether. The tabs switch between areas.
+- **Level settings** has the level's name and description, the medal times, and the current area's name,
+  sky color and platform color.
+
+| Action                          | Keys                                       |
+| ------------------------------- | ------------------------------------------ |
+| Delete                          | Right-click, or Delete                     |
+| Copy the selected thing         | Ctrl+D                                     |
+| Nudge the selected thing        | Arrow keys (Shift for 10 px)               |
+| Place freely, off the 10 px grid | Hold Shift while dragging or clicking     |
+| Scroll up and down              | Mouse wheel, W / S, Page Up / Page Down; Home goes back down |
+| Undo / redo                     | Ctrl+Z / Ctrl+Y                            |
+| Save                            | Ctrl+S                                     |
+| Try the level out               | F5                                         |
+| Deselect, then leave            | Esc                                        |
+
+A try-out doesn't count as finishing the level and doesn't save a best time; **Back to editor** in the pause
+menu returns to the editor. Saving writes `LevelN.json` next to the game, and also into the project's
+`Levels` folder when the game runs from the repository, so the new level can be committed. Saving rewrites
+the whole file, so comments in it are not kept. More about the level files is in
+[Levels/README.md](Levels/README.md).
+
 ## Saved data
 
 Settings (including your keys) and progress (finished levels and found gems) are saved as small files:
@@ -188,6 +225,7 @@ Source/
   Gameplay/               The level being played: player, platforms, enemies, doors, items, effects, backdrop
   Menus/                  Main menu, level picker, settings, shared wooden UI pieces, and the panel menus
                           used for pause, game over and level complete
+  Editor/                 The level editor, and the writer that saves level files
 Content/
   Content.mgcb            List of every image, sound and font the game uses
   Fonts/ Graphics/ Sounds/
@@ -207,7 +245,7 @@ that everything works. It opens a small window while it runs and never touches y
 dotnet run --project Tests
 ```
 
-runs every check (about 250) and saves screenshots in `Tests/bin/Debug/net8.0/screenshots`.
+runs every check (about 290) and saves screenshots in `Tests/bin/Debug/net8.0/screenshots`.
 
 ```bash
 dotnet run --project Tests -- --levels

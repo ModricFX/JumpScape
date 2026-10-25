@@ -108,7 +108,8 @@ namespace JumpScape.Gameplay
 
         public static readonly Color DefaultSky = Color.CornflowerBlue;
 
-        private static readonly string LevelsFolder = Path.Combine(AppContext.BaseDirectory, "Levels");
+        /// <summary>Where the game finds its level files: the Levels folder next to the game.</summary>
+        public static string LevelsFolder { get; } = Path.Combine(AppContext.BaseDirectory, "Levels");
         private static readonly Regex LevelFileName = new Regex(@"^Level(\d+)\.json$", RegexOptions.IgnoreCase);
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
@@ -179,6 +180,12 @@ namespace JumpScape.Gameplay
         /// </summary>
         public static LevelData FromJson(int number, string json)
         {
+            return FromFile(number, ParseFile(number, json));
+        }
+
+        /// <summary>Reads the text of a level file into the classes that mirror it, as the level editor needs.</summary>
+        internal static LevelFile ParseFile(int number, string json)
+        {
             string fileName = $"Level{number}.json";
             LevelFile file;
             try
@@ -192,6 +199,13 @@ namespace JumpScape.Gameplay
 
             if (file == null)
                 throw new InvalidDataException($"{fileName} is empty.");
+            return file;
+        }
+
+        /// <summary>Checks a level file and turns it into the data the game plays.</summary>
+        internal static LevelData FromFile(int number, LevelFile file)
+        {
+            string fileName = $"Level{number}.json";
             if (file.Areas.Count == 0)
                 throw new InvalidDataException($"{fileName}: a level needs at least one area.");
 
@@ -218,7 +232,7 @@ namespace JumpScape.Gameplay
             return level;
         }
 
-        private static AreaData ToAreaData(AreaJson json, string fileName)
+        internal static AreaData ToAreaData(AreaJson json, string fileName)
         {
             Color sky = DefaultSky;
             Color tint = Color.White;

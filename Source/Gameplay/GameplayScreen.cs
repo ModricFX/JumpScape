@@ -34,11 +34,14 @@ namespace JumpScape.Gameplay
 
         private readonly LevelData _level;
         private readonly bool _hasNextLevel;
-        private readonly PanelMenu _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Restart level", "Controls", "Main menu" });
+        private readonly PanelMenu _pauseMenu;
         private readonly ControlsPanel _controls = new ControlsPanel();
-        private readonly PanelMenu _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", "Main menu" }, fadeInTime: 0.5f);
-        private readonly PanelMenu _checkpointDeathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Back to checkpoint", "Restart level", "Main menu" }, fadeInTime: 0.5f);
+        private readonly PanelMenu _deathMenu;
+        private readonly PanelMenu _checkpointDeathMenu;
         private readonly PanelMenu _completeMenu;
+
+        /// <summary>A try-out from the level editor: no best runs or medals are saved, and "Main menu" goes back to the editor.</summary>
+        private readonly bool _isTest;
         private readonly Banner _banner = new Banner();
         private readonly DialogueBox _dialogue = new DialogueBox();
         private readonly GameSettings _settings = GameSettings.Current;
@@ -79,14 +82,20 @@ namespace JumpScape.Gameplay
         private int _raceFrame;
 
         /// <param name="gemsFoundBefore">Numbers of the level's gems found on earlier runs; they are drawn see-through.</param>
-        public GameplayScreen(LevelData level, bool hasNextLevel, IReadOnlyCollection<int> gemsFoundBefore = null)
+        /// <param name="isTest">True when trying out a level from the level editor.</param>
+        public GameplayScreen(LevelData level, bool hasNextLevel, IReadOnlyCollection<int> gemsFoundBefore = null, bool isTest = false)
         {
+            _isTest = isTest;
+            string quit = isTest ? "Back to editor" : "Main menu";
+            _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Restart level", "Controls", quit });
+            _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", quit }, fadeInTime: 0.5f);
+            _checkpointDeathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Back to checkpoint", "Restart level", quit }, fadeInTime: 0.5f);
             _level = level;
             _hasNextLevel = hasNextLevel;
             _gemsFoundBefore = gemsFoundBefore ?? Array.Empty<int>();
-            _bestRun = RunRecording.LoadBest(level.Number, level.ContentHash);
+            _bestRun = isTest ? null : RunRecording.LoadBest(level.Number, level.ContentHash);
             _completeMenu = new PanelMenu("Level complete!", UiDrawing.Highlight,
-                hasNextLevel ? new[] { "Next level", "Play again", "Main menu" } : new[] { "Play again", "Main menu" },
+                hasNextLevel ? new[] { "Next level", "Play again", quit } : new[] { "Play again", quit },
                 fadeInTime: 0.4f);
             Restart();
         }
@@ -307,7 +316,9 @@ namespace JumpScape.Gameplay
         {
             string text = "Time: " + FormatTime(_playTime);
             RunRecording previousBest = _bestRun;
-            if (_usedCheckpoint)
+            if (_isTest)
+                text += "  (a try-out, so it isn't saved)";
+            else if (_usedCheckpoint)
                 text += "\nA checkpoint was used, so this run doesn't count as a best time.";
             else if (previousBest != null && previousBest.Time <= _playTime)
                 text += "   (best " + FormatTime(previousBest.Time) + ")";
@@ -684,32 +695,10 @@ namespace JumpScape.Gameplay
             var visibleArea = new Rectangle(0, (int)_cameraTop, (int)VirtualScreen.ViewWidth + 1, (int)VirtualScreen.ViewHeight + 1);
 
             spriteBatch.Begin(transformMatrix: camera);
-            foreach (Platform platform in _area.Platforms)
-                platform.DrawShadow(spriteBatch, visibleArea);
-            foreach (Platform platform in _area.Platforms)
-                platform.Draw(spriteBatch, visibleArea, _area.Tint);
-            foreach (Spikes spikes in _area.Spikes)
-                spikes.Draw(spriteBatch);
-            foreach (BouncePad pad in _area.BouncePads)
-                pad.Draw(spriteBatch);
-            foreach (Checkpoint checkpoint in _area.Checkpoints)
-                checkpoint.Draw(spriteBatch);
-            foreach (Door door in _area.Doors)
-                door.Draw(spriteBatch);
-            foreach (Monster monster in _area.Monsters)
-                monster.Draw(spriteBatch);
-            foreach (KeyPickup key in _area.Keys)
-                key.Draw(spriteBatch);
-            foreach (PowerUp powerUp in _area.PowerUps)
-                powerUp.Draw(spriteBatch);
-            foreach (Gem gem in _area.Gems)
-                gem.Draw(spriteBatch);
-            foreach (Npc npc in _area.Npcs)
-                npc.Draw(spriteBatch);
+            _area.Draw(spriteBatch, visibleArea);
             DrawRaceGhost(spriteBatch);
             _player.Draw(spriteBatch);
-            foreach (Ghost ghost in _area.Ghosts)
-                ghost.Draw(spriteBatch);
+            _area.DrawGhosts(spriteBatch);
             foreach (Projectile projectile in _projectiles)
                 projectile.Draw(spriteBatch);
             _effects.Draw(spriteBatch);

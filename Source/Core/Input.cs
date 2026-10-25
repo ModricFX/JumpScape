@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -17,6 +18,7 @@ namespace JumpScape.Core
         private static KeyboardState _keyboard, _previousKeyboard;
         private static MouseState _mouse, _previousMouse;
         private static GamePadState _gamePad, _previousGamePad;
+        private static readonly StringBuilder _pendingText = new StringBuilder();
 
         /// <summary>Mouse position in the 1920x1080 menu coordinates (see <see cref="VirtualScreen.CenteredTransform"/>).</summary>
         public static Vector2 MousePosition { get; private set; }
@@ -26,6 +28,16 @@ namespace JumpScape.Core
 
         /// <summary>True after the gamepad was used, until a key or the mouse is used again. Hints show gamepad buttons.</summary>
         public static bool UsingGamepad { get; private set; }
+
+        /// <summary>Letters, digits and other characters typed since the last frame, for text boxes.</summary>
+        public static string TypedText { get; private set; } = "";
+
+        /// <summary>Called from the window's text input event.</summary>
+        public static void AddTypedCharacter(char character)
+        {
+            if (!char.IsControl(character))
+                _pendingText.Append(character);
+        }
 
         public static void Update()
         {
@@ -37,6 +49,8 @@ namespace JumpScape.Core
             _gamePad = GamePad.GetState(PlayerIndex.One);
             MousePosition = VirtualScreen.ToCentered(_mouse.Position);
             ViewMousePosition = VirtualScreen.ToView(_mouse.Position);
+            TypedText = _pendingText.ToString();
+            _pendingText.Clear();
             NoticeDevice();
         }
 
@@ -90,6 +104,15 @@ namespace JumpScape.Core
         public static bool WasClicked => IsMouseDown && _previousMouse.LeftButton == ButtonState.Released;
 
         public static bool MouseMoved => _mouse.Position != _previousMouse.Position;
+
+        public static bool WasRightClicked => _mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released;
+
+        /// <summary>How far the mouse wheel turned this frame; positive is away from the player.</summary>
+        public static int ScrollDelta => _mouse.ScrollWheelValue - _previousMouse.ScrollWheelValue;
+
+        public static bool Ctrl => IsDown(Keys.LeftControl) || IsDown(Keys.RightControl);
+
+        public static bool Shift => IsDown(Keys.LeftShift) || IsDown(Keys.RightShift);
 
         public static bool IsMouseOver(Rectangle area) => area.Contains(MousePosition);
 

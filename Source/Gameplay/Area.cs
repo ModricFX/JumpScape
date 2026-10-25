@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace JumpScape.Gameplay
 {
@@ -76,6 +77,42 @@ namespace JumpScape.Gameplay
         public List<Spikes> Spikes { get; } = new List<Spikes>();
         public List<Gem> Gems { get; } = new List<Gem>();
         public List<BouncePad> BouncePads { get; } = new List<BouncePad>();
+
+        /// <summary>
+        /// Draws everything in the area that stands behind the player: platforms (shadows first), spikes, springs,
+        /// flags, doors, frogs, keys, power-ups, gems and characters. Ghosts float in front, see <see cref="DrawGhosts"/>.
+        /// </summary>
+        public void Draw(SpriteBatch spriteBatch, Rectangle visibleArea)
+        {
+            foreach (Platform platform in Platforms)
+                platform.DrawShadow(spriteBatch, visibleArea);
+            foreach (Platform platform in Platforms)
+                platform.Draw(spriteBatch, visibleArea, Tint);
+            foreach (Spikes spikes in Spikes)
+                spikes.Draw(spriteBatch);
+            foreach (BouncePad pad in BouncePads)
+                pad.Draw(spriteBatch);
+            foreach (Checkpoint checkpoint in Checkpoints)
+                checkpoint.Draw(spriteBatch);
+            foreach (Door door in Doors)
+                door.Draw(spriteBatch);
+            foreach (Monster monster in Monsters)
+                monster.Draw(spriteBatch);
+            foreach (KeyPickup key in Keys)
+                key.Draw(spriteBatch);
+            foreach (PowerUp powerUp in PowerUps)
+                powerUp.Draw(spriteBatch);
+            foreach (Gem gem in Gems)
+                gem.Draw(spriteBatch);
+            foreach (Npc npc in Npcs)
+                npc.Draw(spriteBatch);
+        }
+
+        public void DrawGhosts(SpriteBatch spriteBatch)
+        {
+            foreach (Ghost ghost in Ghosts)
+                ghost.Draw(spriteBatch);
+        }
 
         public void StopSounds()
         {

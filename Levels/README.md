@@ -5,6 +5,11 @@ The game finds them automatically and lists them in number order in the level pi
 copy an existing one to `Level13.json`, change it, and run the game again. A level unlocks once the one
 before it is finished, or straight away with **Settings → Unlock all levels**.
 
+The easiest way to make a level is the editor in the game: **Level Editor** in the main menu (see
+[the main readme](../readme.md#level-editor)). When the game runs from the repository, it saves the level
+into this folder. Saving rewrites the whole file in the same layout as these files, so comments are not kept.
+This guide explains what the editor writes, for changing a level by hand.
+
 Start every file with `"$schema": "level.schema.json"`. Editors like VS Code then autocomplete the settings,
 explain each one when you hover over it, and underline mistakes while you type.
 

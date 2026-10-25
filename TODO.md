@@ -18,6 +18,9 @@
 
 ## Making levels
 
-- [ ] A level editor in the game: place platforms, enemies and doors with the mouse and save the JSON file.
+- [ ] More in the level editor: deleting and renumbering levels, any sky and tint color (only a few
+      presets now), and copying things from one area to another.
+- [ ] A **Check** button in the level editor that lets the automated player try the level and shows where
+      it gets stuck. The automated player lives in Tests now, so it would move into the game.
 - [ ] Run the checks in Tests automatically on GitHub after every change.
 - [ ] Build releases for Windows, macOS and Linux automatically with GitHub Actions.

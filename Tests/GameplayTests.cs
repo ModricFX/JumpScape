@@ -50,6 +50,8 @@ partial class TestGame
         TestMovingPlatforms();
         TestBouncePads();
         TestAutomatedPlayerRides();
+        TestLevelWriterRoundTrip();
+        TestLevelEditor();
     }
 
     /// <summary>Plays Level 3 to the exit and returns the screen with the level complete menu open.</summary>
@@ -611,6 +613,10 @@ partial class TestGame
         var choice = main.Update();
         SetMouse(new Vector2(-1000, -1000), false); Press();
         Check(choice == MainMenuChoice.Settings, "main menu: clicking Settings returns Settings (" + choice + ")");
+        SetMouse(buttons[3].Center.ToVector2(), true); Press();
+        var editorChoice = main.Update();
+        SetMouse(new Vector2(-1000, -1000), false); Press();
+        Check(editorChoice == MainMenuChoice.LevelEditor, "main menu: the fourth button opens the level editor (" + editorChoice + ")");
         // Mouse resting on a button must not override keyboard navigation.
         SetMouse(buttons[0].Center.ToVector2(), false); Press(); main.Update();
         Press(Keys.Down); main.Update(); Press(); main.Update();

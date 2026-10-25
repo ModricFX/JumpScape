@@ -10,6 +10,7 @@ namespace JumpScape.Menus
         Play,
         LevelPicker,
         Settings,
+        LevelEditor,
         Exit,
     }
 
@@ -19,7 +20,7 @@ namespace JumpScape.Menus
         private const float LogoScale = 0.4f;
         private const int ButtonGap = 20;
 
-        private static readonly string[] Labels = { "Play", "Level Picker", "Settings", "Exit" };
+        private static readonly string[] Labels = { "Play", "Level Picker", "Settings", "Level Editor", "Exit" };
 
         private readonly Rectangle[] _buttons = new Rectangle[Labels.Length];
         private int _selected;
