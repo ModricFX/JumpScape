@@ -1,7 +1,0 @@
-Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Fonts/BigFont.spritefont","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Fonts/BigFont.xnb","FontDescriptionProcessor","SpriteFontContent",1123,114532,0.6321856
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Fonts/SmallFont.spritefont","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Fonts/SmallFont.xnb","FontDescriptionProcessor","SpriteFontContent",1123,63054,0.078992
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Graphics/Items/ball_green.png","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Graphics/Items/ball_green.xnb","TextureProcessor","Texture2DContent",222457,572422,1.2740935
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Graphics/Items/ball_red.png","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Graphics/Items/ball_red.xnb","TextureProcessor","Texture2DContent",180137,747723,1.158988
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Graphics/Menu/star.png","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Graphics/Menu/star.xnb","TextureProcessor","Texture2DContent",140806,344546,3.470038
-"C:/Users/Modric/Documents/GitHub/JumpScape/Content/Sounds/ThemeSong.wav","C:/Users/Modric/Documents/GitHub/JumpScape/Content/bin/DesktopGL/Content/Sounds/ThemeSong.xnb","SongProcessor","SongContent",18456810,97,4.046534
