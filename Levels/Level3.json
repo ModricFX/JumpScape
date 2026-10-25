@@ -1,39 +1,28 @@
 {
   "$schema": "level.schema.json",
-  "spawn": { "x": 100, "y": "groundY-100" },
+  "name": "Crumbling Path",
+  "description": "These platforms crumble soon after you land on them. Keep moving, or wait for them to grow back.",
+  "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 200, "y": "groundY-63", "length": 250 },
-        { "x": 600, "y": "groundY-150", "length": 200, "monster": true },
-        { "x": 1000, "y": "groundY-250", "length": 200, "crumbling": true },
-        { "x": 1200, "y": "groundY-400", "length": 200, "crumbling": true },
-        { "x": 1400, "y": "groundY-500", "length": 250, "monster": true },
-        { "x": 1650, "y": "groundY-650", "length": 250 }
-      ],
-      "keys": [
-        { "x": 1800, "y": "groundY-785" }
+        { "x": 250, "y": "groundY-150", "length": 200 },
+        { "x": 550, "y": "groundY-250", "length": 160, "crumbling": true },
+        { "x": 850, "y": "groundY-350", "length": 160, "crumbling": true },
+        { "x": 1150, "y": "groundY-450", "length": 160, "crumbling": true },
+        { "x": 1450, "y": "groundY-550", "length": 250 },
+        { "x": 1150, "y": "groundY-700", "length": 160, "crumbling": true },
+        { "x": 850, "y": "groundY-820", "length": 160, "crumbling": true },
+        { "x": 550, "y": "groundY-940", "length": 160, "crumbling": true },
+        { "x": 200, "y": "groundY-1060", "length": 250 }
       ],
       "doors": [
-        { "x": 1680, "y": "groundY-135", "locked": true }
+        { "x": 240, "y": "groundY-1195" }
       ],
       "powerUps": [
-        { "x": 450, "y": "groundY-100", "type": "highJump" },
-        { "x": 1700, "y": "groundY-740", "type": "health" }
-      ],
-      "npcs": [
-        {
-          "x": 330,
-          "y": "groundY-300",
-          "name": "Pip",
-          "lines": [
-            "The door here is locked. The key is at the very top - go and get it!",
-            "Keys go into your inventory. Pick the key's slot with 1, 2 or 3, then press E at the door.",
-            "If you need to, press Q to drop the selected key."
-          ]
-        }
+        { "x": 1560, "y": "groundY-640", "type": "health" }
       ]
     }
   ]

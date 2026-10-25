@@ -2,20 +2,22 @@
 
 Each level is a JSON file in this folder named `Level<number>.json` (`Level1.json`, `Level2.json`, ...).
 The game finds them automatically and lists them in number order in the level picker. To add a level,
-copy an existing one to `Level5.json`, change it, and run the game again.
+copy an existing one to `Level11.json`, change it, and run the game again. A level unlocks once the one
+before it is finished, or straight away with **Settings → Unlock all levels**.
 
 Start every file with `"$schema": "level.schema.json"`. Editors like VS Code then autocomplete the settings,
 explain each one when you hover over it, and underline mistakes while you type.
 
 If a level has a mistake, the game shows what is wrong and on which line when you try to play it, for
-example: *Level5.json, line 14: "lenght" isn't a setting a platform can have. Check the spelling.*
+example: *Level11.json, line 14: "lenght" isn't a setting a platform can have. Check the spelling.*
 
 ## A small level
 
 ```json
 {
   "$schema": "level.schema.json",
-  "description": "Notes for yourself. The game ignores this.",
+  "name": "Frog Hill",
+  "description": "Two steps and a frog. The level picker shows this text.",
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -58,7 +60,8 @@ Any number can also be written as text using these words, optionally followed by
 | `spawn`       | Where the player starts: `{ "x": ..., "y": ... }`.                                              |
 | `startArea`   | Name of the area the player starts in. Optional; the first area if left out.                   |
 | `areas`       | The parts of the level. Most levels have one area, called `main`.                               |
-| `description` | Notes for whoever edits the level. Optional; the game ignores it.                              |
+| `name`        | The level's title, shown when it starts and in the level picker. Optional.                     |
+| `description` | A sentence or two about the level, shown in the level picker. Optional.                        |
 
 Each area has a `name` and lists of things. Every list is optional.
 
@@ -123,7 +126,12 @@ The text can use accented letters (č, š, ž, é, ...) and curly quotes.
 ## Useful sizes
 
 - The player is 91×148 px, jumps about 370 px high and can cover about 200 px sideways in one jump.
+  A gap of 250 px between platforms at the same height is a long jump; 300 px is too far.
 - Keep the spawn point clear of platforms, or the player gets pushed out of them when the level starts.
+- The player bumps their head on platforms above them. A platform less than about 600 px above another
+  one should not hang over the edge the player jumps from, or the jump hits it and falls short.
+- A platform less than 150 px above another one (counting from its top) blocks walking along the one
+  below; the player has to jump onto it, like a step.
 - The door is 123×140 px. To stand it on a platform at `groundY-N`, put the door at `groundY-(N+135)`.
 - A frog is about 60 px wide and walks back and forth across its whole platform.
 - To float a power-up where the player can grab it while standing on a platform at `groundY-N`, put it at
@@ -133,10 +141,12 @@ The text can use accented letters (č, š, ž, é, ...) and curly quotes.
 ## Best runs
 
 The game saves the fastest run of each level and replays it as a ghost. Changing what is in a level resets
-its best run, because the ghost would no longer match. Changing only spacing, comments or the
+its best run, because the ghost would no longer match. Changing only spacing, comments, the `name` or the
 `description` keeps it.
 
 ## Examples
 
-`Level3.json` is a staircase up to a key, then back down to the locked door. `Level4.json` shows areas and
-portals: the key for the exit is in the nether.
+- `Level1.json` is the simplest: a staircase, one frog and Pip.
+- `Level4.json` has a key at the top and a locked door on the ground.
+- `Level7.json` shows areas and portals: the key for the exit is in the nether.
+- `Level8.json` has two keys and a locked portal to a second area.

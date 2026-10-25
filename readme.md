@@ -8,22 +8,29 @@ glowing orb), and for platforms that crumble under your feet. Some doors are loc
 
 ## Features
 
-- Four levels, plus a JSON level format for making your own, with autocomplete and error checking in
-  VS Code ([Levels/README.md](Levels/README.md)).
-- Levels can have several areas joined by glowing portal doors. Level 4 hides its key in a dark red nether.
+- Ten levels that start easy and get harder (see [Levels](#levels) below), plus a JSON level format for
+  making your own, with autocomplete and error checking in VS Code ([Levels/README.md](Levels/README.md)).
+  An automated player has finished every level, so each one is known to be possible.
+- Levels can have several areas joined by glowing portal doors, like a dark red nether or a night sky.
 - Frogs that patrol platforms, ghosts that chase you, crumbling platforms, and locked doors with keys.
 - Throw glowing orbs at enemies by clicking where you want them to go.
-- Pip, a friendly explorer, explains the controls in Level 1 and gives tips in the other levels.
+- Pip, a friendly explorer, explains the controls in Level 1 and gives tips in later levels.
 - Race your best run: after you finish a level, a see-through ghost replays your fastest run while a
   timer shows your time and your best. Best times also appear in the level picker.
 - Power-ups: hearts that heal you, plus double jump and high jump orbs that last 15 seconds.
 - Three hearts of health, knockback, and a short moment of invincibility after every hit.
 - Sounds that get quieter with distance and come from the left or right.
-- Starts in fullscreen. Settings for game volume, music volume, mute, a 30 or 60 FPS limit, and fullscreen.
-- Your progress and settings are saved. **Play** continues with the next level you haven't finished, and
-  finished levels get a star in the level picker.
-- Wooden menus throughout: pause, game over, and a level complete screen with your time and a
-  **Next level** button.
+- Starts in fullscreen. Settings (mouse or keyboard) for:
+  - Gameplay: race your best run, show the timer, **extra hearts** (five instead of three, for an easier
+    game) and **unlock all levels**.
+  - Graphics: a 30 or 60 FPS limit, fullscreen and VSync.
+  - Audio: game volume, music volume and mute.
+  - A list of the controls, and **Reset** to start over (it asks first).
+- Your progress and settings are saved. **Play** continues with the next level you haven't finished.
+- A level picker with the name, best time and a short description of each level. Finished levels get a
+  star, the next one to play glows, and later levels stay locked until you finish the one before.
+- Wooden menus throughout: pause (resume, restart the level, see the controls), game over, and a level
+  complete screen with your time and a **Next level** button.
 - A soft, blurred forest behind each level that scrolls slowly as you climb, plus dust puffs, a little
   bounce when walking, and hints like **[E] Open** next to doors.
 - Levels are designed for 1920×1080 and scaled to fit any window. A window of a different shape shows a bit
@@ -77,6 +84,21 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | Pause / back           | Esc                                     |
 | Menus                  | Arrow keys or W / S, Enter or Space, or the mouse |
 
+## Levels
+
+| Level | Name            | What's new                                                                   |
+| ----- | --------------- | ---------------------------------------------------------------------------- |
+| 1     | First Steps     | Easy stairs. Pip explains the controls, and there's one frog to practise on. |
+| 2     | Frog Pond       | Frogs on most platforms.                                                     |
+| 3     | Crumbling Path  | Platforms that break under your feet.                                        |
+| 4     | The Key         | A locked exit. Climb up and back to fetch the key.                           |
+| 5     | Ghost Garden    | Ghosts that chase you, and a double jump.                                    |
+| 6     | Leap of Faith   | Long jumps between narrow platforms.                                         |
+| 7     | Into the Nether | A portal to the nether, where the key is.                                    |
+| 8     | Twin Keys       | Two keys, a locked portal and a night sky.                                   |
+| 9     | Sky Tower       | A tall climb with everything so far.                                         |
+| 10    | The Gauntlet    | The finale: the nether for the key, then the longest climb.                  |
+
 ## How to play
 
 - Reach the door at the end of the level and press **E** to open it, then **E** again to go through. The
@@ -103,7 +125,9 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 - Press **E** next to Pip to talk. **E** (or Enter, Space or a click) shows the next line, and **Esc** ends
   the conversation. The game waits while you talk.
 - Your time is shown at the top. Finish faster than before to set a new best; the ghost of your best run
-  races you next time. You can turn the ghost off under **Settings → Gameplay**.
+  races you next time. You can turn the ghost and the timer off under **Settings → Gameplay**.
+- Stuck? **Esc** pauses the game, where you can restart the level or look up the controls. If a level is
+  too hard, turn on **Extra hearts** in the settings.
 
 ## Saved data
 
@@ -113,7 +137,7 @@ Settings and progress are saved as small files: `settings.json`, `progress.json`
 - Windows: `%APPDATA%\JumpScape\`
 - macOS and Linux: `~/.config/JumpScape/`
 
-Delete them to reset the game.
+To start over, use **Settings → Your progress → Reset**, or delete the files.
 
 ## Project structure
 

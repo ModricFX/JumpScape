@@ -7,7 +7,8 @@
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
-    "description": { "type": "string", "description": "Notes for whoever edits the level. The game ignores this." },
+    "name": { "type": "string", "description": "The level's title, shown when it starts and in the level picker, like \"Crumbling Path\"." },
+    "description": { "type": "string", "description": "A sentence or two about the level, shown in the level picker when it is selected." },
     "spawn": { "$ref": "#/definitions/position", "description": "Where the player starts." },
     "startArea": { "type": "string", "description": "Name of the area the player starts in. The first area if left out." },
     "areas": {

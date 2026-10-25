@@ -1,0 +1,49 @@
+{
+  "$schema": "level.schema.json",
+  "name": "Into the Nether",
+  "description": "The key is on the other side of the glowing door. Brave the nether, then come back to unlock the exit.",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 300, "y": "groundY-150", "length": 200 },
+        { "x": 600, "y": "groundY-300", "length": 200, "monster": true },
+        { "x": 950, "y": "groundY-450", "length": 250 }
+      ],
+      "portals": [
+        { "x": 1010, "y": "groundY-585", "name": "netherGate", "leadsTo": "overworldGate" }
+      ],
+      "doors": [
+        { "x": 1700, "y": "groundY-135", "locked": true }
+      ]
+    },
+    {
+      "name": "nether",
+      "sky": "#4A0D12",
+      "tint": "Salmon",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 450, "y": "groundY-220", "length": 180, "crumbling": true },
+        { "x": 750, "y": "groundY-360", "length": 180 },
+        { "x": 1050, "y": "groundY-500", "length": 200, "monster": true },
+        { "x": 1350, "y": "groundY-640", "length": 180, "crumbling": true },
+        { "x": 1650, "y": "groundY-780", "length": 230 }
+      ],
+      "portals": [
+        { "x": 100, "y": "groundY-135", "name": "overworldGate", "leadsTo": "netherGate" }
+      ],
+      "keys": [
+        { "x": 1780, "y": "groundY-900" }
+      ],
+      "ghosts": [
+        { "x": 1150, "y": "groundY-790", "radius": 250 },
+        { "x": 700, "y": "groundY-520", "radius": 200 }
+      ],
+      "powerUps": [
+        { "x": 820, "y": "groundY-450", "type": "health" }
+      ]
+    }
+  ]
+}

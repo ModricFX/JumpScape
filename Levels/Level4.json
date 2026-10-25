@@ -1,61 +1,40 @@
 {
   "$schema": "level.schema.json",
-  "description": "The exit is locked, and the key is in the nether. Climb to the portal door, find the key on the other side, then come back through the portal and unlock the exit.",
+  "name": "The Key",
+  "description": "The exit is locked. Climb up and back to the key at the top, then bring it down to the door.",
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 300, "y": "groundY-150", "length": 200 },
+        { "x": 250, "y": "groundY-150", "length": 200 },
         { "x": 600, "y": "groundY-300", "length": 200, "monster": true },
-        { "x": 950, "y": "groundY-450", "length": 250 }
-      ],
-      "portals": [
-        { "x": 1010, "y": "groundY-585", "name": "netherGate", "leadsTo": "overworldGate" }
+        { "x": 950, "y": "groundY-450", "length": 400 },
+        { "x": 1450, "y": "groundY-600", "length": 300, "monster": true },
+        { "x": 1100, "y": "groundY-750", "length": 150 },
+        { "x": 680, "y": "groundY-900", "length": 200, "crumbling": true },
+        { "x": 250, "y": "groundY-1050", "length": 200 }
       ],
       "doors": [
-        { "x": 1700, "y": "groundY-135", "locked": true }
+        { "x": 1650, "y": "groundY-135", "locked": true }
+      ],
+      "keys": [
+        { "x": 310, "y": "groundY-1170" }
       ],
       "powerUps": [
-        { "x": 650, "y": "groundY-390", "type": "doubleJump" }
+        { "x": 1000, "y": "groundY-540", "type": "health" }
       ],
       "npcs": [
         {
-          "x": 1480,
-          "y": "groundY-300",
+          "x": 1450,
+          "y": "groundY-250",
           "name": "Pip",
           "lines": [
-            "This door is locked, and its key isn't anywhere in this world.",
-            "Climb up to the glowing door. It leads to the nether, where the key is hidden.",
-            "Come back through the same door, then unlock this one. Watch out for the ghost down there!"
+            "This door is locked. The key is right at the top - you'll have to climb for it.",
+            "Keys go into your inventory. Pick the key's slot with 1, 2 or 3, then press E at the door."
           ]
         }
-      ]
-    },
-    {
-      "name": "nether",
-      "sky": "#4A0D12",
-      "tint": "Salmon",
-      "platforms": [
-        { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 450, "y": "groundY-150", "length": 200, "crumbling": true },
-        { "x": 750, "y": "groundY-300", "length": 200 },
-        { "x": 1050, "y": "groundY-450", "length": 200, "monster": true },
-        { "x": 1350, "y": "groundY-600", "length": 200, "crumbling": true },
-        { "x": 1650, "y": "groundY-750", "length": 250 }
-      ],
-      "portals": [
-        { "x": 100, "y": "groundY-135", "name": "overworldGate", "leadsTo": "netherGate" }
-      ],
-      "keys": [
-        { "x": 1780, "y": "groundY-885" }
-      ],
-      "ghosts": [
-        { "x": 1150, "y": "groundY-760", "radius": 250 }
-      ],
-      "powerUps": [
-        { "x": 800, "y": "groundY-390", "type": "health" }
       ]
     }
   ]

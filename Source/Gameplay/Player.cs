@@ -19,7 +19,6 @@ namespace JumpScape.Gameplay
         private const float Scale = 0.15f;
         private const float WalkSpeed = 3f;
         private const float JumpVelocity = -21.375f;
-        private const int MaxHealth = 6; // Counted in half hearts: three hearts.
         private const float InvincibilityDuration = 1.4f;
         private const float FlashInterval = 0.2f;
         private const float KnockbackDuration = 0.4f;
@@ -35,11 +34,12 @@ namespace JumpScape.Gameplay
         private readonly SoundEffectInstance _walkingSound = Assets.PlayerWalking.CreateInstance();
         private readonly SoundEffectInstance _jumpSound = Assets.PlayerJump.CreateInstance();
         private readonly SoundEffectInstance _hitSound = Assets.PlayerHit.CreateInstance();
+        private readonly int _maxHealth; // Counted in half hearts.
 
         private Vector2 _velocity;
         private bool _facingRight = true;
         private int _lastPressedDirection = 1;
-        private int _health = MaxHealth;
+        private int _health;
         private float _invincibilityTimer;
         private float _knockbackTimer;
         private float _deathRotation;
@@ -50,9 +50,11 @@ namespace JumpScape.Gameplay
         private float _walkTime;
         private float _squashTimer;
 
-        public Player(Vector2 spawnPosition)
+        public Player(Vector2 spawnPosition, int hearts = 3)
         {
             Position = spawnPosition;
+            _maxHealth = hearts * 2;
+            _health = _maxHealth;
             _walkingSound.IsLooped = true;
         }
 
@@ -218,9 +220,9 @@ namespace JumpScape.Gameplay
             switch (type)
             {
                 case PowerUpType.Health:
-                    if (_health >= MaxHealth)
+                    if (_health >= _maxHealth)
                         return false;
-                    _health = Math.Min(MaxHealth, _health + 2);
+                    _health = Math.Min(_maxHealth, _health + 2);
                     break;
                 case PowerUpType.DoubleJump:
                     _doubleJumpTimer = PowerUpDuration;
@@ -385,7 +387,7 @@ namespace JumpScape.Gameplay
         public void DrawHud(SpriteBatch spriteBatch)
         {
             float heartSpacing = Assets.HeartFull.Width * HeartScale + 5;
-            for (int i = 0; i < MaxHealth / 2; i++)
+            for (int i = 0; i < _maxHealth / 2; i++)
             {
                 var position = new Vector2(10 + i * heartSpacing, 20);
                 int halfHeartsLeft = _health - i * 2;

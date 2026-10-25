@@ -1,122 +1,220 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using JumpScape.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Menus
 {
-    /// <summary>Graphics and audio settings. Every change is applied right away and saved.</summary>
+    /// <summary>
+    /// Gameplay, graphics and audio settings in two columns. Every change is applied right away and saved.
+    /// Works with the mouse or the keyboard: arrows move, Left and Right change sliders, Enter toggles.
+    /// </summary>
     public sealed class SettingsMenu
     {
-        private const int PanelSize = 800;
+        private const int PanelWidth = 1400;
+        private const int ColumnGap = 40;
+        private const int ColumnMargin = 60;
         private const float TitleScale = 1.4f;
         private const int RowHeight = 48;
         private const int HeadingGap = 8;
         private const int CategoryGap = 22;
-        private const int SliderWidth = 240;
+        private const int SliderWidth = 200;
         private const int SliderHeight = 8;
+        private const int SliderStep = 5;
         private const int KnobSize = 26;
         private const int CheckboxSize = 26;
         private const int DropdownWidth = 200;
         private const int DropdownRowHeight = 34;
+        private const int SmallButtonWidth = 180;
+        private const int SmallButtonHeight = 42;
 
         private static readonly Color Muted = new Color(210, 200, 185);
 
-        private const string GhostText = "Race your best run";
-
-        private enum Slider
+        private enum Kind
         {
-            None,
-            Volume,
-            Music,
+            Checkbox,
+            Slider,
+            FrameRate,
+            Button,
+        }
+
+        /// <summary>One labelled control: a checkbox, a slider, the frame rate list or a button.</summary>
+        private sealed class Option
+        {
+            public string Heading;
+            public string Label;
+            public Kind Kind;
+            public int Column;
+            public Vector2 LabelPosition;
+            public Rectangle Control;
+            public Func<bool> IsChecked;
+            public Action Toggle;
+            public Func<int> Value;
+            public Action<int> SetValue;
+            public string ButtonText;
+            public Action Press;
         }
 
         private readonly GameSettings _settings = GameSettings.Current;
         private readonly Action _applySettings;
-        private readonly Rectangle _panel = UiDrawing.CenteredPanel(PanelSize, PanelSize);
-
+        private readonly Action _resetProgress;
+        private readonly Rectangle _panel;
         private readonly Vector2 _titleCenter;
-        private readonly Rectangle _categoriesBox;
-        private readonly Vector2 _gameplayHeading;
-        private readonly Vector2 _ghostLabel;
-        private readonly Vector2 _graphicsHeading;
-        private readonly Vector2 _audioHeading;
-        private readonly Vector2 _frameRateLabel;
-        private readonly Vector2 _fullscreenLabel;
-        private readonly Vector2 _volumeLabel;
-        private readonly Vector2 _musicLabel;
-        private readonly Vector2 _muteLabel;
-        private readonly Rectangle _ghostBox;
-        private readonly Rectangle _dropdown;
-        private readonly Rectangle _fullscreenBox;
-        private readonly Rectangle _volumeSlider;
-        private readonly Rectangle _musicSlider;
-        private readonly Rectangle _muteBox;
+        private readonly List<Option> _options = new List<Option>();
+        private readonly List<(string Text, Vector2 Position)> _headings = new List<(string, Vector2)>();
+        private readonly Rectangle[] _columnBoxes = new Rectangle[2];
         private readonly Rectangle _backButton;
+        private readonly ControlsPanel _controls = new ControlsPanel();
+        private readonly PanelMenu _resetConfirm = new PanelMenu("Reset progress?", new Color(255, 90, 80), new[] { "Reset", "Cancel" });
 
+        private int _selected;
         private bool _dropdownOpen;
         private int _hoveredOption = -1;
-        private Slider _dragging;
+        private Option _dragging;
 
         /// <param name="applySettings">Called after any setting changes so the game can apply it.</param>
-        public SettingsMenu(Action applySettings)
+        /// <param name="resetProgress">Called when the player confirms they want to start over.</param>
+        public SettingsMenu(Action applySettings, Action resetProgress)
         {
             _applySettings = applySettings;
+            _resetProgress = resetProgress;
 
+            AddOption(0, "Race your best run", Checkbox(() => _settings.ShowRaceGhost, () => _settings.ShowRaceGhost = !_settings.ShowRaceGhost), "Gameplay");
+            AddOption(0, "Show timer", Checkbox(() => _settings.ShowTimer, () => _settings.ShowTimer = !_settings.ShowTimer));
+            AddOption(0, "Extra hearts (easier)", Checkbox(() => _settings.ExtraHearts, () => _settings.ExtraHearts = !_settings.ExtraHearts));
+            AddOption(0, "Unlock all levels", Checkbox(() => _settings.UnlockAllLevels, () => _settings.UnlockAllLevels = !_settings.UnlockAllLevels));
+            AddOption(0, "Frame rate", new Option { Kind = Kind.FrameRate }, "Graphics");
+            AddOption(0, "Fullscreen", Checkbox(() => _settings.IsFullscreen, () => _settings.IsFullscreen = !_settings.IsFullscreen));
+            AddOption(0, "VSync", Checkbox(() => _settings.VSync, () => _settings.VSync = !_settings.VSync));
+
+            AddOption(1, "Game volume", Slider(() => _settings.Volume, value => _settings.Volume = value), "Audio");
+            AddOption(1, "Music volume", Slider(() => _settings.MusicVolume, value => _settings.MusicVolume = value));
+            AddOption(1, "Mute", Checkbox(() => _settings.IsMuted, () => _settings.IsMuted = !_settings.IsMuted));
+            AddOption(1, "Keys and mouse", new Option { Kind = Kind.Button, ButtonText = "Controls", Press = _controls.Open }, "More");
+            AddOption(1, "Your progress", new Option
+            {
+                Kind = Kind.Button,
+                ButtonText = "Reset",
+                Press = () => _resetConfirm.Open("Your finished levels and best times will be deleted."),
+            });
+
+            // Lay out both columns from top to bottom, then size the panel to fit the taller one.
             float titleHeight = Assets.Font.LineSpacing * TitleScale;
-            _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + titleHeight / 2f);
-
-            // Lay out the headings and rows from top to bottom.
-            var categoriesStart = new Vector2(_panel.X + 80, _panel.Y + 40 + titleHeight + 50);
-            float y = categoriesStart.Y;
-            Vector2 Heading()
-            {
-                var position = new Vector2(categoriesStart.X, y);
-                y += Assets.Font.LineSpacing + HeadingGap;
-                return position;
-            }
-            Vector2 Row()
-            {
-                var position = new Vector2(categoriesStart.X + 30, y);
-                y += RowHeight;
-                return position;
-            }
-
-            _gameplayHeading = Heading();
-            _ghostLabel = Row();
-            y += CategoryGap;
-            _graphicsHeading = Heading();
-            _frameRateLabel = Row();
-            _fullscreenLabel = Row();
-            y += CategoryGap;
-            _audioHeading = Heading();
-            _volumeLabel = Row();
-            _musicLabel = Row();
-            _muteLabel = Row();
-            _categoriesBox = new Rectangle((int)categoriesStart.X - 30, (int)categoriesStart.Y - 24, _panel.Width - 100, (int)(y - categoriesStart.Y) + 34);
-
-            // All controls line up in one column to the right of the longest label.
-            float labelWidth = Assets.SmallFont.MeasureString(GhostText).X;
-            int controlX = (int)(_ghostLabel.X + labelWidth + 50);
+            int columnWidth = (PanelWidth - ColumnMargin * 2 - ColumnGap) / 2;
+            int columnsTop = (int)(40 + titleHeight + 50);
+            int columnsBottom = columnsTop;
             float labelHeight = Assets.SmallFont.LineSpacing;
-            int RowCenter(Vector2 label) => (int)(label.Y + labelHeight / 2f);
+            for (int column = 0; column < 2; column++)
+            {
+                int left = ColumnMargin + column * (columnWidth + ColumnGap);
+                float y = columnsTop + 24;
+                float labelWidth = 0f;
+                foreach (Option option in _options)
+                {
+                    if (option.Column == column)
+                        labelWidth = Math.Max(labelWidth, Assets.SmallFont.MeasureString(option.Label).X);
+                }
+                int controlX = (int)(left + 60 + labelWidth + 30);
 
-            _ghostBox = new Rectangle(controlX, RowCenter(_ghostLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
-            _dropdown = new Rectangle(controlX, RowCenter(_frameRateLabel) - DropdownRowHeight / 2, DropdownWidth, DropdownRowHeight);
-            _fullscreenBox = new Rectangle(controlX, RowCenter(_fullscreenLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
-            _volumeSlider = new Rectangle(controlX, RowCenter(_volumeLabel) - SliderHeight / 2, SliderWidth, SliderHeight);
-            _musicSlider = new Rectangle(controlX, RowCenter(_musicLabel) - SliderHeight / 2, SliderWidth, SliderHeight);
-            _muteBox = new Rectangle(controlX, RowCenter(_muteLabel) - CheckboxSize / 2, CheckboxSize, CheckboxSize);
+                bool first = true;
+                foreach (Option option in _options)
+                {
+                    if (option.Column != column)
+                        continue;
+                    if (option.Heading != null)
+                    {
+                        if (!first)
+                            y += CategoryGap;
+                        _headings.Add((option.Heading, new Vector2(left + 30, y)));
+                        y += Assets.Font.LineSpacing + HeadingGap;
+                    }
+                    first = false;
+
+                    option.LabelPosition = new Vector2(left + 60, y);
+                    int rowCenter = (int)(y + labelHeight / 2f);
+                    option.Control = option.Kind switch
+                    {
+                        Kind.Checkbox => new Rectangle(controlX, rowCenter - CheckboxSize / 2, CheckboxSize, CheckboxSize),
+                        Kind.Slider => new Rectangle(controlX, rowCenter - SliderHeight / 2, SliderWidth, SliderHeight),
+                        Kind.FrameRate => new Rectangle(controlX, rowCenter - DropdownRowHeight / 2, DropdownWidth, DropdownRowHeight),
+                        _ => new Rectangle(controlX, rowCenter - SmallButtonHeight / 2, SmallButtonWidth, SmallButtonHeight),
+                    };
+                    y += RowHeight;
+                }
+
+                _columnBoxes[column] = new Rectangle(left, columnsTop, columnWidth, (int)(y - columnsTop) + 10);
+                columnsBottom = Math.Max(columnsBottom, _columnBoxes[column].Bottom);
+            }
+            for (int column = 0; column < 2; column++)
+                _columnBoxes[column].Height = columnsBottom - columnsTop;
 
             int backWidth = Assets.MenuButton.Width * 3 / 4;
             int backHeight = Assets.MenuButton.Height * 3 / 4;
+            int panelHeight = columnsBottom + 40 + backHeight + 40;
+            _panel = UiDrawing.CenteredPanel(PanelWidth, panelHeight);
+
+            // Everything above was laid out from the panel's top-left corner; move it into place.
+            var offset = new Point(_panel.X, _panel.Y);
+            foreach (Option option in _options)
+            {
+                option.LabelPosition += offset.ToVector2();
+                option.Control = new Rectangle(option.Control.Location + offset, option.Control.Size);
+            }
+            for (int i = 0; i < _headings.Count; i++)
+                _headings[i] = (_headings[i].Text, _headings[i].Position + offset.ToVector2());
+            for (int i = 0; i < _columnBoxes.Length; i++)
+                _columnBoxes[i].Offset(offset);
+
+            _titleCenter = new Vector2(_panel.Center.X, _panel.Y + 40 + titleHeight / 2f);
             _backButton = new Rectangle(_panel.Center.X - backWidth / 2, _panel.Bottom - backHeight - 40, backWidth, backHeight);
         }
 
-        /// <summary>Returns true when the player wants to leave the settings screen.</summary>
-        public bool Update()
+        /// <param name="heading">Starts a new category above this option.</param>
+        private void AddOption(int column, string label, Option option, string heading = null)
         {
+            option.Column = column;
+            option.Label = label;
+            option.Heading = heading;
+            _options.Add(option);
+        }
+
+        private static Option Checkbox(Func<bool> isChecked, Action toggle) => new Option { Kind = Kind.Checkbox, IsChecked = isChecked, Toggle = toggle };
+
+        private static Option Slider(Func<int> value, Action<int> setValue) => new Option { Kind = Kind.Slider, Value = value, SetValue = setValue };
+
+        /// <summary>Selection index of the Back button, after all the options.</summary>
+        private int BackIndex => _options.Count;
+
+        /// <summary>Starts with nothing highlighted until the keyboard or mouse is used.</summary>
+        public void Open()
+        {
+            _selected = -1;
+            _dropdownOpen = false;
+            _dragging = null;
+        }
+
+        /// <summary>Returns true when the player wants to leave the settings screen.</summary>
+        public bool Update(float deltaTime)
+        {
+            if (_controls.IsOpen)
+            {
+                _controls.Update();
+                return false;
+            }
+
+            if (_resetConfirm.IsOpen)
+            {
+                int choice = Input.Back ? 1 : _resetConfirm.Update(deltaTime);
+                if (choice == 0)
+                    _resetProgress();
+                if (choice >= 0)
+                    _resetConfirm.Close();
+                return false;
+            }
+
             if (_dropdownOpen)
             {
                 UpdateDropdown();
@@ -126,35 +224,120 @@ namespace JumpScape.Menus
             if (Input.Back)
                 return true;
 
-            if (_dragging != Slider.None)
+            if (_dragging != null)
             {
                 UpdateDrag();
                 return false;
             }
 
+            return UpdateKeyboard() || UpdateMouse();
+        }
+
+        private bool UpdateKeyboard()
+        {
+            int count = _options.Count + 1;
+            if (Input.MenuUp)
+                _selected = _selected < 0 ? 0 : (_selected + count - 1) % count;
+            if (Input.MenuDown)
+                _selected = _selected < 0 ? 0 : (_selected + 1) % count;
+
+            int direction = (Input.WasPressed(Keys.Right) || Input.WasPressed(Keys.D) ? 1 : 0) - (Input.WasPressed(Keys.Left) || Input.WasPressed(Keys.A) ? 1 : 0);
+            if (direction != 0 && _selected >= 0 && _selected < _options.Count)
+            {
+                Option option = _options[_selected];
+                if (option.Kind == Kind.Slider)
+                    Change(() => option.SetValue(Math.Clamp(option.Value() + direction * SliderStep, 0, 100)));
+                else if (option.Kind == Kind.FrameRate)
+                    Change(() => _settings.FrameRateLimit = NextFrameRate(direction));
+                else
+                    _selected = ClosestInColumn(1 - option.Column, option.LabelPosition.Y);
+            }
+
+            if (!Input.MenuConfirm || _selected < 0)
+                return false;
+            if (_selected == BackIndex)
+                return true;
+
+            Use(_options[_selected]);
+            return false;
+        }
+
+        private bool UpdateMouse()
+        {
+            for (int i = 0; i < _options.Count; i++)
+            {
+                if (Input.MouseMoved && Input.IsMouseOver(RowArea(_options[i])))
+                    _selected = i;
+            }
+            if (Input.MouseMoved && Input.IsMouseOver(_backButton))
+                _selected = BackIndex;
+
             if (!Input.WasClicked)
                 return false;
-
             if (Input.IsMouseOver(_backButton))
                 return true;
 
-            if (Input.IsMouseOver(_dropdown))
-                _dropdownOpen = true;
-            else if (Input.IsMouseOver(ClickArea(_ghostBox)))
-                Change(() => _settings.ShowRaceGhost = !_settings.ShowRaceGhost);
-            else if (Input.IsMouseOver(ClickArea(_fullscreenBox)))
-                Change(() => _settings.IsFullscreen = !_settings.IsFullscreen);
-            else if (Input.IsMouseOver(ClickArea(_muteBox)))
-                Change(() => _settings.IsMuted = !_settings.IsMuted);
-            else if (Input.IsMouseOver(ClickArea(_volumeSlider)))
-                _dragging = Slider.Volume;
-            else if (Input.IsMouseOver(ClickArea(_musicSlider)))
-                _dragging = Slider.Music;
+            foreach (Option option in _options)
+            {
+                if (!Input.IsMouseOver(ClickArea(option.Control)))
+                    continue;
 
-            if (_dragging != Slider.None)
-                UpdateDrag();
-
+                if (option.Kind == Kind.Slider)
+                {
+                    _dragging = option;
+                    UpdateDrag();
+                }
+                else if (option.Kind == Kind.FrameRate)
+                {
+                    _dropdownOpen = true;
+                }
+                else
+                {
+                    Use(option);
+                }
+                break;
+            }
             return false;
+        }
+
+        /// <summary>What Enter (or a click) does: toggle a checkbox, step the frame rate, or press a button.</summary>
+        private void Use(Option option)
+        {
+            switch (option.Kind)
+            {
+                case Kind.Checkbox:
+                    Change(option.Toggle);
+                    break;
+                case Kind.FrameRate:
+                    Change(() => _settings.FrameRateLimit = NextFrameRate(1));
+                    break;
+                case Kind.Button:
+                    option.Press();
+                    break;
+            }
+        }
+
+        private int NextFrameRate(int direction)
+        {
+            int[] options = GameSettings.FrameRateOptions;
+            int index = Array.IndexOf(options, _settings.FrameRateLimit);
+            return options[(index + direction + options.Length) % options.Length];
+        }
+
+        private int ClosestInColumn(int column, float y)
+        {
+            int best = _selected;
+            float bestDistance = float.MaxValue;
+            for (int i = 0; i < _options.Count; i++)
+            {
+                float distance = Math.Abs(_options[i].LabelPosition.Y - y);
+                if (_options[i].Column == column && distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = i;
+                }
+            }
+            return best;
         }
 
         private void UpdateDropdown()
@@ -183,18 +366,13 @@ namespace JumpScape.Menus
 
         private void UpdateDrag()
         {
-            Rectangle slider = _dragging == Slider.Volume ? _volumeSlider : _musicSlider;
-            int value = (int)MathF.Round(MathHelper.Clamp((Input.MousePosition.X - slider.X) / slider.Width, 0f, 1f) * 100f);
-
-            if (_dragging == Slider.Volume)
-                _settings.Volume = value;
-            else
-                _settings.MusicVolume = value;
+            Rectangle slider = _dragging.Control;
+            _dragging.SetValue((int)MathF.Round(MathHelper.Clamp((Input.MousePosition.X - slider.X) / slider.Width, 0f, 1f) * 100f));
             _applySettings();
 
             if (!Input.IsMouseDown)
             {
-                _dragging = Slider.None;
+                _dragging = null;
                 _settings.Save();
             }
         }
@@ -214,49 +392,65 @@ namespace JumpScape.Menus
             return area;
         }
 
+        /// <summary>The whole row of an option, from its label to its control.</summary>
+        private Rectangle RowArea(Option option)
+        {
+            Rectangle column = _columnBoxes[option.Column];
+            return new Rectangle(column.X, (int)option.LabelPosition.Y - (RowHeight - Assets.SmallFont.LineSpacing) / 2, column.Width, RowHeight);
+        }
+
+        private Option FrameRateOption => _options.Find(option => option.Kind == Kind.FrameRate);
+
         private Rectangle DropdownOption(int index)
         {
-            return new Rectangle(_dropdown.X, _dropdown.Bottom + index * DropdownRowHeight, DropdownWidth, DropdownRowHeight);
+            Rectangle dropdown = FrameRateOption.Control;
+            return new Rectangle(dropdown.X, dropdown.Bottom + index * DropdownRowHeight, DropdownWidth, DropdownRowHeight);
         }
 
         private static string FrameRateLabel(int frameRate) => frameRate.ToString(CultureInfo.InvariantCulture) + " FPS";
 
-        private bool IsHovered(Rectangle control) => !_dropdownOpen && (_dragging == Slider.None) && Input.IsMouseOver(ClickArea(control));
+        private bool IsSelected(Option option) => !_dropdownOpen && _selected >= 0 && _selected < _options.Count && _options[_selected] == option;
 
         public void Draw(SpriteBatch spriteBatch)
         {
             UiDrawing.DrawPanel(spriteBatch, _panel);
             UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, "Settings", _titleCenter, Color.White, TitleScale);
 
-            spriteBatch.Draw(Assets.Pixel, _categoriesBox, Color.Black * 0.3f);
-            UiDrawing.DrawOutline(spriteBatch, _categoriesBox, Color.White * 0.35f);
-            UiDrawing.DrawText(spriteBatch, "Gameplay", _gameplayHeading, UiDrawing.Highlight);
-            UiDrawing.DrawText(spriteBatch, "Graphics", _graphicsHeading, UiDrawing.Highlight);
-            UiDrawing.DrawText(spriteBatch, "Audio", _audioHeading, UiDrawing.Highlight);
+            foreach (Rectangle box in _columnBoxes)
+            {
+                spriteBatch.Draw(Assets.Pixel, box, Color.Black * 0.3f);
+                UiDrawing.DrawOutline(spriteBatch, box, Color.White * 0.35f);
+            }
+            foreach ((string text, Vector2 position) in _headings)
+                UiDrawing.DrawText(spriteBatch, text, position, UiDrawing.Highlight);
 
-            DrawLabel(spriteBatch, GhostText, _ghostLabel, IsHovered(_ghostBox));
-            DrawCheckbox(spriteBatch, _ghostBox, _settings.ShowRaceGhost);
+            foreach (Option option in _options)
+            {
+                bool selected = IsSelected(option) || _dragging == option || (_dropdownOpen && option.Kind == Kind.FrameRate);
+                if (selected)
+                    spriteBatch.Draw(Assets.Pixel, RowArea(option), Color.White * 0.08f);
+                UiDrawing.DrawText(spriteBatch, Assets.SmallFont, option.Label, option.LabelPosition, selected ? UiDrawing.Highlight : Color.White);
 
-            DrawLabel(spriteBatch, "Frame rate", _frameRateLabel, IsHovered(_dropdown) || _dropdownOpen);
-            DrawLabel(spriteBatch, "Fullscreen", _fullscreenLabel, IsHovered(_fullscreenBox));
-            DrawCheckbox(spriteBatch, _fullscreenBox, _settings.IsFullscreen);
+                switch (option.Kind)
+                {
+                    case Kind.Checkbox:
+                        DrawCheckbox(spriteBatch, option.Control, option.IsChecked());
+                        break;
+                    case Kind.Slider:
+                        DrawSlider(spriteBatch, option.Control, option.Value());
+                        break;
+                    case Kind.Button:
+                        UiDrawing.DrawButton(spriteBatch, option.Control, option.ButtonText, selected, textScale: 0.62f);
+                        break;
+                }
+            }
 
-            DrawLabel(spriteBatch, "Game volume", _volumeLabel, IsHovered(_volumeSlider) || _dragging == Slider.Volume);
-            DrawSlider(spriteBatch, _volumeSlider, _settings.Volume);
-            DrawLabel(spriteBatch, "Music volume", _musicLabel, IsHovered(_musicSlider) || _dragging == Slider.Music);
-            DrawSlider(spriteBatch, _musicSlider, _settings.MusicVolume);
-            DrawLabel(spriteBatch, "Mute", _muteLabel, IsHovered(_muteBox));
-            DrawCheckbox(spriteBatch, _muteBox, _settings.IsMuted);
-
-            UiDrawing.DrawButton(spriteBatch, _backButton, "Back", !_dropdownOpen && Input.IsMouseOver(_backButton), textScale: 0.85f);
+            UiDrawing.DrawButton(spriteBatch, _backButton, "Back", !_dropdownOpen && _selected == BackIndex, textScale: 0.85f);
 
             // Drawn last so the open list appears on top of the rows below it.
-            DrawDropdown(spriteBatch);
-        }
-
-        private static void DrawLabel(SpriteBatch spriteBatch, string text, Vector2 position, bool hovered)
-        {
-            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, position, hovered ? UiDrawing.Highlight : Color.White);
+            DrawDropdown(spriteBatch, FrameRateOption);
+            _resetConfirm.Draw(spriteBatch);
+            _controls.Draw(spriteBatch);
         }
 
         private static void DrawCheckbox(SpriteBatch spriteBatch, Rectangle box, bool isChecked)
@@ -288,14 +482,15 @@ namespace JumpScape.Menus
             UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, new Vector2(track.Right + 26, track.Center.Y - textHeight / 2f), Color.White);
         }
 
-        private void DrawDropdown(SpriteBatch spriteBatch)
+        private void DrawDropdown(SpriteBatch spriteBatch, Option option)
         {
-            spriteBatch.Draw(Assets.Pixel, _dropdown, Color.Black * 0.6f);
-            UiDrawing.DrawOutline(spriteBatch, _dropdown, _dropdownOpen || IsHovered(_dropdown) ? UiDrawing.Highlight : Muted);
-            DrawOptionText(spriteBatch, FrameRateLabel(_settings.FrameRateLimit), _dropdown, Color.White);
+            Rectangle dropdown = option.Control;
+            spriteBatch.Draw(Assets.Pixel, dropdown, Color.Black * 0.6f);
+            UiDrawing.DrawOutline(spriteBatch, dropdown, _dropdownOpen || IsSelected(option) ? UiDrawing.Highlight : Muted);
+            DrawOptionText(spriteBatch, FrameRateLabel(_settings.FrameRateLimit), dropdown, Color.White);
 
             // A small arrow on the right shows that this is a list.
-            var arrow = new Vector2(_dropdown.Right - 22, _dropdown.Center.Y);
+            var arrow = new Vector2(dropdown.Right - 22, dropdown.Center.Y);
             for (int row = 0; row < 6; row++)
                 spriteBatch.Draw(Assets.Pixel, new Rectangle((int)arrow.X - 6 + row, (int)arrow.Y - 3 + row, 12 - row * 2, 1), Muted);
 
@@ -304,11 +499,11 @@ namespace JumpScape.Menus
 
             for (int i = 0; i < GameSettings.FrameRateOptions.Length; i++)
             {
-                Rectangle option = DropdownOption(i);
-                spriteBatch.Draw(Assets.Pixel, option, i == _hoveredOption ? new Color(90, 65, 40) : new Color(50, 35, 25));
-                UiDrawing.DrawOutline(spriteBatch, option, Muted, 1);
+                Rectangle row = DropdownOption(i);
+                spriteBatch.Draw(Assets.Pixel, row, i == _hoveredOption ? new Color(90, 65, 40) : new Color(50, 35, 25));
+                UiDrawing.DrawOutline(spriteBatch, row, Muted, 1);
                 Color color = GameSettings.FrameRateOptions[i] == _settings.FrameRateLimit ? UiDrawing.Highlight : Color.White;
-                DrawOptionText(spriteBatch, FrameRateLabel(GameSettings.FrameRateOptions[i]), option, color);
+                DrawOptionText(spriteBatch, FrameRateLabel(GameSettings.FrameRateOptions[i]), row, color);
             }
         }
 

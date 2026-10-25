@@ -1,38 +1,36 @@
 {
   "$schema": "level.schema.json",
+  "name": "First Steps",
+  "description": "Learn to walk, jump and throw. Pip will show you around: walk up to Pip and press E to talk.",
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 150, "y": "groundY-63", "length": 200 },
-        { "x": 450, "y": "groundY-100", "length": 200 },
-        { "x": 700, "y": "groundY-250", "length": 200 },
-        { "x": 300, "y": "groundY-400", "length": 200, "monster": true },
-        { "x": 700, "y": "groundY-550", "length": 200, "crumbling": true },
-        { "x": 900, "y": "groundY-700", "length": 200 },
-        { "x": 1150, "y": "groundY-850", "length": 200 },
-        { "x": 1560, "y": "groundY-900", "length": 200 }
+        { "x": 450, "y": "groundY-120", "length": 220 },
+        { "x": 750, "y": "groundY-240", "length": 220 },
+        { "x": 1050, "y": "groundY-360", "length": 220 },
+        { "x": 1350, "y": "groundY-480", "length": 300, "monster": true },
+        { "x": 1700, "y": "groundY-600", "length": 200 }
       ],
       "doors": [
-        { "x": 1590, "y": "groundY-1035" }
+        { "x": 1735, "y": "groundY-735" }
       ],
       "powerUps": [
-        { "x": 1500, "y": "groundY-100", "type": "highJump" },
-        { "x": 980, "y": "groundY-790", "type": "health" }
+        { "x": 1130, "y": "groundY-450", "type": "health" }
       ],
       "npcs": [
         {
-          "x": 230,
-          "y": "groundY-300",
+          "x": 220,
+          "y": "groundY-250",
           "name": "Pip",
           "lines": [
             "Hi, I'm Pip! Walk with the arrow keys or A and D, and jump with Space, W or Up.",
-            "Climb the platforms to the door at the top. Press E at a door to open it, then E again to go through.",
-            "See that red frog? Touching it hurts. Click with the mouse to throw a glowing orb at it!",
-            "Glowing things are power-ups. Hearts heal you, and the red orb makes you jump much higher for a while.",
-            "Your fastest run is saved, and next time a ghost of it races you. Good luck!"
+            "Climb the steps to the door at the top right. Press E at a door to open it, then E again to go through.",
+            "Up there is a red frog. Touching it hurts! Click with the mouse to throw a glowing orb at it.",
+            "Hearts and glowing orbs are power-ups. Your time is at the top, and next time a ghost of your best run races you.",
+            "Press Esc any time to pause, restart or see the controls. Have fun!"
           ]
         }
       ]

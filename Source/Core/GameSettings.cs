@@ -25,8 +25,24 @@ namespace JumpScape.Core
 
         public bool IsFullscreen { get; set; } = true;
 
+        /// <summary>Wait for the monitor's refresh before showing each frame, which stops tearing.</summary>
+        public bool VSync { get; set; } = true;
+
         /// <summary>Show a see-through ghost replaying your best run of the level.</summary>
         public bool ShowRaceGhost { get; set; } = true;
+
+        /// <summary>Show the time and best time at the top of the screen while playing.</summary>
+        public bool ShowTimer { get; set; } = true;
+
+        /// <summary>An easier mode: start every level with five hearts instead of three.</summary>
+        public bool ExtraHearts { get; set; }
+
+        /// <summary>Let the level picker start any level, not just the next unfinished one.</summary>
+        public bool UnlockAllLevels { get; set; }
+
+        /// <summary>How many hearts the player starts a level with.</summary>
+        [JsonIgnore]
+        public int Hearts => ExtraHearts ? 5 : 3;
 
         /// <summary>Sound effect volume as a 0-1 multiplier. Mute is applied globally, not here.</summary>
         [JsonIgnore]

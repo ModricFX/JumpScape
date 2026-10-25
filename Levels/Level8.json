@@ -1,0 +1,61 @@
+{
+  "$schema": "level.schema.json",
+  "name": "Twin Keys",
+  "description": "Two locked doors and two keys. The first key opens the glowing door; the second waits in the night sky.",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 250, "y": "groundY-150", "length": 200 },
+        { "x": 550, "y": "groundY-300", "length": 200, "monster": true },
+        { "x": 250, "y": "groundY-450", "length": 200, "crumbling": true },
+        { "x": 550, "y": "groundY-600", "length": 220 },
+        { "x": 200, "y": "groundY-750", "length": 220 },
+        { "x": 1000, "y": "groundY-200", "length": 200 },
+        { "x": 1300, "y": "groundY-350", "length": 250, "monster": true },
+        { "x": 1650, "y": "groundY-500", "length": 220 }
+      ],
+      "portals": [
+        { "x": 1700, "y": "groundY-635", "locked": true, "name": "skyGate", "leadsTo": "skyReturn" }
+      ],
+      "keys": [
+        { "x": 260, "y": "groundY-870" }
+      ],
+      "powerUps": [
+        { "x": 620, "y": "groundY-690", "type": "health" }
+      ]
+    },
+    {
+      "name": "night sky",
+      "sky": "MidnightBlue",
+      "tint": "LightSteelBlue",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 400, "y": "groundY-160", "length": 200 },
+        { "x": 700, "y": "groundY-320", "length": 200, "crumbling": true },
+        { "x": 1000, "y": "groundY-480", "length": 200 },
+        { "x": 1300, "y": "groundY-640", "length": 200, "monster": true },
+        { "x": 1600, "y": "groundY-800", "length": 250 },
+        { "x": 1250, "y": "groundY-980", "length": 220 },
+        { "x": 900, "y": "groundY-1150", "length": 220 }
+      ],
+      "portals": [
+        { "x": 100, "y": "groundY-135", "name": "skyReturn", "leadsTo": "skyGate" }
+      ],
+      "doors": [
+        { "x": 950, "y": "groundY-1285", "locked": true }
+      ],
+      "keys": [
+        { "x": 1720, "y": "groundY-920" }
+      ],
+      "ghosts": [
+        { "x": 1100, "y": "groundY-800", "radius": 250 }
+      ],
+      "powerUps": [
+        { "x": 1070, "y": "groundY-570", "type": "health" }
+      ]
+    }
+  ]
+}

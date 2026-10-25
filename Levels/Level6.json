@@ -1,0 +1,29 @@
+{
+  "$schema": "level.schema.json",
+  "name": "Leap of Faith",
+  "description": "Long gaps between narrow platforms. Jump from the very edge, and don't look down.",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 200, "y": "groundY-160", "length": 180 },
+        { "x": 620, "y": "groundY-260", "length": 160 },
+        { "x": 1050, "y": "groundY-360", "length": 160, "crumbling": true },
+        { "x": 1430, "y": "groundY-480", "length": 200, "monster": true },
+        { "x": 1700, "y": "groundY-700", "length": 200 },
+        { "x": 1350, "y": "groundY-960", "length": 160 },
+        { "x": 950, "y": "groundY-1080", "length": 180 },
+        { "x": 500, "y": "groundY-1180", "length": 200 }
+      ],
+      "doors": [
+        { "x": 540, "y": "groundY-1315" }
+      ],
+      "powerUps": [
+        { "x": 1770, "y": "groundY-790", "type": "health" },
+        { "x": 1150, "y": "groundY-90", "type": "highJump" }
+      ]
+    }
+  ]
+}

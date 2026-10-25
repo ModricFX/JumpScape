@@ -91,6 +91,15 @@ namespace JumpScape.Gameplay
 
         public int Number { get; }
 
+        /// <summary>The level's title, or null if the file doesn't give one.</summary>
+        public string Name { get; private set; }
+
+        /// <summary>A sentence or two about the level, shown in the level picker. May be null.</summary>
+        public string Description { get; private set; }
+
+        /// <summary>"Level 3" or "Level 3: Crumbling Path".</summary>
+        public string Title => Name == null ? $"Level {Number}" : $"Level {Number}: {Name}";
+
         public Vector2 PlayerSpawn { get; private set; }
 
         /// <summary>Index in <see cref="Areas"/> of the area the player starts in.</summary>
@@ -143,7 +152,7 @@ namespace JumpScape.Gameplay
             if (file.Areas.Count == 0)
                 throw new InvalidDataException($"{fileName}: a level needs at least one area.");
 
-            var level = new LevelData(number) { PlayerSpawn = new Vector2(file.Spawn.X, file.Spawn.Y) };
+            var level = new LevelData(number) { Name = file.Name, Description = file.Description, PlayerSpawn = new Vector2(file.Spawn.X, file.Spawn.Y) };
             foreach (AreaJson area in file.Areas)
                 level.Areas.Add(ToAreaData(area, fileName));
 

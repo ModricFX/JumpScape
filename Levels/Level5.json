@@ -1,0 +1,35 @@
+{
+  "$schema": "level.schema.json",
+  "name": "Ghost Garden",
+  "description": "Ghosts drift between the platforms. Grab the double jump on the way up and keep an eye on where they float.",
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 300, "y": "groundY-180", "length": 250 },
+        { "x": 650, "y": "groundY-330", "length": 200 },
+        { "x": 1000, "y": "groundY-450", "length": 250 },
+        { "x": 1400, "y": "groundY-580", "length": 200 },
+        { "x": 1700, "y": "groundY-760", "length": 200 },
+        { "x": 1350, "y": "groundY-940", "length": 220 },
+        { "x": 950, "y": "groundY-1080", "length": 220 },
+        { "x": 550, "y": "groundY-1220", "length": 220 },
+        { "x": 200, "y": "groundY-1360", "length": 250 }
+      ],
+      "doors": [
+        { "x": 240, "y": "groundY-1495" }
+      ],
+      "ghosts": [
+        { "x": 850, "y": "groundY-450", "radius": 220 },
+        { "x": 1300, "y": "groundY-900", "radius": 250 },
+        { "x": 650, "y": "groundY-1380", "radius": 200 }
+      ],
+      "powerUps": [
+        { "x": 1460, "y": "groundY-670", "type": "doubleJump" },
+        { "x": 1030, "y": "groundY-1170", "type": "health" }
+      ]
+    }
+  ]
+}

@@ -116,9 +116,8 @@ namespace JumpScape.Menus
             SpriteFont font = Assets.SmallFont;
 
             Vector2 textSize = font.MeasureString(text);
-            Vector2 keyTextSize = key == null ? Vector2.Zero : font.MeasureString(key);
             int capHeight = (int)textSize.Y + 6;
-            int capWidth = key == null ? 0 : Math.Max(capHeight, (int)keyTextSize.X + 16);
+            int capWidth = key == null ? 0 : KeyCapWidth(key, capHeight);
 
             int width = padding * 2 + (int)textSize.X + (key == null ? 0 : capWidth + gap);
             int height = padding * 2 + capHeight;
@@ -131,15 +130,27 @@ namespace JumpScape.Menus
             int textX = box.X + padding;
             if (key != null)
             {
-                var cap = new Rectangle(textX, box.Y + padding, capWidth, capHeight);
-                spriteBatch.Draw(Assets.Pixel, cap, KeyCap * opacity);
-                spriteBatch.Draw(Assets.Pixel, new Rectangle(cap.X, cap.Bottom - 5, cap.Width, 5), Color.Black * (0.2f * opacity));
-                DrawOutline(spriteBatch, cap, KeyCapText * opacity);
-                spriteBatch.DrawString(font, key, cap.Center.ToVector2() - keyTextSize / 2f - new Vector2(0, 2), KeyCapText * opacity);
+                DrawKeyCap(spriteBatch, new Rectangle(textX, box.Y + padding, capWidth, capHeight), key, opacity);
                 textX += capWidth + gap;
             }
 
             spriteBatch.DrawString(font, text, new Vector2(textX, box.Center.Y - textSize.Y / 2f), Color.White * opacity);
+        }
+
+        /// <summary>The width of a key cap of the given height, wide enough for its label.</summary>
+        public static int KeyCapWidth(string key, int height)
+        {
+            return Math.Max(height, (int)Assets.SmallFont.MeasureString(key).X + 16);
+        }
+
+        /// <summary>A light keyboard key with a label on it, like the E in "[E] Open".</summary>
+        public static void DrawKeyCap(SpriteBatch spriteBatch, Rectangle cap, string key, float opacity = 1f)
+        {
+            Vector2 textSize = Assets.SmallFont.MeasureString(key);
+            spriteBatch.Draw(Assets.Pixel, cap, KeyCap * opacity);
+            spriteBatch.Draw(Assets.Pixel, new Rectangle(cap.X, cap.Bottom - 5, cap.Width, 5), Color.Black * (0.2f * opacity));
+            DrawOutline(spriteBatch, cap, KeyCapText * opacity);
+            spriteBatch.DrawString(Assets.SmallFont, key, cap.Center.ToVector2() - textSize / 2f - new Vector2(0, 2), KeyCapText * opacity);
         }
     }
 }

@@ -30,6 +30,22 @@ namespace JumpScape.Gameplay
 
         private static string PathFor(int level) => Path.Combine(SaveFile.Folder, $"best-run-level{level}.bin");
 
+        /// <summary>Deletes the saved best runs of every level.</summary>
+        public static void DeleteAll()
+        {
+            try
+            {
+                if (!Directory.Exists(SaveFile.Folder))
+                    return;
+                foreach (string path in Directory.EnumerateFiles(SaveFile.Folder, "best-run-level*.bin"))
+                    File.Delete(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Whatever couldn't be deleted is simply kept.
+            }
+        }
+
         /// <summary>The saved best run, or null if there is none or it was made on a different version of the level.</summary>
         public static RunRecording LoadBest(int level, uint levelHash)
         {

@@ -14,6 +14,9 @@ namespace JumpScape.Gameplay
         [JsonPropertyName("$schema")]
         public string Schema { get; set; }
 
+        /// <summary>The level's title, shown in the level picker and when the level starts.</summary>
+        public string Name { get; set; }
+
         /// <summary>Notes for whoever edits the level. The game ignores it.</summary>
         public string Description { get; set; }
 

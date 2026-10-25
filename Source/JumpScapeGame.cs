@@ -55,7 +55,7 @@ namespace JumpScape
         {
             _graphics = new GraphicsDeviceManager(this)
             {
-                SynchronizeWithVerticalRetrace = true,
+                SynchronizeWithVerticalRetrace = _settings.VSync,
                 HardwareModeSwitch = false,
             };
             Content.RootDirectory = "Content";
@@ -87,7 +87,7 @@ namespace JumpScape
             _menuBackground = new MenuBackground();
             _mainMenu = new MainMenu();
             _levelSelectMenu = new LevelSelectMenu(_levels, _progress);
-            _settingsMenu = new SettingsMenu(ApplySettings);
+            _settingsMenu = new SettingsMenu(ApplySettings, ResetProgress);
             _errorMenu = new PanelMenu("This level can't be loaded", new Color(255, 90, 80), new[] { "OK" });
 
             MediaPlayer.IsRepeating = true;
@@ -103,7 +103,7 @@ namespace JumpScape
 
         private void ApplyDisplaySettings(bool force = false)
         {
-            if (!force && _graphics.IsFullScreen == _settings.IsFullscreen)
+            if (!force && _graphics.IsFullScreen == _settings.IsFullscreen && _graphics.SynchronizeWithVerticalRetrace == _settings.VSync)
                 return;
 
             // Fullscreen uses a borderless window at the desktop resolution instead of changing the display mode.
@@ -111,6 +111,7 @@ namespace JumpScape
             Point size = _settings.IsFullscreen ? new Point(display.Width, display.Height) : _windowedSize;
 
             _isResizing = true;
+            _graphics.SynchronizeWithVerticalRetrace = _settings.VSync;
             _graphics.IsFullScreen = _settings.IsFullscreen;
             _graphics.PreferredBackBufferWidth = size.X;
             _graphics.PreferredBackBufferHeight = size.Y;
@@ -123,6 +124,14 @@ namespace JumpScape
             SoundEffect.MasterVolume = _settings.IsMuted ? 0f : 1f;
             MediaPlayer.IsMuted = _settings.IsMuted;
             MediaPlayer.Volume = _settings.MusicVolume / 100f;
+        }
+
+        /// <summary>Forgets which levels were finished and deletes the best runs.</summary>
+        private void ResetProgress()
+        {
+            _progress.HighestCompletedLevel = 0;
+            _progress.Save();
+            RunRecording.DeleteAll();
         }
 
         /// <summary>Keeps the back buffer the same size as the window when the player resizes it.</summary>
@@ -202,11 +211,11 @@ namespace JumpScape
                     break;
 
                 case Screen.LevelSelect:
-                    UpdateLevelSelect();
+                    UpdateLevelSelect((float)gameTime.ElapsedGameTime.TotalSeconds);
                     break;
 
                 case Screen.Settings:
-                    if (_settingsMenu.Update())
+                    if (_settingsMenu.Update((float)gameTime.ElapsedGameTime.TotalSeconds))
                         ShowScreen(Screen.MainMenu);
                     break;
 
@@ -240,6 +249,7 @@ namespace JumpScape
                     break;
 
                 case MainMenuChoice.Settings:
+                    _settingsMenu.Open();
                     ShowScreen(Screen.Settings);
                     break;
 
@@ -249,7 +259,7 @@ namespace JumpScape
             }
         }
 
-        private void UpdateLevelSelect()
+        private void UpdateLevelSelect(float deltaTime)
         {
             if (Input.Back)
             {
@@ -257,7 +267,7 @@ namespace JumpScape
                 return;
             }
 
-            switch (_levelSelectMenu.Update())
+            switch (_levelSelectMenu.Update(deltaTime))
             {
                 case LevelSelectChoice.Level:
                     StartLevel(_levelSelectMenu.ChosenLevel);

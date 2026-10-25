@@ -35,7 +35,8 @@ namespace JumpScape.Gameplay
 
         private readonly LevelData _level;
         private readonly bool _hasNextLevel;
-        private readonly PanelMenu _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Main menu" });
+        private readonly PanelMenu _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Restart level", "Controls", "Main menu" });
+        private readonly ControlsPanel _controls = new ControlsPanel();
         private readonly PanelMenu _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", "Main menu" }, fadeInTime: 0.5f);
         private readonly PanelMenu _completeMenu;
         private readonly Banner _banner = new Banner();
@@ -85,13 +86,14 @@ namespace JumpScape.Gameplay
         {
             _areas = _level.Areas.Select(data => new Area(data)).ToList();
             _area = _areas[_level.StartArea];
-            _player = new Player(_level.PlayerSpawn);
+            _player = new Player(_level.PlayerSpawn, _settings.Hearts);
             _recording = new RunRecording();
             _projectiles.Clear();
             _effects.Clear();
             _messageTimer = 0f;
-            _banner.Show("Level " + _level.Number.ToString(CultureInfo.InvariantCulture));
+            _banner.Show(_level.Title);
 
+            _pauseMenu.Close();
             _deathMenu.Close();
             _completeMenu.Close();
             _dialogue.Close();
@@ -171,11 +173,27 @@ namespace JumpScape.Gameplay
 
         private GameplayResult UpdatePauseMenu(float deltaTime)
         {
+            if (_controls.IsOpen)
+            {
+                _controls.Update();
+                return GameplayResult.None;
+            }
+
             int choice = Input.Back ? 0 : _pauseMenu.Update(deltaTime);
-            if (choice == 0)
-                _pauseMenu.Close();
-            else if (choice == 1)
-                return GameplayResult.QuitToMenu;
+            switch (choice)
+            {
+                case 0:
+                    _pauseMenu.Close();
+                    break;
+                case 1:
+                    _isRetrying = true;
+                    break;
+                case 2:
+                    _controls.Open();
+                    break;
+                case 3:
+                    return GameplayResult.QuitToMenu;
+            }
             return GameplayResult.None;
         }
 
@@ -521,7 +539,8 @@ namespace JumpScape.Gameplay
             // The hearts and inventory stick to the corners of the window.
             spriteBatch.Begin(transformMatrix: VirtualScreen.Transform);
             _player.DrawHud(spriteBatch);
-            DrawTimer(spriteBatch);
+            if (_settings.ShowTimer)
+                DrawTimer(spriteBatch);
             if (_messageTimer > 0f)
             {
                 float opacity = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
@@ -534,6 +553,7 @@ namespace JumpScape.Gameplay
             _banner.Draw(spriteBatch);
             _dialogue.Draw(spriteBatch);
             _pauseMenu.Draw(spriteBatch);
+            _controls.Draw(spriteBatch);
             _deathMenu.Draw(spriteBatch);
             _completeMenu.Draw(spriteBatch);
             spriteBatch.Draw(Assets.Pixel, VirtualScreen.CenteredViewBounds, Color.Black * _fade);
