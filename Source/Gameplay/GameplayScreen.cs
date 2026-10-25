@@ -60,6 +60,12 @@ namespace JumpScape.Gameplay
         private RunRecording _recording;
         private RunRecording _bestRun;
 
+        /// <summary>The best run when this attempt started. The race ghost replays it, even after a new best is saved.</summary>
+        private RunRecording _raceGhost;
+
+        /// <summary>Which frame of <see cref="_raceGhost"/> to show. It keeps counting after the player reaches the exit.</summary>
+        private int _raceFrame;
+
         public GameplayScreen(LevelData level, bool hasNextLevel)
         {
             _level = level;
@@ -88,6 +94,8 @@ namespace JumpScape.Gameplay
             _area = _areas[_level.StartArea];
             _player = new Player(_level.PlayerSpawn, _settings.Hearts);
             _recording = new RunRecording();
+            _raceGhost = _bestRun;
+            _raceFrame = 0;
             _projectiles.Clear();
             _effects.Clear();
             _messageTimer = 0f;
@@ -200,6 +208,9 @@ namespace JumpScape.Gameplay
         /// <summary>After going through the exit the world stops, and a moment later the level complete screen opens.</summary>
         private GameplayResult UpdateLevelComplete(float deltaTime)
         {
+            // A ghost that is still behind keeps running to its own exit, then fades out.
+            _raceFrame++;
+
             if (!_completeMenu.IsOpen)
             {
                 _exitTimer += deltaTime;
@@ -299,7 +310,10 @@ namespace JumpScape.Gameplay
                 _effects.Dust(_player.Feet, 10);
 
             if (!_player.IsDead && !_player.ReachedExit)
+            {
                 _recording.Add(_player.Position, _areas.IndexOf(_area), _player.FacingRight);
+                _raceFrame++;
+            }
 
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
@@ -461,18 +475,18 @@ namespace JumpScape.Gameplay
         /// </summary>
         private void DrawRaceGhost(SpriteBatch spriteBatch)
         {
-            if (!_settings.ShowRaceGhost || _bestRun == null || _bestRun.Frames.Count == 0)
+            if (!_settings.ShowRaceGhost || _raceGhost == null || _raceGhost.Frames.Count == 0)
                 return;
 
-            int index = _recording.Frames.Count;
+            int index = _raceFrame;
             float opacity = GhostOpacity;
-            if (index >= _bestRun.Frames.Count)
+            if (index >= _raceGhost.Frames.Count)
             {
-                opacity *= 1f - (index - _bestRun.Frames.Count) / 60f;
-                index = _bestRun.Frames.Count - 1;
+                opacity *= 1f - (index - _raceGhost.Frames.Count) / 60f;
+                index = _raceGhost.Frames.Count - 1;
             }
 
-            RunRecording.Frame frame = _bestRun.Frames[index];
+            RunRecording.Frame frame = _raceGhost.Frames[index];
             if (opacity > 0f && frame.Area == _areas.IndexOf(_area))
                 Player.DrawGhost(spriteBatch, frame.Position, frame.FacingRight, GhostColor * opacity);
         }
