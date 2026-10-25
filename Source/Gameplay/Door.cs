@@ -127,7 +127,7 @@ namespace JumpScape.Gameplay
                 case DoorState.Locked when inventory.SelectedItem == ItemType.Key:
                     return (Controls.KeyNameFor(GameAction.Use), "Unlock");
                 case DoorState.Locked when inventory.Contains(ItemType.Key):
-                    return ("1-3", "Select the key to unlock");
+                    return (Controls.SlotKeysName, "Select the key to unlock");
                 case DoorState.Locked:
                     return (null, "Locked - find a key");
                 case DoorState.Closed:

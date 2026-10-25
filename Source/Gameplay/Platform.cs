@@ -9,7 +9,8 @@ namespace JumpScape.Gameplay
 {
     /// <summary>
     /// A grass platform. Crumbling platforms start shaking when the player lands on them,
-    /// break after a few seconds and come back a few seconds later.
+    /// break after a few seconds and come back a few seconds later. Moving platforms glide back and forth
+    /// between two places, slowing down at each end, and carry the player standing on them.
     /// </summary>
     public sealed class Platform
     {
@@ -25,16 +26,24 @@ namespace JumpScape.Gameplay
         private readonly List<Particle> _debris = new List<Particle>();
         private readonly SoundEffectInstance _crackingSound;
         private readonly SoundEffectInstance _breakSound;
+        private readonly Vector2 _start;
+        private readonly Vector2? _end;
+        private readonly float _moveTime;
         private float _timer;
         private bool _isCrumbling;
         private bool _isBroken;
         private float _shakeAngle;
 
-        public Platform(Vector2 position, int length, bool canCrumble)
+        /// <param name="moveTo">For a moving platform, the other end of its path.</param>
+        /// <param name="moveTime">Seconds a moving platform takes from one end of its path to the other.</param>
+        public Platform(Vector2 position, int length, bool canCrumble, Vector2? moveTo = null, float moveTime = 3f)
         {
             Position = position;
             Length = length;
             CanCrumble = canCrumble;
+            _start = position;
+            _end = moveTo;
+            _moveTime = moveTime;
 
             if (canCrumble)
             {
@@ -44,11 +53,29 @@ namespace JumpScape.Gameplay
             }
         }
 
-        public Vector2 Position { get; }
+        public Vector2 Position { get; private set; }
 
         public int Length { get; }
 
         public bool CanCrumble { get; }
+
+        public bool IsMoving => _end != null;
+
+        /// <summary>Where a moving platform starts, and the other end of its path.</summary>
+        public Vector2 Start => _start;
+
+        public Vector2? MoveTo => _end;
+
+        public float MoveTime => _moveTime;
+
+        /// <summary>Seconds for a moving platform to go there and back.</summary>
+        public float CycleTime => _moveTime * 2f;
+
+        /// <summary>Seconds the platform has been moving, which says where it is on its path.</summary>
+        public double Clock { get; private set; }
+
+        /// <summary>How far the platform moved in the last <see cref="Move"/>, so it can carry the player.</summary>
+        public Vector2 Delta { get; private set; }
 
         /// <summary>False while a crumbled platform is gone.</summary>
         public bool IsSolid => !_isBroken;
@@ -56,6 +83,35 @@ namespace JumpScape.Gameplay
         public Rectangle Bounds => new Rectangle((int)Position.X, (int)Position.Y, Length, Assets.Grass.Height);
 
         private Vector2 Center => Bounds.Center.ToVector2();
+
+        /// <summary>Moves a moving platform along its path. Does nothing for other platforms.</summary>
+        public void Move(float deltaTime)
+        {
+            if (!IsMoving)
+                return;
+
+            Vector2 previous = Position;
+            Clock += deltaTime;
+            Position = PositionAt(Clock);
+            Delta = Position - previous;
+        }
+
+        /// <summary>Puts a moving platform where it is after <paramref name="clock"/> seconds. Used by the tests.</summary>
+        public void SetClock(double clock)
+        {
+            Clock = clock;
+            Position = PositionAt(clock);
+            Delta = Vector2.Zero;
+        }
+
+        /// <summary>Eases back and forth, slowing down at each end so riders aren't thrown off.</summary>
+        private Vector2 PositionAt(double clock)
+        {
+            if (_end is not Vector2 end)
+                return _start;
+            float t = (float)((1.0 - Math.Cos(Math.PI * clock / _moveTime)) / 2.0);
+            return Vector2.Lerp(_start, end, t);
+        }
 
         public void OnPlayerLanded()
         {
@@ -140,8 +196,23 @@ namespace JumpScape.Gameplay
         /// <summary>A see-through dark copy of the platform, a little lower and to the right. Draw all shadows before any platform.</summary>
         public void DrawShadow(SpriteBatch spriteBatch, Rectangle visibleArea)
         {
+            if (_end is Vector2 end)
+                DrawPath(spriteBatch, end);
             if (!_isBroken && Bounds.Intersects(visibleArea))
                 DrawTiles(spriteBatch, ShadowOffset, Color.Black * 0.25f);
+        }
+
+        /// <summary>A dotted line along a moving platform's path, so the player can see where it goes.</summary>
+        private void DrawPath(SpriteBatch spriteBatch, Vector2 end)
+        {
+            var half = new Vector2(Length / 2f, Assets.Grass.Height / 2f);
+            Vector2 from = _start + half, to = end + half;
+            float distance = Vector2.Distance(from, to);
+            for (float d = 0f; d <= distance; d += 24f)
+            {
+                Vector2 dot = Vector2.Lerp(from, to, distance == 0f ? 0f : d / distance);
+                spriteBatch.Draw(Assets.Pixel, new Rectangle((int)dot.X - 3, (int)dot.Y - 3, 6, 6), Color.White * 0.35f);
+            }
         }
 
         private void DrawTiles(SpriteBatch spriteBatch, Vector2 offset, Color color)

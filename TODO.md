@@ -2,21 +2,19 @@
 
 ## Gameplay
 
-- [ ] Moving platforms (side to side or up and down) and bounce pads, as new things levels can use. The
-      automated player in Tests would need to learn them too.
 - [ ] A boss level every 10 levels.
 
 ## Look and sound
 
 - [ ] Running animation for the player (needs new sprite frames).
 - [ ] Separate sounds for throwing an orb, defeating an enemy, picking up a key or a gem, collecting a
-      power-up and touching a checkpoint. They reuse the jump and hit sounds now.
+      power-up, touching a checkpoint and bouncing. They reuse the jump and hit sounds now.
 - [ ] Different music in the nether and the night sky.
-- [ ] Proper art for spikes, gems and checkpoint flags. They are drawn from simple shapes now.
+- [ ] Proper art for spikes, gems, checkpoint flags and bounce pads. They are drawn from simple shapes now.
 
 ## Controls and settings
 
-- [ ] Gamepad support.
+- [ ] Choosing your own gamepad buttons, like the keys.
 
 ## Making levels
 

@@ -2,14 +2,14 @@
 
 Each level is a JSON file in this folder named `Level<number>.json` (`Level1.json`, `Level2.json`, ...).
 The game finds them automatically and lists them in number order in the level picker. To add a level,
-copy an existing one to `Level11.json`, change it, and run the game again. A level unlocks once the one
+copy an existing one to `Level13.json`, change it, and run the game again. A level unlocks once the one
 before it is finished, or straight away with **Settings → Unlock all levels**.
 
 Start every file with `"$schema": "level.schema.json"`. Editors like VS Code then autocomplete the settings,
 explain each one when you hover over it, and underline mistakes while you type.
 
 If a level has a mistake, the game shows what is wrong and on which line when you try to play it, for
-example: *Level11.json, line 14: "lenght" isn't a setting a platform can have. Check the spelling.*
+example: *Level13.json, line 14: "lenght" isn't a setting a platform can have. Check the spelling.*
 
 ## A small level
 
@@ -72,7 +72,7 @@ Each area has a `name` and lists of things. Every list is optional.
 
 | List        | Each item                                              | Notes |
 | ----------- | ------------------------------------------------------ | ----- |
-| `platforms` | `x`, `y`, `length`, and optionally `"monster": true` or `"crumbling": true` | Grass platforms, 63 px thick. A monster puts a frog on it. A crumbling platform breaks 3 s after the player lands on it and comes back 5 s later. The first platform is usually the ground: `{ "x": -50, "y": "groundY", "length": "groundLength" }`. |
+| `platforms` | `x`, `y`, `length`, and optionally `"monster": true`, `"crumbling": true` or `"moveTo"` | Grass platforms, 63 px thick. A monster puts a frog on it. A crumbling platform breaks 3 s after the player lands on it and comes back 5 s later. The first platform is usually the ground: `{ "x": -50, "y": "groundY", "length": "groundLength" }`. See [Moving platforms](#moving-platforms). |
 | `doors`     | `x`, `y`, optionally `"locked": true`                  | Exit doors. Going through one finishes the level. A locked door needs a key, and each locked door uses up one key. |
 | `portals`   | `x`, `y`, `name`, `leadsTo`, optionally `"locked": true` | Glowing doors that take the player to the portal called `leadsTo` (see below). |
 | `keys`      | `x`, `y`                                               | Keys for locked doors and portals. |
@@ -82,6 +82,7 @@ Each area has a `name` and lists of things. Every list is optional.
 | `checkpoints` | `x`, `y`                                             | Flags, 64×120 px. After touching one, the player can come back to it after dying. To stand one on a platform at `groundY-N`, put it at `groundY-(N+120)`. |
 | `spikes`    | `x`, `y`, `length`                                     | A row of spikes, 30 px tall and 30 px per spike. Touching them costs a heart. To put them on a platform at `groundY-N`, use `groundY-(N+30)`. |
 | `gems`      | `x`, `y`                                               | Hidden gems, 36×36 px. They count when the level is finished. The player can reach one about 330 px above the platform they stand on by jumping. |
+| `bouncePads` | `x`, `y`                                              | Springs, 80×30 px, that launch the player about 600 px up. To put one on a platform at `groundY-N`, use `groundY-(N+30)`. The player steers while flying, so put the platform to land on to one side, not straight above. |
 
 A platform at `groundY-63` sits exactly on top of the ground. Anything between that and `groundY` overlaps
 the grass and looks broken.
@@ -114,6 +115,20 @@ The player opens a portal with E and goes through with E again. They come out st
 other portal, which is already open so they can go straight back. Health, keys and power-ups come with
 them. Each area needs its own ground platform. If a portal's `leadsTo` doesn't exist, it works like an exit
 door.
+
+## Moving platforms
+
+Give a platform a `moveTo` position and it glides back and forth between where it starts and there,
+slowing down at each end. `moveTime` is how many seconds one way takes (3 if left out):
+
+```json
+{ "x": 550, "y": "groundY-450", "length": 160, "moveTo": { "x": 1150, "y": "groundY-450" }, "moveTime": 3 }
+```
+
+A platform that moves up and down works as a lift. The player rides along while standing on it, and a dotted
+line shows the path. Moving platforms can crumble, but they can't have a monster. Keys, gems and power-ups
+stay where they are, so don't put them where only a moving platform can reach. All moving platforms in an
+area start together when the level starts.
 
 ## Characters
 
@@ -157,7 +172,7 @@ The automated player in `Tests` can play your level from start to finish, collec
 you which jumps are tight:
 
 ```bash
-dotnet run --project Tests -- --levels 11
+dotnet run --project Tests -- --levels 13
 ```
 
 If it can't finish, it lists every part of every platform and where it could get to from there. A picture
@@ -177,6 +192,8 @@ its best run, because the ghost would no longer match. Changing only spacing, co
 
 - `Level1.json` is the simplest: a staircase, one frog and Pip.
 - `Level4.json` has a key at the top and a locked door on the ground.
-- `Level7.json` shows areas and portals: the key for the exit is in the nether.
-- `Level8.json` has two keys and a locked portal to a second area.
-- `Level9.json` has checkpoints, spikes on a platform and gems high above the climb.
+- `Level5.json` has bounce pads.
+- `Level8.json` shows areas and portals: the key for the exit is in the nether.
+- `Level9.json` has two keys and a locked portal to a second area.
+- `Level10.json` has moving platforms: two ferries and a lift.
+- `Level11.json` has checkpoints, spikes on a platform and gems high above the climb.

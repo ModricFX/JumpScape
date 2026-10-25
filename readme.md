@@ -9,7 +9,7 @@ first, and look out for hidden gems on the way.
 
 ## Features
 
-- Ten levels that start easy and get harder (see [Levels](#levels) below), plus a JSON level format for
+- Twelve levels that start easy and get harder (see [Levels](#levels) below), plus a JSON level format for
   making your own, with autocomplete and error checking in VS Code ([Levels/README.md](Levels/README.md)).
   An automated player has finished every level and collected every gem, so each one is known to be
   possible ([Running the checks](#running-the-checks)).
@@ -17,9 +17,11 @@ first, and look out for hidden gems on the way.
   after you walk off an edge or just before you land.
 - Levels can have several areas joined by glowing portal doors, like a dark red nether or a night sky.
 - Frogs that patrol platforms, ghosts that chase you, spikes, crumbling platforms, and locked doors with keys.
+- Moving platforms that carry you across gaps or up like a lift, and bounce pads that launch you high.
 - Checkpoint flags in the longer levels: after touching one, you can come back to it when you die.
 - Hidden gems in every level, and gold, silver and bronze medals for finishing quickly.
 - Throw glowing orbs at enemies by clicking where you want them to go.
+- Play with the keyboard and mouse or a gamepad. Hints in the game show the buttons of whichever you use.
 - Pip, a friendly explorer, explains the controls in Level 1 and gives tips in later levels.
 - Race your best run: after you finish a level, a see-through ghost replays your fastest run while a
   timer shows your time and your best. Best times also appear in the level picker.
@@ -91,6 +93,19 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | Pause / back           | Esc                                     |
 | Menus                  | Arrow keys or W / S, Enter or Space, or the mouse |
 
+With a gamepad:
+
+| Action                 | Gamepad                                 |
+| ---------------------- | --------------------------------------- |
+| Move                   | Left stick or D-pad                     |
+| Jump                   | A (hold for a higher jump)              |
+| Use the door, talk     | X                                       |
+| Select inventory slot  | LB / RB                                 |
+| Drop the selected key  | Y                                       |
+| Throw an orb           | RT (aim with the right stick, or it flies straight ahead) |
+| Pause                  | Start                                   |
+| Menus                  | Left stick or D-pad, A to choose, B to go back |
+
 You can choose your own keys for moving, jumping, using doors and dropping keys under
 **Settings → Controls** (also in the pause menu): click a box and press the key you want. The hints in the
 game and what Pip says follow your keys.
@@ -103,12 +118,14 @@ game and what Pip says follow your keys.
 | 2     | Frog Pond       | Frogs on most platforms.                                                     |
 | 3     | Crumbling Path  | Platforms that break under your feet.                                        |
 | 4     | The Key         | A locked exit. Climb up and back to fetch the key.                           |
-| 5     | Ghost Garden    | Ghosts that chase you, and a double jump.                                    |
-| 6     | Leap of Faith   | Long jumps between narrow platforms, spikes and the first checkpoint.        |
-| 7     | Into the Nether | A portal to the nether, where the key is.                                    |
-| 8     | Twin Keys       | Two keys, a locked portal and a night sky.                                   |
-| 9     | Sky Tower       | A tall climb with everything so far, and two checkpoints.                    |
-| 10    | The Gauntlet    | The finale: the nether for the key, then the longest climb.                  |
+| 5     | Spring Meadow   | Bounce pads: the only way up is to let them launch you. Pip explains them.   |
+| 6     | Ghost Garden    | Ghosts that chase you, and a double jump.                                    |
+| 7     | Leap of Faith   | Long jumps between narrow platforms, spikes and the first checkpoint.        |
+| 8     | Into the Nether | A portal to the nether, where the key is.                                    |
+| 9     | Twin Keys       | Two keys, a locked portal and a night sky.                                   |
+| 10    | Sky Ferry       | Moving platforms: two ferries and a lift.                                    |
+| 11    | Sky Tower       | A tall climb with frogs, ghosts and crumbling ledges, and two checkpoints.   |
+| 12    | The Gauntlet    | The finale: the nether for the key, then the longest climb.                  |
 
 ## How to play
 
@@ -134,6 +151,10 @@ game and what Pip says follow your keys.
 - Crumbling platforms start shaking when you land on them, break after three seconds and come back five
   seconds later.
 - Spikes take a whole heart and bounce you away.
+- Moving platforms glide back and forth along the dotted line under them, and carry you while you stand on
+  them. Wait for one to come close, jump on, and jump off at the other end.
+- Bounce pads (red springs) launch you about 600 px up when you land or walk on them. Steer while you fly.
+  They also give back your double jump.
 - Touch a checkpoint flag to make it green. If you die after that, **Back to checkpoint** brings you back
   there with full health, and everything you collected stays collected. A run that used a checkpoint
   doesn't count as a best time.
@@ -186,7 +207,7 @@ that everything works. It opens a small window while it runs and never touches y
 dotnet run --project Tests
 ```
 
-runs every check (about 230) and saves screenshots in `Tests/bin/Debug/net8.0/screenshots`.
+runs every check (about 250) and saves screenshots in `Tests/bin/Debug/net8.0/screenshots`.
 
 ```bash
 dotnet run --project Tests -- --levels

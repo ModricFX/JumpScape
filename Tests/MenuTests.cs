@@ -110,15 +110,21 @@ partial class TestGame
         Check(choice == LevelSelectChoice.None && Get<float>(picker, "_lockedMessageTimer") > 0f, "level picker: a locked level can't be started");
         ShotMenu("134_level_picker_locked", picker.Draw);
 
+        // Twelve levels make two rows of six.
+        Check(Get<int>(picker, "_columns") == 6 && Get<Rectangle>(picker, "_backButton").Bottom < VirtualScreen.Height, "level picker: twelve levels fit on the screen in rows of six");
         Set(picker, "_selected", 2);
         Key(Keys.Down, update);
-        Check(Get<int>(picker, "_selected") == 7, "level picker: Down moves a whole row");
+        Check(Get<int>(picker, "_selected") == 8, "level picker: Down moves a whole row");
         Key(Keys.Down, update);
         Check(Get<int>(picker, "_selected") == levels.Count, "level picker: Down from the bottom row goes to Back");
         Key(Keys.Up, update);
-        Check(Get<int>(picker, "_selected") == 7, "level picker: Up from Back returns to the same column");
+        Check(Get<int>(picker, "_selected") == 8, "level picker: Up from Back returns to the same column");
         Key(Keys.Left, update);
-        Check(Get<int>(picker, "_selected") == 6, "level picker: Left moves one level back");
+        Check(Get<int>(picker, "_selected") == 7, "level picker: Left moves one level back");
+
+        // Many more levels shrink the crates so everything still fits.
+        var many = new LevelSelectMenu(Enumerable.Range(1, 30).ToList(), new GameProgress());
+        Check(Get<Rectangle>(many, "_backButton").Bottom <= VirtualScreen.Height, "level picker: thirty levels still fit on the screen");
 
         GameSettings.Current.UnlockAllLevels = true;
         SetMouse(boxes[9].Center.ToVector2(), true); Press();
@@ -127,7 +133,7 @@ partial class TestGame
         Check(choice == LevelSelectChoice.Level && picker.ChosenLevel == 10, "level picker: Unlock all levels lets any level start");
         GameSettings.Current.UnlockAllLevels = false;
 
-        var done = new LevelSelectMenu(levels, new GameProgress { HighestCompletedLevel = 10 });
+        var done = new LevelSelectMenu(levels, new GameProgress { HighestCompletedLevel = 12 });
         done.Open();
         ShotMenu("135_level_picker_all_finished", done.Draw);
         var fresh = new LevelSelectMenu(levels, new GameProgress());

@@ -1,40 +1,43 @@
 {
   "$schema": "level.schema.json",
-  "name": "Ghost Garden",
-  "description": "Ghosts drift between the platforms. Grab the double jump on the way up and keep an eye on where they float.",
-  "medals": { "gold": 25, "silver": 40, "bronze": 60 },
+  "name": "Spring Meadow",
+  "description": "Red springs launch you high into the air. Walk onto one and steer while you fly.",
+  "medals": { "gold": 15, "silver": 25, "bronze": 40 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 300, "y": "groundY-180", "length": 250 },
-        { "x": 650, "y": "groundY-330", "length": 200 },
-        { "x": 1000, "y": "groundY-450", "length": 250 },
-        { "x": 1400, "y": "groundY-580", "length": 200 },
-        { "x": 1700, "y": "groundY-760", "length": 200 },
-        { "x": 1350, "y": "groundY-940", "length": 220 },
-        { "x": 950, "y": "groundY-1080", "length": 220 },
-        { "x": 550, "y": "groundY-1220", "length": 220 },
-        { "x": 200, "y": "groundY-1360", "length": 250 }
+        { "x": 500, "y": "groundY-450", "length": 300 },
+        { "x": 950, "y": "groundY-900", "length": 300, "monster": true },
+        { "x": 1400, "y": "groundY-1350", "length": 300 }
       ],
       "doors": [
-        { "x": 240, "y": "groundY-1495" }
-      ],
-      "ghosts": [
-        { "x": 850, "y": "groundY-450", "radius": 220 },
-        { "x": 1300, "y": "groundY-900", "radius": 250 },
-        { "x": 650, "y": "groundY-1380", "radius": 200 }
+        { "x": 1550, "y": "groundY-1485" }
       ],
       "powerUps": [
-        { "x": 1460, "y": "groundY-670", "type": "doubleJump" },
-        { "x": 1030, "y": "groundY-1170", "type": "health" }
+        { "x": 560, "y": "groundY-540", "type": "health" }
+      ],
+      "npcs": [
+        {
+          "x": 150,
+          "y": "groundY-250",
+          "name": "Pip",
+          "lines": [
+            "See that red spring? Walk onto it and it throws you high into the air.",
+            "Hold {right} while you fly to land on the platform. The springs up there work the same way."
+          ]
+        }
+      ],
+      "bouncePads": [
+        { "x": 400, "y": "groundY-30" },
+        { "x": 720, "y": "groundY-480" },
+        { "x": 1170, "y": "groundY-930" }
       ],
       "gems": [
-        { "x": 1850, "y": "groundY-1096" },
         { "x": 1860, "y": "groundY-56" },
-        { "x": 260, "y": "groundY-1686" }
+        { "x": 980, "y": "groundY-1266" }
       ]
     }
   ]

@@ -19,7 +19,8 @@ namespace JumpScape.Core
 
     /// <summary>
     /// Which keys do what. Every action has one to <see cref="KeysPerAction"/> keys, saved in the settings.
-    /// The inventory slots (1-3), pause (Esc) and throwing (the mouse) can't be changed.
+    /// The inventory slots (1-3), pause (Esc) and throwing (the mouse) can't be changed, and neither can the
+    /// gamepad buttons.
     /// </summary>
     public static class Controls
     {
@@ -75,8 +76,39 @@ namespace JumpScape.Core
         /// <summary>The keys for an action, most important first.</summary>
         public static IReadOnlyList<Keys> KeysFor(GameAction action) => GameSettings.Current.KeyBindings[action];
 
-        /// <summary>The name of the first key for an action, for hints like "[E] Open".</summary>
-        public static string KeyNameFor(GameAction action) => KeyName(KeysFor(action)[0]);
+        /// <summary>
+        /// The name of the first key for an action, for hints like "[E] Open". While the player uses a gamepad
+        /// it is the gamepad button instead.
+        /// </summary>
+        public static string KeyNameFor(GameAction action) => Input.UsingGamepad ? ButtonName(action) : KeyName(KeysFor(action)[0]);
+
+        /// <summary>The keys (or gamepad buttons) that choose an inventory slot.</summary>
+        public static string SlotKeysName => Input.UsingGamepad ? "LB/RB" : "1-3";
+
+        /// <summary>The gamepad button for an action. The left stick also walks.</summary>
+        public static Buttons ButtonFor(GameAction action)
+        {
+            return action switch
+            {
+                GameAction.MoveLeft => Buttons.DPadLeft,
+                GameAction.MoveRight => Buttons.DPadRight,
+                GameAction.Jump => Buttons.A,
+                GameAction.Use => Buttons.X,
+                _ => Buttons.Y,
+            };
+        }
+
+        public static string ButtonName(GameAction action)
+        {
+            return action switch
+            {
+                GameAction.MoveLeft => "D-pad left",
+                GameAction.MoveRight => "D-pad right",
+                GameAction.Jump => "A",
+                GameAction.Use => "X",
+                _ => "Y",
+            };
+        }
 
         /// <summary>False for keys that already do something fixed: Esc and the inventory slots.</summary>
         public static bool CanBind(Keys key) => Array.IndexOf(FixedKeys, key) < 0;

@@ -70,6 +70,12 @@ namespace JumpScape.Gameplay
 
         public bool IsOnGround { get; private set; }
 
+        /// <summary>The platform the player is standing on, or null in the air.</summary>
+        public Platform StandingOn { get; private set; }
+
+        /// <summary>Speed in pixels per frame; y grows downwards.</summary>
+        public Vector2 Velocity => _velocity;
+
         public bool FacingRight => _facingRight;
 
         public bool IsInvincible => _invincibilityTimer > 0f;
@@ -275,6 +281,10 @@ namespace JumpScape.Gameplay
                 Inventory.Select(1);
             else if (Input.WasPressed(Keys.D3) || Input.WasPressed(Keys.NumPad3))
                 Inventory.Select(2);
+            else if (Input.WasPressed(Buttons.LeftShoulder))
+                Inventory.Select((Inventory.SelectedSlot + Inventory.SlotCount - 1) % Inventory.SlotCount);
+            else if (Input.WasPressed(Buttons.RightShoulder))
+                Inventory.Select((Inventory.SelectedSlot + 1) % Inventory.SlotCount);
         }
 
         /// <summary>Called when the player goes through the level's exit door.</summary>
@@ -293,6 +303,7 @@ namespace JumpScape.Gameplay
             Position = position;
             IsDead = false;
             IsOnGround = false;
+            StandingOn = null;
             _health = _maxHealth;
             _velocity = Vector2.Zero;
             _knockbackTimer = 0f;
@@ -310,9 +321,31 @@ namespace JumpScape.Gameplay
         public void MoveTo(Vector2 position)
         {
             Position = position;
+            StandingOn = null;
             _velocity = Vector2.Zero;
             _knockbackTimer = 0f;
             _walkingSound.Stop();
+        }
+
+        /// <summary>Moves the player along with the moving platform they stand on.</summary>
+        public void RideAlong()
+        {
+            if (StandingOn != null && StandingOn.Delta != Vector2.Zero && !IsDead)
+                Position += StandingOn.Delta;
+        }
+
+        /// <summary>Launches the player upwards, as a bounce pad does. Lets them use a double jump again.</summary>
+        public void Bounce(float speed)
+        {
+            _velocity.Y = -speed;
+            IsOnGround = false;
+            StandingOn = null;
+            _coyoteTimer = 0f;
+            _jumpBufferTimer = 0f;
+            _isRisingFromJump = false;
+            _usedAirJump = false;
+            _squashTimer = SquashDuration;
+            JustJumped = true;
         }
 
         public void ApplyGravity()
@@ -327,6 +360,8 @@ namespace JumpScape.Gameplay
         {
             IsOnGround = false;
             JustLanded = false;
+            Platform wasStandingOn = StandingOn;
+            StandingOn = null;
 
             foreach (Platform platform in platforms)
             {
@@ -338,8 +373,10 @@ namespace JumpScape.Gameplay
                 if (!bounds.Intersects(platformBounds))
                     continue;
 
+                // Someone standing on a platform stays on top of it, even right at its edge while it moves.
                 Rectangle overlap = Rectangle.Intersect(bounds, platformBounds);
-                if (overlap.Width < overlap.Height)
+                bool stillStanding = platform == wasStandingOn && bounds.Center.Y < platformBounds.Center.Y;
+                if (overlap.Width < overlap.Height && !stillStanding)
                 {
                     // Walked into the side of the platform.
                     float pushX = bounds.Center.X < platformBounds.Center.X ? -overlap.Width : overlap.Width;
@@ -356,6 +393,7 @@ namespace JumpScape.Gameplay
                     Position = new Vector2(Position.X, platformBounds.Top - Height);
                     _velocity.Y = 0f;
                     IsOnGround = true;
+                    StandingOn = platform;
                     _usedAirJump = false;
                     platform.OnPlayerLanded();
                 }

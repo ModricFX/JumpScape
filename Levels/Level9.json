@@ -1,51 +1,74 @@
 {
   "$schema": "level.schema.json",
-  "name": "Sky Tower",
-  "description": "A tall climb past frogs, ghosts and crumbling ledges. One slip and it's a long way down.",
-  "medals": { "gold": 35, "silver": 55, "bronze": 90 },
+  "name": "Twin Keys",
+  "description": "Two locked doors and two keys. The first key opens the glowing door; the second waits in the night sky.",
+  "medals": { "gold": 50, "silver": 80, "bronze": 125 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 300, "y": "groundY-180", "length": 200 },
-        { "x": 620, "y": "groundY-360", "length": 180, "crumbling": true },
-        { "x": 950, "y": "groundY-540", "length": 200, "monster": true },
-        { "x": 1280, "y": "groundY-720", "length": 180 },
-        { "x": 1580, "y": "groundY-900", "length": 200, "crumbling": true },
-        { "x": 1250, "y": "groundY-1080", "length": 200, "monster": true },
-        { "x": 920, "y": "groundY-1260", "length": 180 },
-        { "x": 600, "y": "groundY-1440", "length": 180, "crumbling": true },
-        { "x": 280, "y": "groundY-1620", "length": 200 },
-        { "x": 600, "y": "groundY-1800", "length": 180, "crumbling": true },
-        { "x": 930, "y": "groundY-1980", "length": 200, "monster": true },
-        { "x": 1260, "y": "groundY-2160", "length": 220 }
+        { "x": 250, "y": "groundY-150", "length": 200 },
+        { "x": 550, "y": "groundY-300", "length": 200, "monster": true },
+        { "x": 250, "y": "groundY-450", "length": 200, "crumbling": true },
+        { "x": 550, "y": "groundY-600", "length": 220 },
+        { "x": 200, "y": "groundY-750", "length": 220 },
+        { "x": 1000, "y": "groundY-200", "length": 200 },
+        { "x": 1300, "y": "groundY-350", "length": 250, "monster": true },
+        { "x": 1650, "y": "groundY-500", "length": 220 }
       ],
-      "doors": [
-        { "x": 1300, "y": "groundY-2295" }
+      "portals": [
+        { "x": 1700, "y": "groundY-635", "locked": true, "name": "skyGate", "leadsTo": "skyReturn" }
       ],
-      "ghosts": [
-        { "x": 700, "y": "groundY-1000", "radius": 260 },
-        { "x": 1000, "y": "groundY-1700", "radius": 260 }
+      "keys": [
+        { "x": 260, "y": "groundY-870" }
       ],
       "powerUps": [
-        { "x": 990, "y": "groundY-1350", "type": "health" },
-        { "x": 340, "y": "groundY-1710", "type": "doubleJump" },
-        { "x": 1340, "y": "groundY-810", "type": "health" }
+        { "x": 620, "y": "groundY-690", "type": "health" }
       ],
       "checkpoints": [
-        { "x": 1290, "y": "groundY-840" },
-        { "x": 400, "y": "groundY-1740" }
-      ],
-      "spikes": [
-        { "x": 280, "y": "groundY-1650", "length": 60 },
-        { "x": 850, "y": "groundY-30", "length": 60 }
+        { "x": 1130, "y": "groundY-320" }
       ],
       "gems": [
-        { "x": 1720, "y": "groundY-1236" },
-        { "x": 340, "y": "groundY-1936" },
-        { "x": 1420, "y": "groundY-2486" }
+        { "x": 1860, "y": "groundY-56" },
+        { "x": 700, "y": "groundY-936" }
+      ]
+    },
+    {
+      "name": "night sky",
+      "sky": "MidnightBlue",
+      "tint": "LightSteelBlue",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 400, "y": "groundY-160", "length": 200 },
+        { "x": 700, "y": "groundY-320", "length": 200, "crumbling": true },
+        { "x": 1000, "y": "groundY-480", "length": 200 },
+        { "x": 1300, "y": "groundY-640", "length": 200, "monster": true },
+        { "x": 1600, "y": "groundY-800", "length": 250 },
+        { "x": 1250, "y": "groundY-980", "length": 220 },
+        { "x": 900, "y": "groundY-1150", "length": 220 }
+      ],
+      "portals": [
+        { "x": 100, "y": "groundY-135", "name": "skyReturn", "leadsTo": "skyGate" }
+      ],
+      "doors": [
+        { "x": 950, "y": "groundY-1285", "locked": true }
+      ],
+      "keys": [
+        { "x": 1720, "y": "groundY-920" }
+      ],
+      "ghosts": [
+        { "x": 1100, "y": "groundY-800", "radius": 250 }
+      ],
+      "powerUps": [
+        { "x": 1070, "y": "groundY-570", "type": "health" }
+      ],
+      "checkpoints": [
+        { "x": 1010, "y": "groundY-600" }
+      ],
+      "gems": [
+        { "x": 1060, "y": "groundY-1486" }
       ]
     }
   ]

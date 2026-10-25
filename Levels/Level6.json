@@ -1,40 +1,40 @@
 {
   "$schema": "level.schema.json",
-  "name": "Leap of Faith",
-  "description": "Long gaps between narrow platforms. Jump from the very edge, and don't look down.",
-  "medals": { "gold": 30, "silver": 50, "bronze": 75 },
+  "name": "Ghost Garden",
+  "description": "Ghosts drift between the platforms. Grab the double jump on the way up and keep an eye on where they float.",
+  "medals": { "gold": 25, "silver": 40, "bronze": 60 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 200, "y": "groundY-160", "length": 180 },
-        { "x": 620, "y": "groundY-260", "length": 160 },
-        { "x": 1030, "y": "groundY-360", "length": 160, "crumbling": true },
-        { "x": 1430, "y": "groundY-480", "length": 200, "monster": true },
-        { "x": 1700, "y": "groundY-700", "length": 200 },
-        { "x": 1350, "y": "groundY-960", "length": 160 },
-        { "x": 950, "y": "groundY-1080", "length": 180 },
-        { "x": 500, "y": "groundY-1180", "length": 200 }
+        { "x": 300, "y": "groundY-180", "length": 250 },
+        { "x": 650, "y": "groundY-330", "length": 200 },
+        { "x": 1000, "y": "groundY-450", "length": 250 },
+        { "x": 1400, "y": "groundY-580", "length": 200 },
+        { "x": 1700, "y": "groundY-760", "length": 200 },
+        { "x": 1350, "y": "groundY-940", "length": 220 },
+        { "x": 950, "y": "groundY-1080", "length": 220 },
+        { "x": 550, "y": "groundY-1220", "length": 220 },
+        { "x": 200, "y": "groundY-1360", "length": 250 }
       ],
       "doors": [
-        { "x": 540, "y": "groundY-1315" }
+        { "x": 240, "y": "groundY-1495" }
+      ],
+      "ghosts": [
+        { "x": 850, "y": "groundY-450", "radius": 220 },
+        { "x": 1300, "y": "groundY-900", "radius": 250 },
+        { "x": 650, "y": "groundY-1380", "radius": 200 }
       ],
       "powerUps": [
-        { "x": 1770, "y": "groundY-790", "type": "health" },
-        { "x": 1150, "y": "groundY-90", "type": "highJump" }
-      ],
-      "checkpoints": [
-        { "x": 1840, "y": "groundY-820" }
-      ],
-      "spikes": [
-        { "x": 420, "y": "groundY-30", "length": 150 }
+        { "x": 1460, "y": "groundY-670", "type": "doubleJump" },
+        { "x": 1030, "y": "groundY-1170", "type": "health" }
       ],
       "gems": [
+        { "x": 1850, "y": "groundY-1096" },
         { "x": 1860, "y": "groundY-56" },
-        { "x": 1560, "y": "groundY-816" },
-        { "x": 560, "y": "groundY-1506" }
+        { "x": 260, "y": "groundY-1686" }
       ]
     }
   ]

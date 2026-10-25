@@ -1,0 +1,52 @@
+{
+  "$schema": "level.schema.json",
+  "name": "Sky Tower",
+  "description": "A tall climb past frogs, ghosts and crumbling ledges. One slip and it's a long way down.",
+  "medals": { "gold": 35, "silver": 55, "bronze": 90 },
+  "spawn": { "x": 40, "y": "groundY-100" },
+  "areas": [
+    {
+      "name": "main",
+      "platforms": [
+        { "x": -50, "y": "groundY", "length": "groundLength" },
+        { "x": 300, "y": "groundY-180", "length": 200 },
+        { "x": 620, "y": "groundY-360", "length": 180, "crumbling": true },
+        { "x": 950, "y": "groundY-540", "length": 200, "monster": true },
+        { "x": 1280, "y": "groundY-720", "length": 180 },
+        { "x": 1580, "y": "groundY-900", "length": 200, "crumbling": true },
+        { "x": 1250, "y": "groundY-1080", "length": 200, "monster": true },
+        { "x": 920, "y": "groundY-1260", "length": 180 },
+        { "x": 600, "y": "groundY-1440", "length": 180, "crumbling": true },
+        { "x": 280, "y": "groundY-1620", "length": 200 },
+        { "x": 600, "y": "groundY-1800", "length": 180, "crumbling": true },
+        { "x": 930, "y": "groundY-1980", "length": 200, "monster": true },
+        { "x": 1260, "y": "groundY-2160", "length": 220 }
+      ],
+      "doors": [
+        { "x": 1300, "y": "groundY-2295" }
+      ],
+      "ghosts": [
+        { "x": 700, "y": "groundY-1000", "radius": 260 },
+        { "x": 1000, "y": "groundY-1700", "radius": 260 }
+      ],
+      "powerUps": [
+        { "x": 990, "y": "groundY-1350", "type": "health" },
+        { "x": 340, "y": "groundY-1710", "type": "doubleJump" },
+        { "x": 1340, "y": "groundY-810", "type": "health" }
+      ],
+      "checkpoints": [
+        { "x": 1290, "y": "groundY-840" },
+        { "x": 400, "y": "groundY-1740" }
+      ],
+      "spikes": [
+        { "x": 280, "y": "groundY-1650", "length": 60 },
+        { "x": 850, "y": "groundY-30", "length": 60 }
+      ],
+      "gems": [
+        { "x": 1720, "y": "groundY-1236" },
+        { "x": 340, "y": "groundY-1936" },
+        { "x": 1420, "y": "groundY-2486" }
+      ]
+    }
+  ]
+}

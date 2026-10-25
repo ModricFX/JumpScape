@@ -1,89 +1,56 @@
 {
   "$schema": "level.schema.json",
-  "name": "The Gauntlet",
-  "description": "Everything at once. Fetch the key from the depths of the nether, then climb to the locked exit at the very top.",
-  "medals": { "gold": 65, "silver": 105, "bronze": 160 },
+  "name": "Sky Ferry",
+  "description": "Platforms that glide back and forth. Wait for one to come to you, ride it, and jump off at the other end.",
+  "medals": { "gold": 40, "silver": 65, "bronze": 100 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 250, "y": "groundY-170", "length": 180 },
-        { "x": 600, "y": "groundY-330", "length": 160, "crumbling": true },
-        { "x": 950, "y": "groundY-500", "length": 200, "monster": true },
-        { "x": 1350, "y": "groundY-650", "length": 180 },
-        { "x": 1650, "y": "groundY-900", "length": 220 },
-        { "x": 1230, "y": "groundY-1180", "length": 190 },
-        { "x": 800, "y": "groundY-1300", "length": 200, "monster": true },
-        { "x": 380, "y": "groundY-1420", "length": 220 }
-      ],
-      "portals": [
-        { "x": 1430, "y": "groundY-785", "name": "toNether", "leadsTo": "fromNether" }
+        { "x": 250, "y": "groundY-250", "length": 200 },
+        {
+          "x": 550,
+          "y": "groundY-450",
+          "length": 160,
+          "moveTo": { "x": 1150, "y": "groundY-450" },
+          "moveTime": 3
+        },
+        { "x": 1350, "y": "groundY-450", "length": 200 },
+        {
+          "x": 1650,
+          "y": "groundY-450",
+          "length": 160,
+          "moveTo": { "x": 1650, "y": "groundY-900" },
+          "moveTime": 2.5
+        },
+        { "x": 1300, "y": "groundY-900", "length": 200 },
+        {
+          "x": 1100,
+          "y": "groundY-900",
+          "length": 160,
+          "moveTo": { "x": 500, "y": "groundY-900" },
+          "moveTime": 3.5
+        },
+        { "x": 150, "y": "groundY-950", "length": 250 }
       ],
       "doors": [
-        { "x": 420, "y": "groundY-1555", "locked": true }
+        { "x": 250, "y": "groundY-1085" }
       ],
       "ghosts": [
-        { "x": 700, "y": "groundY-1400", "radius": 230 }
+        { "x": 800, "y": "groundY-1050", "radius": 220 }
       ],
       "powerUps": [
-        { "x": 1720, "y": "groundY-990", "type": "health" }
-      ],
-      "npcs": [
-        {
-          "x": 200,
-          "y": "groundY-250",
-          "name": "Pip",
-          "lines": [
-            "This is it - the last level!",
-            "The exit at the top is locked, and the key is deep in the nether. Good luck!"
-          ]
-        }
+        { "x": 1420, "y": "groundY-540", "type": "health" }
       ],
       "checkpoints": [
-        { "x": 1360, "y": "groundY-770" },
-        { "x": 1240, "y": "groundY-1300" }
-      ],
-      "spikes": [
-        { "x": 1780, "y": "groundY-930", "length": 90 }
+        { "x": 1320, "y": "groundY-1020" }
       ],
       "gems": [
-        { "x": 1700, "y": "groundY-1236" },
-        { "x": 390, "y": "groundY-1736" }
-      ]
-    },
-    {
-      "name": "nether",
-      "sky": "#4A0D12",
-      "tint": "Salmon",
-      "platforms": [
-        { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 400, "y": "groundY-200", "length": 160, "crumbling": true },
-        { "x": 750, "y": "groundY-350", "length": 180, "monster": true },
-        { "x": 1100, "y": "groundY-500", "length": 160, "crumbling": true },
-        { "x": 1450, "y": "groundY-650", "length": 200, "monster": true },
-        { "x": 1700, "y": "groundY-850", "length": 200 }
-      ],
-      "portals": [
-        { "x": 100, "y": "groundY-135", "name": "fromNether", "leadsTo": "toNether" }
-      ],
-      "keys": [
-        { "x": 1820, "y": "groundY-970" }
-      ],
-      "ghosts": [
-        { "x": 1300, "y": "groundY-750", "radius": 250 },
-        { "x": 650, "y": "groundY-500", "radius": 200 }
-      ],
-      "powerUps": [
-        { "x": 1180, "y": "groundY-590", "type": "health" },
-        { "x": 250, "y": "groundY-90", "type": "highJump" }
-      ],
-      "checkpoints": [
-        { "x": 1460, "y": "groundY-770" }
-      ],
-      "gems": [
-        { "x": 1200, "y": "groundY-836" }
+        { "x": 1560, "y": "groundY-736" },
+        { "x": 1860, "y": "groundY-56" },
+        { "x": 200, "y": "groundY-1286" }
       ]
     }
   ]

@@ -9,6 +9,7 @@ using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 
 namespace JumpScape
@@ -228,7 +229,8 @@ namespace JumpScape
 
         private void UpdateMainMenu()
         {
-            if (Input.Back)
+            // Only Esc quits from here, so the gamepad's B (back) can't close the game by accident.
+            if (Input.WasPressed(Keys.Escape))
             {
                 Exit();
                 return;

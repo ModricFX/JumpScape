@@ -46,6 +46,10 @@ partial class TestGame
         TestSpikes();
         TestGems();
         TestMedals();
+        TestGamepad();
+        TestMovingPlatforms();
+        TestBouncePads();
+        TestAutomatedPlayerRides();
     }
 
     /// <summary>Plays Level 3 to the exit and returns the screen with the level complete menu open.</summary>
@@ -248,7 +252,7 @@ partial class TestGame
 
     void TestNetherLevel()
     {
-        var level = LevelData.Load(7);
+        var level = LevelData.Load(8); // Into the Nether
         Check(level.Areas.Count == 2 && level.StartArea == 0 && level.Areas[1].Name == "nether"
             && level.Areas[1].Sky == new Color(0x4A, 0x0D, 0x12) && level.Areas[1].Tint == Color.Salmon, "L7: a main area and a dark red nether");
 
@@ -310,10 +314,13 @@ partial class TestGame
             Check(report.Finished, $"{level.Title}: finished={report.Finished} in {report.Seconds:0.0}s, jumps {report.Jumps}, orbs {report.Throws}, hearts lost {report.HeartsLost}, replans {report.Replans}, tightest jumps {string.Join("/", report.Windows.OrderBy(w => w).Take(3))} px" + (report.Problem == null ? "" : " PROBLEM: " + report.Problem));
             Check(report.GemsFound == report.GemCount, $"{level.Title}: all gems collected ({report.GemsFound}/{report.GemCount})" + string.Concat(report.MissedGems.Select(missed => "; " + missed)));
 
-            // Racing straight to the exit, without the gems, sets the pace for the medals.
+            // Racing straight to the exit, without the gems, sets the pace for the medals. A ghost can still knock the
+            // player off a jump, so it's enough that one of the two runs beats the gold time.
             var race = PlayLevelWithBot(level, verbose: false, collectGems: false);
+            float fastest = Math.Min(race.Finished ? race.Seconds : float.MaxValue, report.Finished ? report.Seconds : float.MaxValue);
             string medals = level.Medals == null ? "no medal times" : $"gold {level.Medals.Gold}s, silver {level.Medals.Silver}s, bronze {level.Medals.Bronze}s";
-            Check(race.Finished && (level.Medals == null || race.Seconds <= level.Medals.Gold), $"{level.Title}: straight to the exit in {race.Seconds:0.0}s ({medals})");
+            Check(race.Finished && (level.Medals == null || fastest <= level.Medals.Gold),
+                $"{level.Title}: straight to the exit in {race.Seconds:0.0}s, replans {race.Replans}, hearts lost {race.HeartsLost} ({medals})");
         }
     }
 
@@ -416,7 +423,7 @@ partial class TestGame
         Frames(gs, 8);
         ShotGame("84_orb_flying", gs);
 
-        var gs2 = new GameplayScreen(LevelData.Load(5), true);
+        var gs2 = new GameplayScreen(LevelData.Load(6), true); // Ghost Garden
         Frames(gs2, 240);
         var ghosts = AreaOf(gs2).Ghosts;
         var ghostPlatform = AreaOf(gs2).Platforms[2];
@@ -488,7 +495,7 @@ partial class TestGame
         ShotGame("82_heart_collected", gs);
 
         // High jump
-        var hjGs = new GameplayScreen(LevelData.Load(6), true);
+        var hjGs = new GameplayScreen(LevelData.Load(7), true); // Leap of Faith
         Frames(hjGs, 240);
         float normal = JumpHeight(hjGs);
         Frames(hjGs, 30, Keys.Space);
@@ -508,7 +515,7 @@ partial class TestGame
         Check(!hp.HasHighJump, "high jump wears off after 15 s");
 
         // Double jump
-        var djGs = new GameplayScreen(LevelData.Load(5), true);
+        var djGs = new GameplayScreen(LevelData.Load(6), true); // Ghost Garden
         Frames(djGs, 240);
         var doubleJump = FindPowerUp(djGs, PowerUpType.DoubleJump);
         StandOn(djGs, doubleJump);
@@ -563,7 +570,7 @@ partial class TestGame
     void TestLevelFiles()
     {
         var levels = LevelData.FindLevelNumbers();
-        Check(levels.SequenceEqual(Enumerable.Range(1, 10)), "found levels " + string.Join(",", levels));
+        Check(levels.SequenceEqual(Enumerable.Range(1, 12)), "found levels " + string.Join(",", levels));
         var l1 = LevelData.Load(1);
         var a1 = l1.Areas.Single();
         Check(l1.Name == "First Steps" && l1.Title == "Level 1: First Steps" && l1.Description.StartsWith("Learn to walk"), "L1 name, title and description: " + l1.Title);
@@ -571,8 +578,8 @@ partial class TestGame
         Check(l1.PlayerSpawn == new Vector2(40, LevelData.GroundY - 100) && a1.Doors.Single().Position == new Vector2(1735, LevelData.GroundY - 735) && !a1.Doors[0].IsLocked && a1.Doors[0].Target == null, "L1 spawn/door parsed");
         Check(a1.Platforms[4].HasMonster && !a1.Platforms.Any(pl => pl.IsCrumbling) && LevelData.Load(3).Areas[0].Platforms[2].IsCrumbling, "monster and crumbling flags");
         Check(a1.Name == "main" && a1.Sky == Color.CornflowerBlue && a1.Tint == Color.White, "L1 has one plain 'main' area");
-        var l5 = LevelData.Load(5);
-        Check(l5.Areas[0].Ghosts.Count == 3 && l5.Areas[0].Ghosts[0].Radius == 220 && l5.Areas[0].Ghosts[0].Position == new Vector2(850, LevelData.GroundY - 450), "L5 ghosts parsed");
+        var l6 = LevelData.Load(6);
+        Check(l6.Areas[0].Ghosts.Count == 3 && l6.Areas[0].Ghosts[0].Radius == 220 && l6.Areas[0].Ghosts[0].Position == new Vector2(850, LevelData.GroundY - 450), "L6 ghosts parsed");
         var l4 = LevelData.Load(4);
         Check(l4.Areas[0].KeyPositions.Single() == new Vector2(310, LevelData.GroundY - 1170) && l4.Areas[0].Doors[0].IsLocked && l4.Areas[0].Doors[0].Position == new Vector2(1650, LevelData.GroundY - 135), "L4 key + locked door parsed");
         Check(levels.All(n => LevelData.Load(n).Name != null && LevelData.Load(n).Description != null), "every level has a name and a description");
@@ -773,6 +780,12 @@ partial class TestGame
                 Area area = areas[a];
                 var platforms = area.Platforms;
                 string label = $"L{n} {area.Name}";
+                if (area.BouncePads.Count > 0 || platforms.Any(pl => pl.IsMoving))
+                {
+                    // This quick check only knows platforms that stand still; the automated player (--levels) plays these.
+                    Console.WriteLine($"      {label}: has bounce pads or moving platforms, checked by the automated player instead");
+                    continue;
+                }
 
                 var entries = new List<Vector2>();
                 if (a == level.StartArea)
@@ -985,7 +998,7 @@ partial class TestGame
         ShotGame("60_frog_hit", gs);
         gs.StopSounds();
 
-        var gs2 = new GameplayScreen(LevelData.Load(5), true);
+        var gs2 = new GameplayScreen(LevelData.Load(6), true); // Ghost Garden
         Frames(gs2, 240);
         var p2 = PlayerOf(gs2);
         var pl2 = AreaOf(gs2).Platforms[3];

@@ -1,74 +1,59 @@
 {
   "$schema": "level.schema.json",
-  "name": "Twin Keys",
-  "description": "Two locked doors and two keys. The first key opens the glowing door; the second waits in the night sky.",
-  "medals": { "gold": 50, "silver": 80, "bronze": 125 },
+  "name": "Into the Nether",
+  "description": "The key is on the other side of the glowing door. Brave the nether, then come back to unlock the exit.",
+  "medals": { "gold": 40, "silver": 65, "bronze": 100 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
       "name": "main",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 250, "y": "groundY-150", "length": 200 },
-        { "x": 550, "y": "groundY-300", "length": 200, "monster": true },
-        { "x": 250, "y": "groundY-450", "length": 200, "crumbling": true },
-        { "x": 550, "y": "groundY-600", "length": 220 },
-        { "x": 200, "y": "groundY-750", "length": 220 },
-        { "x": 1000, "y": "groundY-200", "length": 200 },
-        { "x": 1300, "y": "groundY-350", "length": 250, "monster": true },
-        { "x": 1650, "y": "groundY-500", "length": 220 }
+        { "x": 300, "y": "groundY-150", "length": 200 },
+        { "x": 600, "y": "groundY-300", "length": 200, "monster": true },
+        { "x": 950, "y": "groundY-450", "length": 250 }
       ],
       "portals": [
-        { "x": 1700, "y": "groundY-635", "locked": true, "name": "skyGate", "leadsTo": "skyReturn" }
+        { "x": 1010, "y": "groundY-585", "name": "netherGate", "leadsTo": "overworldGate" }
       ],
-      "keys": [
-        { "x": 260, "y": "groundY-870" }
-      ],
-      "powerUps": [
-        { "x": 620, "y": "groundY-690", "type": "health" }
-      ],
-      "checkpoints": [
-        { "x": 1130, "y": "groundY-320" }
+      "doors": [
+        { "x": 1700, "y": "groundY-135", "locked": true }
       ],
       "gems": [
-        { "x": 1860, "y": "groundY-56" },
-        { "x": 700, "y": "groundY-936" }
+        { "x": 1150, "y": "groundY-796" }
       ]
     },
     {
-      "name": "night sky",
-      "sky": "MidnightBlue",
-      "tint": "LightSteelBlue",
+      "name": "nether",
+      "sky": "#4A0D12",
+      "tint": "Salmon",
       "platforms": [
         { "x": -50, "y": "groundY", "length": "groundLength" },
-        { "x": 400, "y": "groundY-160", "length": 200 },
-        { "x": 700, "y": "groundY-320", "length": 200, "crumbling": true },
-        { "x": 1000, "y": "groundY-480", "length": 200 },
-        { "x": 1300, "y": "groundY-640", "length": 200, "monster": true },
-        { "x": 1600, "y": "groundY-800", "length": 250 },
-        { "x": 1250, "y": "groundY-980", "length": 220 },
-        { "x": 900, "y": "groundY-1150", "length": 220 }
+        { "x": 450, "y": "groundY-220", "length": 180, "crumbling": true },
+        { "x": 750, "y": "groundY-360", "length": 180 },
+        { "x": 1050, "y": "groundY-500", "length": 200, "monster": true },
+        { "x": 1350, "y": "groundY-640", "length": 180, "crumbling": true },
+        { "x": 1650, "y": "groundY-780", "length": 230 }
       ],
       "portals": [
-        { "x": 100, "y": "groundY-135", "name": "skyReturn", "leadsTo": "skyGate" }
-      ],
-      "doors": [
-        { "x": 950, "y": "groundY-1285", "locked": true }
+        { "x": 100, "y": "groundY-135", "name": "overworldGate", "leadsTo": "netherGate" }
       ],
       "keys": [
-        { "x": 1720, "y": "groundY-920" }
+        { "x": 1780, "y": "groundY-900" }
       ],
       "ghosts": [
-        { "x": 1100, "y": "groundY-800", "radius": 250 }
+        { "x": 1150, "y": "groundY-790", "radius": 250 },
+        { "x": 700, "y": "groundY-520", "radius": 200 }
       ],
       "powerUps": [
-        { "x": 1070, "y": "groundY-570", "type": "health" }
+        { "x": 820, "y": "groundY-450", "type": "health" }
       ],
       "checkpoints": [
-        { "x": 1010, "y": "groundY-600" }
+        { "x": 760, "y": "groundY-480" }
       ],
       "gems": [
-        { "x": 1060, "y": "groundY-1486" }
+        { "x": 1700, "y": "groundY-1116" },
+        { "x": 1860, "y": "groundY-56" }
       ]
     }
   ]

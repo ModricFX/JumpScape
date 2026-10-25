@@ -42,6 +42,9 @@ partial class TestGame : Game
     MenuBackground _bg;
     TimeSpan _total;
     MouseState _mouse;
+
+    /// <summary>The made-up gamepad state Press hands to the game; the default is nothing pressed.</summary>
+    GamePadState _pad;
     Vector2 _mousePos = new Vector2(-1000, -1000);
 
     public int Failures;
@@ -101,6 +104,8 @@ partial class TestGame : Game
         SetStatic(typeof(Input), "_mouse", _mouse);
         typeof(Input).GetProperty("MousePosition", Any).SetValue(null, _mousePos);
         typeof(Input).GetProperty("ViewMousePosition", Any).SetValue(null, _mousePos);
+        SetStatic(typeof(Input), "_previousGamePad", GetStatic(typeof(Input), "_gamePad"));
+        SetStatic(typeof(Input), "_gamePad", _pad);
     }
 
     /// <summary>One frame with the left mouse button pressed at a world position.</summary>

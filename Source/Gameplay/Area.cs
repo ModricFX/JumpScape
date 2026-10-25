@@ -20,7 +20,7 @@ namespace JumpScape.Gameplay
 
             foreach (PlatformInfo info in data.Platforms)
             {
-                var platform = new Platform(info.Position, info.Length, info.IsCrumbling);
+                var platform = new Platform(info.Position, info.Length, info.IsCrumbling, info.MoveTo, info.MoveTime);
                 Platforms.Add(platform);
                 if (info.HasMonster)
                     Monsters.Add(new Monster(platform.Bounds));
@@ -51,6 +51,9 @@ namespace JumpScape.Gameplay
             foreach (SpikesInfo info in data.Spikes)
                 Spikes.Add(new Spikes(info.Position, info.Length));
 
+            foreach (Vector2 position in data.BouncePads)
+                BouncePads.Add(new BouncePad(position));
+
             for (int i = 0; i < data.Gems.Count; i++)
             {
                 int index = firstGemIndex + i;
@@ -72,6 +75,7 @@ namespace JumpScape.Gameplay
         public List<Checkpoint> Checkpoints { get; } = new List<Checkpoint>();
         public List<Spikes> Spikes { get; } = new List<Spikes>();
         public List<Gem> Gems { get; } = new List<Gem>();
+        public List<BouncePad> BouncePads { get; } = new List<BouncePad>();
 
         public void StopSounds()
         {

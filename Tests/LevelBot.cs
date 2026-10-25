@@ -10,18 +10,28 @@ partial class TestGame
 {
     /// <summary>
     /// A stretch of a platform the player can walk along freely. Low platforms above another platform
-    /// (like a step on the ground) block walking, so they split it into several stretches.
-    /// MinX/MaxX are the player's left edge.
+    /// (like a step on the ground), spikes and bounce pads split it into several stretches.
+    /// MinX/MaxX are the player's left edge; on a moving platform they are measured from the platform's left edge.
     /// </summary>
-    record Stretch(int Platform, int MinX, int MaxX);
+    record Stretch(int Platform, int MinX, int MaxX, bool Moving = false);
 
-    /// <summary>Window: how many pixels wide the range of take-off points is that make this move work.</summary>
-    record Edge(int To, int StartX, int Dir, int Delay, bool Jump, float LandX, int Window);
+    /// <summary>
+    /// One move from a stretch to another. Window: how many pixels wide the range of take-off points is that
+    /// make this move work. Moves onto or off a moving platform only work at one moment of its trip there and
+    /// back: they start when the platform's clock is at <see cref="PhaseFrame"/> (in frames, -1 for any time).
+    /// </summary>
+    record Edge(int To, int StartX, int Dir, int Delay, bool Jump, float LandX, int Window, int PhaseFrame = -1, int Mover = -1);
 
     sealed class AreaMap
     {
         public List<Stretch> Stretches = new List<Stretch>();
         public Dictionary<int, List<Edge>> Edges = new Dictionary<int, List<Edge>>();
+
+        /// <summary>Copies of the area's platforms for trying moves. Moving ones are far away in StaticPlatforms.</summary>
+        public List<Platform> Platforms = new List<Platform>();
+        public List<Platform> StaticPlatforms = new List<Platform>();
+        public List<Rectangle> Spikes = new List<Rectangle>();
+        public List<BouncePad> Pads = new List<BouncePad>();
     }
 
     sealed class BotReport
@@ -39,33 +49,48 @@ partial class TestGame
         public string Problem;
     }
 
-    readonly Dictionary<Area, AreaMap> _maps = new Dictionary<Area, AreaMap>();
+    /// <summary>How many moments of a moving platform's trip are tried when getting on or off it.</summary>
+    const int MoverPhases = 16;
 
-    /// <summary>The spikes of the area being mapped. Moves that touch them don't count.</summary>
-    List<Rectangle> _spikes = new List<Rectangle>();
+    readonly Dictionary<Area, AreaMap> _maps = new Dictionary<Area, AreaMap>();
 
     AreaMap MapFor(Area area)
     {
         if (_maps.TryGetValue(area, out var map)) return map;
         map = new AreaMap();
-        var platforms = area.Platforms;
-        _spikes = area.Spikes.Select(spikes => spikes.Hitbox).ToList();
-        for (int i = 0; i < platforms.Count; i++)
-            map.Stretches.AddRange(StretchesOf(i, platforms, _spikes));
+        foreach (var pl in area.Platforms)
+        {
+            map.Platforms.Add(new Platform(pl.Start, pl.Length, false, pl.MoveTo, pl.MoveTime));
+            map.StaticPlatforms.Add(pl.IsMoving ? new Platform(new Vector2(-10000, -10000), 1, false) : new Platform(pl.Start, pl.Length, false));
+        }
+        map.Spikes = area.Spikes.Select(spikes => spikes.Hitbox).ToList();
+        map.Pads = area.BouncePads.Select(pad => new BouncePad(pad.Bounds.Location.ToVector2())).ToList();
+
+        for (int i = 0; i < map.Platforms.Count; i++)
+            map.Stretches.AddRange(StretchesOf(i, map));
         for (int s = 0; s < map.Stretches.Count; s++)
-            map.Edges[s] = FindEdges(map, s, platforms);
+            map.Edges[s] = FindEdges(map, s);
         _maps[area] = map;
         return map;
     }
 
-    static IEnumerable<Stretch> StretchesOf(int index, List<Platform> platforms, List<Rectangle> spikes)
+    static IEnumerable<Stretch> StretchesOf(int index, AreaMap map)
     {
-        var b = platforms[index].Bounds;
+        var platform = map.Platforms[index];
+        if (platform.IsMoving)
+        {
+            yield return new Stretch(index, -PW + 1, platform.Length - 1, Moving: true);
+            yield break;
+        }
+
+        var b = platform.Bounds;
+        var statics = map.StaticPlatforms;
         int min = Math.Max(0, b.Left - PW + 1), max = Math.Min(1920 - PW, b.Right - 1);
-        // Where the player would bump into another platform, or stand in spikes, while standing here.
+        // Where the player would bump into another platform, stand in spikes or be launched by a pad while standing here.
         var standing = new Rectangle(b.Left - PW, b.Top - PH, b.Width + 2 * PW, PH);
-        var blocked = platforms.Where((pl, i) => i != index && pl.Bounds.Intersects(standing) && pl.Bounds.Top < b.Top).Select(pl => pl.Bounds)
-            .Concat(spikes.Where(spike => spike.Intersects(standing)))
+        var blocked = statics.Where((pl, i) => i != index && pl.Bounds.Intersects(standing) && pl.Bounds.Top < b.Top).Select(pl => pl.Bounds)
+            .Concat(map.Spikes.Where(spike => spike.Intersects(standing)))
+            .Concat(map.Pads.Select(pad => pad.Bounds).Where(pad => pad.Intersects(standing)))
             .Select(r => (From: r.Left - PW + 1, To: r.Right - 1)).OrderBy(r => r.From).ToList();
 
         int start = min;
@@ -85,87 +110,164 @@ partial class TestGame
         {
             var st = map.Stretches[s];
             if (st.Platform != platform) continue;
+            if (st.Moving) return s;
             float d = x < st.MinX ? st.MinX - x : x > st.MaxX ? x - st.MaxX : 0f;
             if (d < bestDistance) { bestDistance = d; best = s; }
         }
         return best;
     }
 
+    /// <summary>Where the player stands on a stretch. Moving stretches never count as standing next to a goal.</summary>
     static Rectangle StandingArea(Stretch stretch, List<Platform> platforms)
     {
+        if (stretch.Moving) return Rectangle.Empty;
         var b = platforms[stretch.Platform].Bounds;
         return new Rectangle(stretch.MinX, b.Top - PH, stretch.MaxX - stretch.MinX + PW, PH);
     }
 
+    /// <summary>The whole area a moving platform sweeps through.</summary>
+    static Rectangle PathArea(Platform mover)
+    {
+        var a = new Rectangle(mover.Start.ToPoint(), mover.Bounds.Size);
+        var b = new Rectangle((mover.MoveTo ?? mover.Start).ToPoint(), mover.Bounds.Size);
+        return Rectangle.Union(a, b);
+    }
+
+    static int CycleFrames(Platform mover) => (int)Math.Round(mover.CycleTime * 60f);
+
     /// <summary>
-    /// Simulates jumps from many starting points and keeps, for each stretch it can land on (and each direction),
+    /// Simulates moves from many starting points and keeps, for each stretch it can land on (and each direction),
     /// the move that works from the widest range of starting points, so small differences in the real run don't matter.
+    /// Moves onto and off moving platforms are tried at several moments of the platform's trip.
     /// </summary>
-    List<Edge> FindEdges(AreaMap map, int from, List<Platform> platforms)
+    List<Edge> FindEdges(AreaMap map, int from)
     {
         var stretch = map.Stretches[from];
-        var successes = new Dictionary<(int To, int Dir, int Delay, bool Jump), List<int>>();
-        for (int x = stretch.MinX; x <= stretch.MaxX; x += 6)
-        foreach (int dir in new[] { -1, 0, 1 })
-        foreach (int delay in new[] { 0, 6, 12, 18, 24, 32 })
-        foreach (bool jump in new[] { true, false })
+        var successes = new Dictionary<(int To, int Dir, int Delay, bool Jump, int Phase, int Mover), List<int>>();
+
+        void TryMoves(int x, int phase, int mover)
         {
-            if (!jump && (dir == 0 || delay > 0)) continue;
-            int to = SimulateMove(map, from, platforms, x, dir, delay, jump, out _);
-            if (to < 0 || to == from) continue;
-            var key = (to, dir, delay, jump);
-            if (!successes.TryGetValue(key, out var list)) successes[key] = list = new List<int>();
-            list.Add(x);
+            foreach (int dir in new[] { -1, 0, 1 })
+            foreach (int delay in new[] { 0, 6, 12, 18, 24, 32 })
+            foreach (bool jump in new[] { true, false })
+            {
+                if (!jump && (dir == 0 || delay > 0)) continue;
+                int to = SimulateMove(map, from, x, dir, delay, jump, phase, out _);
+                if (to < 0 || to == from) continue;
+                // A move from a static stretch only needs timing if it lands on the moving platform being tried.
+                if (mover >= 0 && !stretch.Moving && map.Stretches[to].Platform != mover) continue;
+                var key = (to, dir, delay, jump, phase, mover);
+                if (!successes.TryGetValue(key, out var list)) successes[key] = list = new List<int>();
+                list.Add(x);
+            }
+        }
+
+        if (stretch.Moving)
+        {
+            var mover = map.Platforms[stretch.Platform];
+            int cycle = CycleFrames(mover);
+            for (int k = 0; k < MoverPhases; k++)
+            for (int x = stretch.MinX; x <= stretch.MaxX; x += 12)
+                TryMoves(x, k * cycle / MoverPhases, stretch.Platform);
+        }
+        else
+        {
+            for (int x = stretch.MinX; x <= stretch.MaxX; x += 6)
+                TryMoves(x, -1, -1);
+
+            // Getting onto a moving platform that passes close by.
+            var standing = StandingArea(stretch, map.Platforms);
+            for (int m = 0; m < map.Platforms.Count; m++)
+            {
+                var mover = map.Platforms[m];
+                if (!mover.IsMoving) continue;
+                var near = PathArea(mover);
+                near.Inflate(600, 500);
+                if (!near.Intersects(standing)) continue;
+                int cycle = CycleFrames(mover);
+                for (int k = 0; k < MoverPhases; k++)
+                for (int x = stretch.MinX; x <= stretch.MaxX; x += 12)
+                    TryMoves(x, k * cycle / MoverPhases, m);
+            }
         }
 
         var edges = new List<Edge>();
+        int step = stretch.Moving || successes.Keys.Any(key => key.Phase >= 0) ? 12 : 6;
         foreach (var group in successes.GroupBy(pair => (pair.Key.To, Math.Sign(pair.Key.Dir))))
         {
-            var best = group.Select(pair => (pair.Key, Run: LongestRun(pair.Value))).OrderByDescending(c => c.Run.Count).ThenBy(c => c.Key.Jump ? 1 : 0).First();
+            var best = group.Select(pair => (pair.Key, Run: LongestRun(pair.Value, pair.Key.Phase >= 0 ? 12 : 6)))
+                .OrderByDescending(c => c.Run.Count * (c.Key.Phase >= 0 ? 12 : 6)).ThenBy(c => c.Key.Jump ? 1 : 0).First();
             int startX = best.Run[best.Run.Count / 2];
-            SimulateMove(map, from, platforms, startX, best.Key.Dir, best.Key.Delay, best.Key.Jump, out float landX);
-            edges.Add(new Edge(group.Key.To, startX, best.Key.Dir, best.Key.Delay, best.Key.Jump, landX, best.Run.Count * 6));
+            SimulateMove(map, from, startX, best.Key.Dir, best.Key.Delay, best.Key.Jump, best.Key.Phase, out float landX);
+            edges.Add(new Edge(group.Key.To, startX, best.Key.Dir, best.Key.Delay, best.Key.Jump, landX,
+                best.Run.Count * (best.Key.Phase >= 0 ? 12 : 6), best.Key.Phase, best.Key.Mover));
         }
         Press();
         return edges;
     }
 
-    static List<int> LongestRun(List<int> xs)
+    static List<int> LongestRun(List<int> xs, int step)
     {
         List<int> best = new List<int>(), current = new List<int>();
         foreach (int x in xs.OrderBy(x => x))
         {
-            if (current.Count > 0 && x - current[^1] > 6) current = new List<int>();
+            if (current.Count > 0 && x - current[^1] > step) current = new List<int>();
             current.Add(x);
             if (current.Count > best.Count) best = current;
         }
         return best;
     }
 
-    /// <summary>Plays one move with the real player physics; returns the stretch it ends on, or -1.</summary>
-    int SimulateMove(AreaMap map, int from, List<Platform> platforms, int x, int dir, int delay, bool jump, out float landX)
+    /// <summary>
+    /// Plays one move with the real player physics; returns the stretch it ends on, or -1. With a phase, the
+    /// moving platforms move along, starting from that moment of their trip; without one they aren't there.
+    /// </summary>
+    int SimulateMove(AreaMap map, int from, int x, int dir, int delay, bool jump, int phase, out float landX)
     {
         landX = 0f;
-        int fromPlatform = map.Stretches[from].Platform;
-        var p = new Player(new Vector2(x, platforms[fromPlatform].Bounds.Top - PH));
+        var stretch = map.Stretches[from];
+        var platforms = phase >= 0 ? map.Platforms : map.StaticPlatforms;
+        if (phase >= 0)
+        {
+            foreach (var pl in platforms)
+                if (pl.IsMoving) pl.SetClock((phase - 1) / 60.0);
+        }
+
+        void MovePlatforms()
+        {
+            if (phase < 0) return;
+            foreach (var pl in platforms)
+                pl.Move(Dt);
+        }
+
+        var fromBounds = map.Platforms[stretch.Platform];
+        MovePlatforms();
+        float startX = stretch.Moving ? fromBounds.Position.X + x : x;
+        var p = new Player(new Vector2(startX, platforms[stretch.Platform].Bounds.Top - PH));
         try
         {
             Press(); p.Update(Dt, NoKeys); p.ApplyGravity(); p.ResolveCollisions(platforms);
-            if (!p.IsOnGround || PlatformUnder(p, platforms) != fromPlatform) return -1;
+            if (!p.IsOnGround || PlatformUnder(p, platforms) != stretch.Platform) return -1;
             for (int f = 0; f < 240; f++)
             {
+                MovePlatforms();
+                p.RideAlong();
                 var keys = new List<Keys>();
                 if (jump && (f == 0 || Rising(p))) keys.Add(Keys.Space);
                 if (dir != 0 && f >= delay) keys.Add(dir < 0 ? Keys.Left : Keys.Right);
                 Press(keys.ToArray());
                 p.Update(Dt, NoKeys); p.ApplyGravity(); p.ResolveCollisions(platforms);
-                if (_spikes.Any(spike => spike.Intersects(p.Bounds))) return -1;
+                foreach (var pad in map.Pads) pad.TryLaunch(p);
+                if (map.Spikes.Any(spike => spike.Intersects(p.Bounds))) return -1;
                 if (f > 1 && p.IsOnGround)
                 {
                     int under = PlatformUnder(p, platforms);
                     if (under < 0) continue;
-                    int stretch = StretchAt(map, under, p.Position.X);
-                    if (stretch != from) { landX = p.Position.X; return stretch; }
+                    int to = StretchAt(map, under, p.Position.X);
+                    // Landing right at the edge of a moving platform is too risky to count.
+                    float onMover = p.Position.X - platforms[under].Position.X;
+                    if (to != from && map.Stretches[to].Moving && (onMover < -PW + 24 || onMover > platforms[under].Length - 24)) return -1;
+                    if (to != from) { landX = p.Position.X; return to; }
                     if (jump) return -1;
                 }
             }
@@ -258,14 +360,41 @@ partial class TestGame
         BotStep(gs, Array.Empty<Keys>());
     }
 
-    void PerformEdge(GameplayScreen gs, Edge edge, AreaMap map)
+    /// <summary>Walks along a moving platform until the player is <paramref name="offset"/> from its left edge.</summary>
+    void WalkAlong(GameplayScreen gs, Platform mover, float offset)
+    {
+        var p = PlayerOf(gs);
+        for (int i = 0; i < 600 && !BotTimeUp && !p.IsDead && p.StandingOn == mover; i++)
+        {
+            float x = mover.Position.X + offset;
+            if (Math.Abs(p.Position.X - x) < 3) break;
+            BotStep(gs, new[] { p.Position.X < x ? Keys.Right : Keys.Left });
+        }
+        BotStep(gs, Array.Empty<Keys>());
+    }
+
+    /// <summary>Waits, throwing at enemies that come close, until a moving platform's clock is at the given frame.</summary>
+    void WaitForPhase(GameplayScreen gs, Platform mover, int phaseFrame)
+    {
+        int cycle = CycleFrames(mover);
+        int now = (int)Math.Round(mover.Clock * 60.0) % cycle;
+        int wait = ((phaseFrame - now) % cycle + cycle) % cycle;
+        for (int i = 0; i < wait && !BotTimeUp; i++)
+            BotStep(gs, Array.Empty<Keys>(), EnemyNear(gs, 450f) ? EnemyToShoot(gs) : null);
+    }
+
+    void PerformEdge(GameplayScreen gs, Edge edge, AreaMap map, int from)
     {
         var p = PlayerOf(gs);
         // Deal with nearby enemies first, so they don't knock the player off mid-jump.
         for (int i = 0; i < 90 && EnemyNear(gs, 450f) && EnemyToShoot(gs) is Vector2 target; i++)
             BotStep(gs, Array.Empty<Keys>(), target);
 
-        WalkTo(gs, edge.StartX);
+        var stretch = map.Stretches[from];
+        if (stretch.Moving)
+            WalkAlong(gs, AreaOf(gs).Platforms[stretch.Platform], edge.StartX);
+        else
+            WalkTo(gs, edge.StartX);
         // Like a player would: wait for a crumbled (or shaking) platform to come back before jumping onto it,
         // unless the platform underfoot is about to go too.
         var platforms = AreaOf(gs).Platforms;
@@ -277,6 +406,9 @@ partial class TestGame
             if (under >= 0 && Unsafe(platforms[under])) break;
             BotStep(gs, Array.Empty<Keys>(), EnemyNear(gs, 450f) ? EnemyToShoot(gs) : null);
         }
+        // Getting on or off a moving platform has to start at the right moment of its trip.
+        if (edge.PhaseFrame >= 0)
+            WaitForPhase(gs, platforms[edge.Mover], edge.PhaseFrame);
         if (edge.Jump) _report.Jumps++;
         int start = CurrentStretch(gs, map);
         for (int f = 0; f < 240 && !BotTimeUp && !p.IsDead; f++)
@@ -337,7 +469,8 @@ partial class TestGame
         {
             var st = map.Stretches[s];
             var b = area.Platforms[st.Platform].Bounds;
-            Console.WriteLine($"      {(reach.Contains(s) ? "R" : " ")}{(goals.Contains(s) ? "G" : " ")} s{s} platform {st.Platform} at ({b.X},{1017 - b.Y}) len {b.Width} x {st.MinX}..{st.MaxX} -> "
+            string where = st.Moving ? $"moving from ({area.Platforms[st.Platform].Start.X},{1017 - area.Platforms[st.Platform].Start.Y})" : $"at ({b.X},{1017 - b.Y})";
+            Console.WriteLine($"      {(reach.Contains(s) ? "R" : " ")}{(goals.Contains(s) ? "G" : " ")} s{s} platform {st.Platform} {where} len {b.Width} x {st.MinX}..{st.MaxX} -> "
                 + string.Join(", ", map.Edges[s].Select(e => $"s{e.To}")));
         }
     }
@@ -505,7 +638,7 @@ partial class TestGame
                 }
 
                 var edge = path[0];
-                PerformEdge(gs, edge, map);
+                PerformEdge(gs, edge, map, here);
                 int landed = CurrentStretch(gs, map);
                 if (landed == edge.To && edge.Jump && map.Stretches[edge.To].Platform != 0) _report.Windows.Add(edge.Window);
                 if (verbose && edge.Jump && edge.Window < 48 && map.Stretches[edge.To].Platform != 0) Console.WriteLine($"    tight: {area.Name} platform {map.Stretches[here].Platform} -> {map.Stretches[edge.To].Platform}, window {edge.Window} px");

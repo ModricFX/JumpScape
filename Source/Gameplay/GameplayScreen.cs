@@ -198,7 +198,7 @@ namespace JumpScape.Gameplay
                 return GameplayResult.None;
             }
 
-            if (Input.Back && !_player.IsDead)
+            if (Input.Pause && !_player.IsDead)
             {
                 StopSounds();
                 _pauseMenu.Open();
@@ -249,7 +249,7 @@ namespace JumpScape.Gameplay
                 return GameplayResult.None;
             }
 
-            int choice = Input.Back ? 0 : _pauseMenu.Update(deltaTime);
+            int choice = Input.Back || Input.Pause ? 0 : _pauseMenu.Update(deltaTime);
             switch (choice)
             {
                 case 0:
@@ -361,6 +361,11 @@ namespace JumpScape.Gameplay
                 Vector2 mouseInWorld = Input.ViewMousePosition + new Vector2(0f, _cameraTop);
                 _projectiles.Add(_player.Throw(mouseInWorld));
             }
+            else if (Input.ThrowPressed && _player.CanThrow)
+            {
+                // On a gamepad the right trigger throws where the right stick points, or straight ahead.
+                _projectiles.Add(_player.Throw(_player.Center + Input.AimDirection(_player.FacingRight) * 500f));
+            }
 
             if (Input.WasPressed(GameAction.Use) && !_player.IsDead)
             {
@@ -377,6 +382,11 @@ namespace JumpScape.Gameplay
                     return;
                 }
             }
+
+            // Moving platforms move first and carry whoever stands on them.
+            foreach (Platform platform in _area.Platforms)
+                platform.Move(deltaTime);
+            _player.RideAlong();
 
             _player.Update(deltaTime, _area.Keys);
             foreach (Monster monster in _area.Monsters)
@@ -406,7 +416,7 @@ namespace JumpScape.Gameplay
                 _raceFrame++;
             }
 
-            UpdateCheckpointsSpikesAndGems(deltaTime);
+            UpdateLevelObjects(deltaTime);
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
             _effects.Update(deltaTime);
@@ -483,7 +493,7 @@ namespace JumpScape.Gameplay
                 _banner.Show(char.ToUpperInvariant(_area.Name[0]) + _area.Name.Substring(1), duration: 1.8f);
         }
 
-        private void UpdateCheckpointsSpikesAndGems(float deltaTime)
+        private void UpdateLevelObjects(float deltaTime)
         {
             foreach (Checkpoint checkpoint in _area.Checkpoints)
             {
@@ -504,6 +514,16 @@ namespace JumpScape.Gameplay
             {
                 if (spikes.Hitbox.Intersects(_player.Bounds))
                     _player.TakeDamage(1f, _player.Center.X < spikes.Bounds.Center.X ? -1 : 1);
+            }
+
+            foreach (BouncePad pad in _area.BouncePads)
+            {
+                pad.Update(deltaTime);
+                if (pad.TryLaunch(_player))
+                {
+                    _effects.Dust(_player.Feet, 12);
+                    Assets.PlayerJump.Play(0.8f * GameSettings.Current.SoundVolume, -0.4f, 0f);
+                }
             }
 
             foreach (Gem gem in _area.Gems)
@@ -670,6 +690,8 @@ namespace JumpScape.Gameplay
                 platform.Draw(spriteBatch, visibleArea, _area.Tint);
             foreach (Spikes spikes in _area.Spikes)
                 spikes.Draw(spriteBatch);
+            foreach (BouncePad pad in _area.BouncePads)
+                pad.Draw(spriteBatch);
             foreach (Checkpoint checkpoint in _area.Checkpoints)
                 checkpoint.Draw(spriteBatch);
             foreach (Door door in _area.Doors)

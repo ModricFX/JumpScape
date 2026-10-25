@@ -70,7 +70,9 @@
               "y": { "$ref": "#/definitions/number" },
               "length": { "$ref": "#/definitions/number", "description": "Width in pixels." },
               "monster": { "type": "boolean", "description": "Puts a frog on the platform." },
-              "crumbling": { "type": "boolean", "description": "Breaks 3 s after the player lands on it, and comes back 5 s later." }
+              "crumbling": { "type": "boolean", "description": "Breaks 3 s after the player lands on it, and comes back 5 s later." },
+              "moveTo": { "$ref": "#/definitions/position", "description": "Makes it a moving platform that glides back and forth between where it starts and here. It can't have a monster." },
+              "moveTime": { "type": "number", "exclusiveMinimum": 0, "description": "Seconds a moving platform takes from one end of its path to the other. 3 if left out." }
             }
           }
         },
@@ -174,6 +176,11 @@
         "gems": {
           "type": "array",
           "description": "Hidden gems (36x36 px) to collect. They count when the level is finished.",
+          "items": { "$ref": "#/definitions/position" }
+        },
+        "bouncePads": {
+          "type": "array",
+          "description": "Springs (80x30 px) that launch the player about 600 px up. To put one on a platform at groundY-N, use groundY-(N+30).",
           "items": { "$ref": "#/definitions/position" }
         }
       }

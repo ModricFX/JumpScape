@@ -13,7 +13,8 @@ using Microsoft.Xna.Framework;
 
 namespace JumpScape.Gameplay
 {
-    public sealed record PlatformInfo(Vector2 Position, int Length, bool HasMonster, bool IsCrumbling);
+    /// <summary>A platform. Moving platforms have <see cref="MoveTo"/>, the other end of their path.</summary>
+    public sealed record PlatformInfo(Vector2 Position, int Length, bool HasMonster, bool IsCrumbling, Vector2? MoveTo = null, float MoveTime = 3f);
 
     public sealed record GhostInfo(Vector2 Position, float Radius);
 
@@ -87,6 +88,7 @@ namespace JumpScape.Gameplay
         public List<Vector2> Checkpoints { get; } = new List<Vector2>();
         public List<SpikesInfo> Spikes { get; } = new List<SpikesInfo>();
         public List<Vector2> Gems { get; } = new List<Vector2>();
+        public List<Vector2> BouncePads { get; } = new List<Vector2>();
     }
 
     /// <summary>
@@ -234,7 +236,14 @@ namespace JumpScape.Gameplay
 
             var area = new AreaData(json.Name, sky, tint);
             foreach (PlatformJson platform in json.Platforms)
-                area.Platforms.Add(new PlatformInfo(new Vector2(platform.X, platform.Y), (int)platform.Length, platform.Monster, platform.Crumbling));
+            {
+                Vector2? moveTo = platform.MoveTo == null ? null : new Vector2(platform.MoveTo.X, platform.MoveTo.Y);
+                if (moveTo != null && platform.Monster)
+                    throw new InvalidDataException($"{fileName}, area \"{json.Name}\": a moving platform can't have a monster on it.");
+                if (moveTo != null && platform.MoveTime <= 0f)
+                    throw new InvalidDataException($"{fileName}, area \"{json.Name}\": \"moveTime\" must be more than 0 seconds.");
+                area.Platforms.Add(new PlatformInfo(new Vector2(platform.X, platform.Y), (int)platform.Length, platform.Monster, platform.Crumbling, moveTo, platform.MoveTime));
+            }
             foreach (DoorJson door in json.Doors)
                 area.Doors.Add(new DoorInfo(new Vector2(door.X, door.Y), door.Locked));
             foreach (PortalJson portal in json.Portals)
@@ -253,6 +262,8 @@ namespace JumpScape.Gameplay
                 area.Spikes.Add(new SpikesInfo(new Vector2(spikes.X, spikes.Y), (int)spikes.Length));
             foreach (PointJson gem in json.Gems)
                 area.Gems.Add(new Vector2(gem.X, gem.Y));
+            foreach (PointJson pad in json.BouncePads)
+                area.BouncePads.Add(new Vector2(pad.X, pad.Y));
             return area;
         }
 

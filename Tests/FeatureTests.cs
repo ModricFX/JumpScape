@@ -13,7 +13,7 @@ partial class TestGame
 {
     void TestCheckpoints()
     {
-        var level = LevelData.Load(9);
+        var level = LevelData.Load(11); // Sky Tower
         var gs = new GameplayScreen(level, true);
         Frames(gs, 120);
         var p = PlayerOf(gs);
@@ -40,12 +40,12 @@ partial class TestGame
             "checkpoint: Back to checkpoint brings the player back there with full health and their key");
 
         // A run that used a checkpoint doesn't count as a best time.
-        File.Delete(Path.Combine(SaveFile.Folder, "best-run-level9.bin"));
+        File.Delete(Path.Combine(SaveFile.Folder, "best-run-level11.bin"));
         StandAt(gs, AreaOf(gs).Doors.Single());
         Frame(gs, Keys.E); Frame(gs); Frame(gs, Keys.E);
         Frames(gs, 120);
         string text = string.Join(" ", Get<List<string>>(Get<PanelMenu>(gs, "_completeMenu"), "_subtitleLines"));
-        Check(text.Contains("checkpoint") && RunRecording.LoadBestTime(9, level.ContentHash) == null && !text.Contains("medal"),
+        Check(text.Contains("checkpoint") && RunRecording.LoadBestTime(11, level.ContentHash) == null && !text.Contains("medal"),
             "checkpoint: the run isn't saved as a best time and earns no medal: " + text);
         gs.StopSounds();
 
@@ -66,7 +66,7 @@ partial class TestGame
 
     void TestSpikes()
     {
-        var gs = new GameplayScreen(LevelData.Load(6), true);
+        var gs = new GameplayScreen(LevelData.Load(7), true); // Leap of Faith
         Frames(gs, 120);
         var p = PlayerOf(gs);
         var spikes = AreaOf(gs).Spikes[0];

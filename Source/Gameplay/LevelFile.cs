@@ -59,6 +59,7 @@ namespace JumpScape.Gameplay
         public List<PointJson> Checkpoints { get; set; } = new List<PointJson>();
         public List<SpikesJson> Spikes { get; set; } = new List<SpikesJson>();
         public List<PointJson> Gems { get; set; } = new List<PointJson>();
+        public List<PointJson> BouncePads { get; set; } = new List<PointJson>();
     }
 
     internal sealed class MedalsJson
@@ -86,6 +87,12 @@ namespace JumpScape.Gameplay
 
         public bool Monster { get; set; }
         public bool Crumbling { get; set; }
+
+        /// <summary>For a moving platform: the other end of its path.</summary>
+        public PointJson MoveTo { get; set; }
+
+        /// <summary>Seconds a moving platform takes from one end to the other.</summary>
+        public float MoveTime { get; set; } = 3f;
     }
 
     internal sealed class DoorJson : PointJson

@@ -31,7 +31,6 @@ namespace JumpScape.Menus
         private const int PanelTop = 205;
         private const int Padding = 30;
         private const int BoxSize = 120;
-        private const int Columns = 5;
         private const int Gap = 40;
         private const int StarSize = 46;
         private const int InfoHeight = 190;
@@ -77,23 +76,29 @@ namespace JumpScape.Menus
             _titleCenter = new Vector2(VirtualScreen.Width / 2f, top + titleHeight / 2f);
             _summaryCenter = new Vector2(VirtualScreen.Width / 2f, top + titleHeight + 8 + Assets.SmallFont.LineSpacing / 2f);
 
-            // Center the grid of crates in the panel.
-            _columns = Math.Max(1, Math.Min(Columns, levels.Count));
+            // Five crates to a row, or six once there are more than ten levels. If the rows still don't fit
+            // on the screen, the crates get smaller.
+            _columns = Math.Max(1, Math.Min(levels.Count > 10 ? 6 : 5, levels.Count));
             int rows = Math.Max(1, (levels.Count + _columns - 1) / _columns);
-            int gridWidth = _columns * BoxSize + (_columns - 1) * Gap;
-            int left = VirtualScreen.Width / 2 - gridWidth / 2;
             int gridTop = (int)(_summaryCenter.Y + Assets.SmallFont.LineSpacing / 2f + 28);
-
-            _levelBoxes = new Rectangle[levels.Count];
-            for (int i = 0; i < levels.Count; i++)
-                _levelBoxes[i] = new Rectangle(left + i % _columns * (BoxSize + Gap), gridTop + i / _columns * (BoxSize + Gap), BoxSize, BoxSize);
-
-            // Below the grid (and the best times under the last row): the selected level's details, then Back.
-            int gridBottom = gridTop + rows * BoxSize + (rows - 1) * Gap + 40;
-            _info = new Rectangle(VirtualScreen.Width / 2 - (PanelWidth - Padding * 4) / 2, gridBottom + 10, PanelWidth - Padding * 4, InfoHeight);
-
             int backWidth = Assets.MenuButton.Width * 3 / 4;
             int backHeight = Assets.MenuButton.Height * 3 / 4;
+            int belowGrid = 40 + 10 + InfoHeight + 20 + backHeight + Padding;
+            float available = VirtualScreen.Height - 10 - gridTop - belowGrid;
+            float scale = Math.Min(1f, available / (rows * BoxSize + (rows - 1) * Gap));
+            int boxSize = (int)(BoxSize * scale), gap = (int)(Gap * scale);
+
+            // Center the grid of crates in the panel.
+            int gridWidth = _columns * boxSize + (_columns - 1) * gap;
+            int left = VirtualScreen.Width / 2 - gridWidth / 2;
+            _levelBoxes = new Rectangle[levels.Count];
+            for (int i = 0; i < levels.Count; i++)
+                _levelBoxes[i] = new Rectangle(left + i % _columns * (boxSize + gap), gridTop + i / _columns * (boxSize + gap), boxSize, boxSize);
+
+            // Below the grid (and the best times under the last row): the selected level's details, then Back.
+            int gridBottom = gridTop + rows * boxSize + (rows - 1) * gap + 40;
+            _info = new Rectangle(VirtualScreen.Width / 2 - (PanelWidth - Padding * 4) / 2, gridBottom + 10, PanelWidth - Padding * 4, InfoHeight);
+
             _backButton = new Rectangle(VirtualScreen.Width / 2 - backWidth / 2, _info.Bottom + 20, backWidth, backHeight);
             _panel = new Rectangle(VirtualScreen.Width / 2 - PanelWidth / 2, PanelTop, PanelWidth, _backButton.Bottom + Padding - PanelTop);
         }

@@ -11,7 +11,7 @@ namespace JumpScape.Menus
     /// <summary>
     /// Lists every action and its keys, and lets the player choose their own: click a box (or select it and
     /// press Enter), then press the new key. Backspace clears the selected box. Opened from the settings and
-    /// the pause menu. Throwing, the inventory slots and pause can't be changed.
+    /// the pause menu. Throwing, the inventory slots, pause and the gamepad buttons can't be changed.
     /// </summary>
     public sealed class ControlsPanel
     {
@@ -23,7 +23,9 @@ namespace JumpScape.Menus
         private const int BoxGap = 16;
         private const float TitleScale = 1.4f;
         private const float DimAmount = 0.55f;
-        private const string DefaultMessage = "Click a box, then press the key you want. Backspace clears the selected box.";
+        private const string DefaultMessage = "Click a box and press a key. Backspace clears the selected box.";
+        private const string GamepadHelp = "Gamepad: left stick or D-pad to walk, A to jump, X to use doors and talk, Y to drop a key, "
+            + "RT to throw (aim with the right stick), LB and RB to choose a slot, Start to pause.";
 
         private static readonly GameAction[] Actions = Enum.GetValues<GameAction>();
 
@@ -42,6 +44,8 @@ namespace JumpScape.Menus
         private readonly int _rowsTop;
         private readonly int _boxesX;
         private readonly Vector2 _messageCenter;
+        private readonly List<string> _gamepadLines;
+        private readonly Vector2 _gamepadTop;
         private readonly Rectangle[] _buttons;
 
         // The selection: a row of key boxes (one per action) or, below them, the buttons.
@@ -57,13 +61,16 @@ namespace JumpScape.Menus
             int buttonWidth = Assets.MenuButton.Width * 3 / 4;
             int buttonHeight = Assets.MenuButton.Height * 3 / 4;
             int rows = Actions.Length + FixedRows.Length;
-            int height = (int)(Padding + titleHeight + 24 + rows * RowHeight + 50 + buttonHeight + Padding);
+            _gamepadLines = UiDrawing.WrapText(Assets.SmallFont, GamepadHelp, Width - 140);
+            int gamepadHeight = _gamepadLines.Count * Assets.SmallFont.LineSpacing + 16;
+            int height = (int)(Padding + titleHeight + 24 + rows * RowHeight + 50 + gamepadHeight + buttonHeight + Padding);
 
             _panel = UiDrawing.CenteredPanel(Width, height);
             _titleCenter = new Vector2(_panel.Center.X, _panel.Y + Padding + titleHeight / 2f);
             _rowsTop = (int)(_panel.Y + Padding + titleHeight + 24);
             _boxesX = _panel.Right - 70 - Controls.KeysPerAction * BoxWidth - (Controls.KeysPerAction - 1) * BoxGap;
             _messageCenter = new Vector2(_panel.Center.X, _rowsTop + rows * RowHeight + 22);
+            _gamepadTop = new Vector2(_panel.Center.X, _rowsTop + rows * RowHeight + 50);
 
             int buttonsTop = _panel.Bottom - Padding - buttonHeight;
             _buttons = new[]
@@ -185,7 +192,7 @@ namespace JumpScape.Menus
             if (key == Keys.None)
                 return;
 
-            if (key == Keys.Escape)
+            if (key == Keys.Escape || Input.WasPressed(Buttons.B))
             {
                 _waitingForKey = false;
                 _message = DefaultMessage;
@@ -315,6 +322,11 @@ namespace JumpScape.Menus
 
             Color messageColor = _waitingForKey ? UiDrawing.Highlight : Muted;
             UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _message, _messageCenter, messageColor);
+            for (int i = 0; i < _gamepadLines.Count; i++)
+            {
+                var center = _gamepadTop + new Vector2(0f, (i + 0.5f) * Assets.SmallFont.LineSpacing);
+                UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _gamepadLines[i], center, Color.White * 0.75f);
+            }
 
             UiDrawing.DrawButton(spriteBatch, _buttons[0], "Reset keys", _row == ButtonsRow && _column == 0, textScale: 0.75f);
             UiDrawing.DrawButton(spriteBatch, _buttons[1], "Back", _row == ButtonsRow && _column == 1, textScale: 0.85f);
