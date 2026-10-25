@@ -130,6 +130,7 @@ namespace JumpScape
         private void ResetProgress()
         {
             _progress.HighestCompletedLevel = 0;
+            _progress.FoundGems.Clear();
             _progress.Save();
             RunRecording.DeleteAll();
         }
@@ -303,7 +304,7 @@ namespace JumpScape
             SwitchTo(() =>
             {
                 bool hasNextLevel = _levels.Any(number => number > levelNumber);
-                _gameplay = new GameplayScreen(level, hasNextLevel);
+                _gameplay = new GameplayScreen(level, hasNextLevel, _progress.GemsFoundIn(levelNumber));
                 _screen = Screen.Playing;
             });
         }
@@ -313,11 +314,9 @@ namespace JumpScape
             switch (_gameplay.Update(gameTime))
             {
                 case GameplayResult.LevelCompleted:
-                    if (_gameplay.LevelNumber > _progress.HighestCompletedLevel)
-                    {
-                        _progress.HighestCompletedLevel = _gameplay.LevelNumber;
-                        _progress.Save();
-                    }
+                    _progress.HighestCompletedLevel = Math.Max(_progress.HighestCompletedLevel, _gameplay.LevelNumber);
+                    _progress.AddGems(_gameplay.LevelNumber, _gameplay.GemsFound);
+                    _progress.Save();
                     break;
 
                 case GameplayResult.NextLevel:

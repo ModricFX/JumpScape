@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "Frog Pond",
   "description": "Frogs guard the way up. Throw orbs at them, or time your jumps to slip past.",
+  "medals": { "gold": 20, "silver": 30, "bronze": 50 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -21,6 +22,11 @@
       ],
       "powerUps": [
         { "x": 1320, "y": "groundY-830", "type": "health" }
+      ],
+      "gems": [
+        { "x": 1860, "y": "groundY-56" },
+        { "x": 1500, "y": "groundY-676" },
+        { "x": 270, "y": "groundY-1286" }
       ]
     }
   ]

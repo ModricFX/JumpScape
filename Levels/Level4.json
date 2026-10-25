@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "The Key",
   "description": "The exit is locked. Climb up and back to the key at the top, then bring it down to the door.",
+  "medals": { "gold": 30, "silver": 50, "bronze": 75 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -32,9 +33,14 @@
           "name": "Pip",
           "lines": [
             "This door is locked. The key is right at the top - you'll have to climb for it.",
-            "Keys go into your inventory. Pick the key's slot with 1, 2 or 3, then press E at the door."
+            "Keys go into your inventory. Pick the key's slot with 1, 2 or 3, then press {use} at the door."
           ]
         }
+      ],
+      "gems": [
+        { "x": 1850, "y": "groundY-56" },
+        { "x": 980, "y": "groundY-786" },
+        { "x": 1160, "y": "groundY-1086" }
       ]
     }
   ]

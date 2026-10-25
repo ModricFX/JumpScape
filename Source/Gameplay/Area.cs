@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 
 namespace JumpScape.Gameplay
@@ -9,7 +10,9 @@ namespace JumpScape.Gameplay
     /// </summary>
     public sealed class Area
     {
-        public Area(AreaData data)
+        /// <param name="firstGemIndex">The number of the area's first gem in the whole level.</param>
+        /// <param name="gemsFoundBefore">Numbers of the gems found on earlier finished runs.</param>
+        public Area(AreaData data, int firstGemIndex = 0, IReadOnlyCollection<int> gemsFoundBefore = null)
         {
             Name = data.Name;
             Sky = data.Sky;
@@ -41,6 +44,18 @@ namespace JumpScape.Gameplay
                 npc.StandOn(Platforms);
                 Npcs.Add(npc);
             }
+
+            foreach (Vector2 position in data.Checkpoints)
+                Checkpoints.Add(new Checkpoint(position));
+
+            foreach (SpikesInfo info in data.Spikes)
+                Spikes.Add(new Spikes(info.Position, info.Length));
+
+            for (int i = 0; i < data.Gems.Count; i++)
+            {
+                int index = firstGemIndex + i;
+                Gems.Add(new Gem(data.Gems[i], index, gemsFoundBefore?.Contains(index) == true));
+            }
         }
 
         public string Name { get; }
@@ -54,6 +69,9 @@ namespace JumpScape.Gameplay
         public List<KeyPickup> Keys { get; } = new List<KeyPickup>();
         public List<Door> Doors { get; } = new List<Door>();
         public List<Npc> Npcs { get; } = new List<Npc>();
+        public List<Checkpoint> Checkpoints { get; } = new List<Checkpoint>();
+        public List<Spikes> Spikes { get; } = new List<Spikes>();
+        public List<Gem> Gems { get; } = new List<Gem>();
 
         public void StopSounds()
         {

@@ -6,7 +6,6 @@ using JumpScape.Core;
 using JumpScape.Menus;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Gameplay
 {
@@ -38,12 +37,15 @@ namespace JumpScape.Gameplay
         private readonly PanelMenu _pauseMenu = new PanelMenu("Paused", Color.White, new[] { "Resume", "Restart level", "Controls", "Main menu" });
         private readonly ControlsPanel _controls = new ControlsPanel();
         private readonly PanelMenu _deathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Try again", "Main menu" }, fadeInTime: 0.5f);
+        private readonly PanelMenu _checkpointDeathMenu = new PanelMenu("You died", new Color(255, 90, 80), new[] { "Back to checkpoint", "Restart level", "Main menu" }, fadeInTime: 0.5f);
         private readonly PanelMenu _completeMenu;
         private readonly Banner _banner = new Banner();
         private readonly DialogueBox _dialogue = new DialogueBox();
         private readonly GameSettings _settings = GameSettings.Current;
         private readonly Effects _effects = new Effects();
         private readonly List<Projectile> _projectiles = new List<Projectile>();
+        private readonly IReadOnlyCollection<int> _gemsFoundBefore;
+        private readonly HashSet<int> _gemsFound = new HashSet<int>();
 
         private List<Area> _areas;
         private Area _area;
@@ -55,6 +57,16 @@ namespace JumpScape.Gameplay
         private float _playTime;
         private float _exitTimer;
         private bool _isRetrying;
+        private bool _isRespawning;
+        private Checkpoint _checkpoint;
+        private Area _checkpointArea;
+
+        /// <summary>Set once the player comes back at a checkpoint. Such a run doesn't count as a best time.</summary>
+        private bool _usedCheckpoint;
+
+        /// <summary>The medal this run earned, shown on the level complete screen.</summary>
+        private Medal _medal;
+
         private Door _portalDestination;
         private Area _portalDestinationArea;
         private RunRecording _recording;
@@ -66,10 +78,12 @@ namespace JumpScape.Gameplay
         /// <summary>Which frame of <see cref="_raceGhost"/> to show. It keeps counting after the player reaches the exit.</summary>
         private int _raceFrame;
 
-        public GameplayScreen(LevelData level, bool hasNextLevel)
+        /// <param name="gemsFoundBefore">Numbers of the level's gems found on earlier runs; they are drawn see-through.</param>
+        public GameplayScreen(LevelData level, bool hasNextLevel, IReadOnlyCollection<int> gemsFoundBefore = null)
         {
             _level = level;
             _hasNextLevel = hasNextLevel;
+            _gemsFoundBefore = gemsFoundBefore ?? Array.Empty<int>();
             _bestRun = RunRecording.LoadBest(level.Number, level.ContentHash);
             _completeMenu = new PanelMenu("Level complete!", UiDrawing.Highlight,
                 hasNextLevel ? new[] { "Next level", "Play again", "Main menu" } : new[] { "Play again", "Main menu" },
@@ -78,6 +92,9 @@ namespace JumpScape.Gameplay
         }
 
         public int LevelNumber => _level.Number;
+
+        /// <summary>Numbers of the gems collected on this run.</summary>
+        public IReadOnlyCollection<int> GemsFound => _gemsFound;
 
         /// <summary>Background color of the area the player is in.</summary>
         public Color SkyColor => _area.Sky;
@@ -90,8 +107,19 @@ namespace JumpScape.Gameplay
 
         private void Restart()
         {
-            _areas = _level.Areas.Select(data => new Area(data)).ToList();
+            _areas = new List<Area>();
+            int firstGem = 0;
+            foreach (AreaData data in _level.Areas)
+            {
+                _areas.Add(new Area(data, firstGem, _gemsFoundBefore));
+                firstGem += data.Gems.Count;
+            }
             _area = _areas[_level.StartArea];
+            _gemsFound.Clear();
+            _medal = Medal.None;
+            _checkpoint = null;
+            _checkpointArea = null;
+            _usedCheckpoint = false;
             _player = new Player(_level.PlayerSpawn, _settings.Hearts);
             _recording = new RunRecording();
             _raceGhost = _bestRun;
@@ -103,6 +131,7 @@ namespace JumpScape.Gameplay
 
             _pauseMenu.Close();
             _deathMenu.Close();
+            _checkpointDeathMenu.Close();
             _completeMenu.Close();
             _dialogue.Close();
             _cameraTop = RestingCameraTop;
@@ -110,18 +139,36 @@ namespace JumpScape.Gameplay
             _playTime = 0f;
             _exitTimer = 0f;
             _isRetrying = false;
+            _isRespawning = false;
             _portalDestination = null;
+        }
+
+        /// <summary>Brings the player back at the last checkpoint. The rest of the level stays as it was.</summary>
+        private void RespawnAtCheckpoint()
+        {
+            _area = _checkpointArea;
+            _player.Respawn(_checkpoint.ArrivalPosition(_player.Bounds));
+            _usedCheckpoint = true;
+            _projectiles.Clear();
+            _effects.Clear();
+            _deathMenu.Close();
+            _checkpointDeathMenu.Close();
+            _cameraTop = CameraTarget();
+            _fade = 1f;
+            _isRespawning = false;
         }
 
         public GameplayResult Update(GameTime gameTime)
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (_isRetrying)
+            if (_isRetrying || _isRespawning)
             {
-                // Fade to black, then start the level again (which fades back in).
+                // Fade to black, then start the level again or go back to the checkpoint (which fades back in).
                 _fade = MathHelper.Min(_fade + RetryFadeOutSpeed, 1f);
-                if (_fade >= 1f)
+                if (_fade >= 1f && _isRespawning)
+                    RespawnAtCheckpoint();
+                else if (_fade >= 1f)
                     Restart();
                 return GameplayResult.None;
             }
@@ -163,16 +210,31 @@ namespace JumpScape.Gameplay
             if (!_player.IsDead)
                 return GameplayResult.None;
 
-            if (!_deathMenu.IsOpen)
-                _deathMenu.Open();
+            return UpdateDeathMenu(deltaTime);
+        }
 
-            switch (_deathMenu.Update(deltaTime))
+        /// <summary>After a checkpoint the death screen offers to go back to it; otherwise the level starts again.</summary>
+        private GameplayResult UpdateDeathMenu(float deltaTime)
+        {
+            PanelMenu menu = _checkpoint != null ? _checkpointDeathMenu : _deathMenu;
+            if (!menu.IsOpen)
+                menu.Open(_checkpoint != null ? "Your keys and gems stay with you." : null);
+
+            int choice = menu.Update(deltaTime);
+            if (_checkpoint == null && choice >= 0)
+                choice++; // There is no "Back to checkpoint" button.
+
+            switch (choice)
             {
                 case 0:
                     StopSounds();
-                    _isRetrying = true;
+                    _isRespawning = true;
                     break;
                 case 1:
+                    StopSounds();
+                    _isRetrying = true;
+                    break;
+                case 2:
                     StopSounds();
                     return GameplayResult.QuitToMenu;
             }
@@ -240,17 +302,46 @@ namespace JumpScape.Gameplay
             return GameplayResult.None;
         }
 
-        /// <summary>Saves this run if it is the fastest so far, and returns the line shown under "Level complete!".</summary>
+        /// <summary>Saves this run if it is the fastest so far, and returns the lines shown under "Level complete!".</summary>
         private string SaveRunAndDescribe()
         {
-            string time = "Time: " + FormatTime(_playTime);
+            string text = "Time: " + FormatTime(_playTime);
             RunRecording previousBest = _bestRun;
-            if (previousBest != null && previousBest.Time <= _playTime)
-                return time + "   (best " + FormatTime(previousBest.Time) + ")";
+            if (_usedCheckpoint)
+                text += "\nA checkpoint was used, so this run doesn't count as a best time.";
+            else if (previousBest != null && previousBest.Time <= _playTime)
+                text += "   (best " + FormatTime(previousBest.Time) + ")";
+            else
+            {
+                _recording.SaveAsBest(_level.Number, _level.ContentHash, _playTime);
+                _bestRun = _recording;
+                if (previousBest != null)
+                    text += "  -  new best!";
+            }
 
-            _recording.SaveAsBest(_level.Number, _level.ContentHash, _playTime);
-            _bestRun = _recording;
-            return previousBest == null ? time : time + "  -  new best!";
+            _medal = _usedCheckpoint || _level.Medals == null ? Medal.None : _level.Medals.For(_playTime);
+            if (_level.Medals != null && !_usedCheckpoint)
+                text += "\n" + DescribeMedal(_level.Medals, _medal);
+
+            if (_level.GemCount > 0)
+                text += $"\nGems found: {_gemsFound.Count} of {_level.GemCount}";
+            return text;
+        }
+
+        /// <summary>"Silver medal! Beat 0:20 for gold." or "No medal yet. Beat 0:50 for bronze."</summary>
+        private static string DescribeMedal(MedalTimes times, Medal medal)
+        {
+            string earned = medal == Medal.None ? "No medal yet." : $"{medal} medal!";
+            if (times.NextTarget(medal) is not float target)
+                return earned;
+
+            string next = medal switch
+            {
+                Medal.None => "bronze",
+                Medal.Bronze => "silver",
+                _ => "gold",
+            };
+            return $"{earned} Beat {FormatTime(target)} for {next}.";
         }
 
         private static string FormatTime(float seconds)
@@ -271,7 +362,7 @@ namespace JumpScape.Gameplay
                 _projectiles.Add(_player.Throw(mouseInWorld));
             }
 
-            if (Input.WasPressed(Keys.E) && !_player.IsDead)
+            if (Input.WasPressed(GameAction.Use) && !_player.IsDead)
             {
                 Door door = _area.Doors.FirstOrDefault(d => _player.Bounds.Intersects(d.Bounds));
                 Npc npc = _area.Npcs.FirstOrDefault(n => n.CanTalkTo(_player));
@@ -315,6 +406,7 @@ namespace JumpScape.Gameplay
                 _raceFrame++;
             }
 
+            UpdateCheckpointsSpikesAndGems(deltaTime);
             UpdatePowerUps(deltaTime);
             UpdateProjectiles(deltaTime);
             _effects.Update(deltaTime);
@@ -391,6 +483,49 @@ namespace JumpScape.Gameplay
                 _banner.Show(char.ToUpperInvariant(_area.Name[0]) + _area.Name.Substring(1), duration: 1.8f);
         }
 
+        private void UpdateCheckpointsSpikesAndGems(float deltaTime)
+        {
+            foreach (Checkpoint checkpoint in _area.Checkpoints)
+            {
+                checkpoint.Update(deltaTime);
+                if (!checkpoint.IsActive && !_player.IsDead && _player.Bounds.Intersects(checkpoint.Bounds))
+                {
+                    foreach (Checkpoint other in _areas.SelectMany(area => area.Checkpoints))
+                        other.Deactivate();
+                    checkpoint.Activate();
+                    _checkpoint = checkpoint;
+                    _checkpointArea = _area;
+                    _effects.Burst(checkpoint.Bounds.Center.ToVector2(), Color.LightGreen, 14);
+                    ShowMessage("Checkpoint! If you die, you can come back here.");
+                }
+            }
+
+            foreach (Spikes spikes in _area.Spikes)
+            {
+                if (spikes.Hitbox.Intersects(_player.Bounds))
+                    _player.TakeDamage(1f, _player.Center.X < spikes.Bounds.Center.X ? -1 : 1);
+            }
+
+            foreach (Gem gem in _area.Gems)
+            {
+                gem.Update(deltaTime);
+                if (gem.IsCollected || _player.IsDead || !_player.Bounds.Intersects(gem.Bounds))
+                    continue;
+
+                gem.Collect();
+                _gemsFound.Add(gem.Index);
+                _effects.Burst(gem.Center, Color.Cyan, 16);
+                Assets.PlayerJump.Play(0.6f * GameSettings.Current.SoundVolume, 0.8f, 0f);
+                ShowMessage($"Gem found! {_gemsFound.Count} of {_level.GemCount}");
+            }
+        }
+
+        private void ShowMessage(string message)
+        {
+            _message = message;
+            _messageTimer = MessageTime;
+        }
+
         private void UpdatePowerUps(float deltaTime)
         {
             _messageTimer = Math.Max(0f, _messageTimer - deltaTime);
@@ -403,13 +538,12 @@ namespace JumpScape.Gameplay
 
                 powerUp.Collect();
                 _effects.Burst(powerUp.Bounds.Center.ToVector2(), PowerUp.GlowColorFor(powerUp.Type), 12);
-                _message = powerUp.Type switch
+                ShowMessage(powerUp.Type switch
                 {
                     PowerUpType.Health => "+1 heart",
                     PowerUpType.DoubleJump => "Double jump! Press jump again in the air",
                     _ => "High jump! You jump much higher for a while",
-                };
-                _messageTimer = MessageTime;
+                });
             }
         }
 
@@ -475,7 +609,7 @@ namespace JumpScape.Gameplay
         /// </summary>
         private void DrawRaceGhost(SpriteBatch spriteBatch)
         {
-            if (!_settings.ShowRaceGhost || _raceGhost == null || _raceGhost.Frames.Count == 0)
+            if (!_settings.ShowRaceGhost || _usedCheckpoint || _raceGhost == null || _raceGhost.Frames.Count == 0)
                 return;
 
             int index = _raceFrame;
@@ -489,6 +623,16 @@ namespace JumpScape.Gameplay
             RunRecording.Frame frame = _raceGhost.Frames[index];
             if (opacity > 0f && frame.Area == _areas.IndexOf(_area))
                 Player.DrawGhost(spriteBatch, frame.Position, frame.FacingRight, GhostColor * opacity);
+        }
+
+        /// <summary>How many of the level's gems were found on this run, under the inventory.</summary>
+        private void DrawGemCounter(SpriteBatch spriteBatch)
+        {
+            string text = $"{_gemsFound.Count}/{_level.GemCount}";
+            Vector2 size = Assets.SmallFont.MeasureString(text);
+            var textPosition = new Vector2(VirtualScreen.ViewWidth - 24 - size.X, 124f);
+            Gem.DrawIcon(spriteBatch, new Vector2(textPosition.X - 24, textPosition.Y + size.Y / 2f), 28f);
+            UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, textPosition, Color.White);
         }
 
         /// <summary>The time so far, and the best time to beat, at the top of the screen.</summary>
@@ -524,6 +668,10 @@ namespace JumpScape.Gameplay
                 platform.DrawShadow(spriteBatch, visibleArea);
             foreach (Platform platform in _area.Platforms)
                 platform.Draw(spriteBatch, visibleArea, _area.Tint);
+            foreach (Spikes spikes in _area.Spikes)
+                spikes.Draw(spriteBatch);
+            foreach (Checkpoint checkpoint in _area.Checkpoints)
+                checkpoint.Draw(spriteBatch);
             foreach (Door door in _area.Doors)
                 door.Draw(spriteBatch);
             foreach (Monster monster in _area.Monsters)
@@ -532,6 +680,8 @@ namespace JumpScape.Gameplay
                 key.Draw(spriteBatch);
             foreach (PowerUp powerUp in _area.PowerUps)
                 powerUp.Draw(spriteBatch);
+            foreach (Gem gem in _area.Gems)
+                gem.Draw(spriteBatch);
             foreach (Npc npc in _area.Npcs)
                 npc.Draw(spriteBatch);
             DrawRaceGhost(spriteBatch);
@@ -555,6 +705,8 @@ namespace JumpScape.Gameplay
             _player.DrawHud(spriteBatch);
             if (_settings.ShowTimer)
                 DrawTimer(spriteBatch);
+            if (_level.GemCount > 0)
+                DrawGemCounter(spriteBatch);
             if (_messageTimer > 0f)
             {
                 float opacity = MathHelper.Clamp(_messageTimer / 0.5f, 0f, 1f);
@@ -569,7 +721,14 @@ namespace JumpScape.Gameplay
             _pauseMenu.Draw(spriteBatch);
             _controls.Draw(spriteBatch);
             _deathMenu.Draw(spriteBatch);
+            _checkpointDeathMenu.Draw(spriteBatch);
             _completeMenu.Draw(spriteBatch);
+            if (_completeMenu.IsOpen && _medal != Medal.None)
+            {
+                // The medal hangs over the top-right corner of the level complete panel.
+                Rectangle panel = _completeMenu.Bounds;
+                UiDrawing.DrawMedal(spriteBatch, new Vector2(panel.Right - 20, panel.Y + 30), 76f, _medal, _completeMenu.Visibility);
+            }
             spriteBatch.Draw(Assets.Pixel, VirtualScreen.CenteredViewBounds, Color.Black * _fade);
             spriteBatch.End();
         }

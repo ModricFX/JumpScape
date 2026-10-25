@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "The Gauntlet",
   "description": "Everything at once. Fetch the key from the depths of the nether, then climb to the locked exit at the very top.",
+  "medals": { "gold": 65, "silver": 105, "bronze": 160 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -39,6 +40,17 @@
             "The exit at the top is locked, and the key is deep in the nether. Good luck!"
           ]
         }
+      ],
+      "checkpoints": [
+        { "x": 1360, "y": "groundY-770" },
+        { "x": 1240, "y": "groundY-1300" }
+      ],
+      "spikes": [
+        { "x": 1780, "y": "groundY-930", "length": 90 }
+      ],
+      "gems": [
+        { "x": 1700, "y": "groundY-1236" },
+        { "x": 390, "y": "groundY-1736" }
       ]
     },
     {
@@ -66,6 +78,12 @@
       "powerUps": [
         { "x": 1180, "y": "groundY-590", "type": "health" },
         { "x": 250, "y": "groundY-90", "type": "highJump" }
+      ],
+      "checkpoints": [
+        { "x": 1460, "y": "groundY-770" }
+      ],
+      "gems": [
+        { "x": 1200, "y": "groundY-836" }
       ]
     }
   ]

@@ -8,7 +8,18 @@
   "properties": {
     "$schema": { "type": "string" },
     "name": { "type": "string", "description": "The level's title, shown when it starts and in the level picker, like \"Crumbling Path\"." },
-    "description": { "type": "string", "description": "A sentence or two about the level, shown in the level picker when it is selected." },
+    "description": { "type": "string", "description": "A sentence or two about the level, shown in the level picker when it is selected. Can name the player's keys with {left}, {right}, {jump}, {use} and {drop}." },
+    "medals": {
+      "type": "object",
+      "description": "Target times in seconds. Finishing at or under one earns that medal, shown in the level picker.",
+      "required": ["gold", "silver", "bronze"],
+      "additionalProperties": false,
+      "properties": {
+        "gold": { "type": "number", "exclusiveMinimum": 0, "description": "The fastest target." },
+        "silver": { "type": "number", "exclusiveMinimum": 0, "description": "At least as long as gold." },
+        "bronze": { "type": "number", "exclusiveMinimum": 0, "description": "At least as long as silver." }
+      }
+    },
     "spawn": { "$ref": "#/definitions/position", "description": "Where the player starts." },
     "startArea": { "type": "string", "description": "Name of the area the player starts in. The first area if left out." },
     "areas": {
@@ -128,7 +139,7 @@
         },
         "npcs": {
           "type": "array",
-          "description": "Friendly characters the player can talk to with E. Place them anywhere above a platform; they stand on the platform below.",
+          "description": "Friendly characters the player can talk to with E. Place them anywhere above a platform; they stand on the platform below. Lines can name the player's keys with {left}, {right}, {jump}, {use} and {drop}.",
           "items": {
             "type": "object",
             "required": ["x", "y", "name"],
@@ -140,6 +151,30 @@
               "lines": { "type": "array", "items": { "type": "string" }, "description": "What the character says, one entry per line." }
             }
           }
+        },
+        "checkpoints": {
+          "type": "array",
+          "description": "Flags (64x120 px). After touching one, the player can come back to it after dying. To stand one on a platform at groundY-N, put it at groundY-(N+120).",
+          "items": { "$ref": "#/definitions/position" }
+        },
+        "spikes": {
+          "type": "array",
+          "description": "Rows of spikes, 30 px tall. Touching them costs a heart. To put them on a platform at groundY-N, use groundY-(N+30).",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "length"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "$ref": "#/definitions/number" },
+              "y": { "$ref": "#/definitions/number" },
+              "length": { "$ref": "#/definitions/number", "description": "Width in pixels; each spike is 30 px wide." }
+            }
+          }
+        },
+        "gems": {
+          "type": "array",
+          "description": "Hidden gems (36x36 px) to collect. They count when the level is finished.",
+          "items": { "$ref": "#/definitions/position" }
         }
       }
     }

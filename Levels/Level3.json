@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "Crumbling Path",
   "description": "These platforms crumble soon after you land on them. Keep moving, or wait for them to grow back.",
+  "medals": { "gold": 20, "silver": 30, "bronze": 50 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -23,6 +24,11 @@
       ],
       "powerUps": [
         { "x": 1560, "y": "groundY-640", "type": "health" }
+      ],
+      "gems": [
+        { "x": 1650, "y": "groundY-886" },
+        { "x": 930, "y": "groundY-46" },
+        { "x": 210, "y": "groundY-1366" }
       ]
     }
   ]

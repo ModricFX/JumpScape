@@ -46,7 +46,11 @@ namespace JumpScape.Menus
 
         public bool IsOpen { get; private set; }
 
-        private float Visibility => _fadeInTime <= 0f ? 1f : MathHelper.Clamp(_openTime / _fadeInTime, 0f, 1f);
+        /// <summary>Where the panel is drawn right now, including the little slide while it fades in.</summary>
+        public Rectangle Bounds => new Rectangle(_panel.X, _panel.Y + (int)((1f - Visibility) * 40f), _panel.Width, _panel.Height);
+
+        /// <summary>0 while the panel starts fading in, 1 once it is fully shown.</summary>
+        public float Visibility => _fadeInTime <= 0f ? 1f : MathHelper.Clamp(_openTime / _fadeInTime, 0f, 1f);
 
         /// <param name="subtitle">An optional smaller line under the title, such as the time taken.</param>
         public void Open(string subtitle = null)

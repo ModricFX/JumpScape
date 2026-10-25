@@ -1,7 +1,8 @@
 {
   "$schema": "level.schema.json",
   "name": "First Steps",
-  "description": "Learn to walk, jump and throw. Pip will show you around: walk up to Pip and press E to talk.",
+  "description": "Learn to walk, jump and throw. Pip will show you around: walk up to Pip and press {use} to talk.",
+  "medals": { "gold": 15, "silver": 25, "bronze": 40 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -26,13 +27,18 @@
           "y": "groundY-250",
           "name": "Pip",
           "lines": [
-            "Hi, I'm Pip! Walk with the arrow keys or A and D, and jump with Space, W or Up.",
-            "Climb the steps to the door at the top right. Press E at a door to open it, then E again to go through.",
+            "Hi, I'm Pip! Walk with {left} and {right}, and jump with {jump}.",
+            "Tap {jump} for a little hop, or hold it down to jump as high as you can.",
+            "Climb the steps to the door at the top right. Press {use} at a door to open it, then {use} again to go through.",
             "Up there is a red frog. Touching it hurts! Click with the mouse to throw a glowing orb at it.",
             "Hearts and glowing orbs are power-ups. Your time is at the top, and next time a ghost of your best run races you.",
-            "Press Esc any time to pause, restart or see the controls. Have fun!"
+            "Press Esc any time to pause, restart or change your keys. Have fun!"
           ]
         }
+      ],
+      "gems": [
+        { "x": 1840, "y": "groundY-56" },
+        { "x": 1200, "y": "groundY-656" }
       ]
     }
   ]

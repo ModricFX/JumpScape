@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using JumpScape.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Menus
 {
     /// <summary>
     /// A wooden box at the bottom of the screen showing what an NPC says, one line at a time.
-    /// The text types itself out; E, Enter, Space or a click shows the whole line, then moves to the next.
+    /// The text types itself out; the Use key (E), Enter, Space or a click shows the whole line, then moves to
+    /// the next. Lines can name the player's own keys with {left}, {right}, {jump}, {use} and {drop}.
     /// </summary>
     public sealed class DialogueBox
     {
@@ -35,7 +36,7 @@ namespace JumpScape.Menus
                 return;
 
             _name = name;
-            _lines = lines;
+            _lines = lines.Select(Controls.FillIn).ToList();
             IsOpen = true;
             ShowLine(0);
         }
@@ -65,7 +66,7 @@ namespace JumpScape.Menus
                 return;
             }
 
-            if (!Input.WasPressed(Keys.E) && !Input.MenuConfirm && !Input.WasClicked)
+            if (!Input.WasPressed(GameAction.Use) && !Input.MenuConfirm && !Input.WasClicked)
                 return;
 
             if (_shownCharacters < CurrentLength)
@@ -104,7 +105,7 @@ namespace JumpScape.Menus
             Vector2 pageSize = Assets.SmallFont.MeasureString(page);
             UiDrawing.DrawText(spriteBatch, Assets.SmallFont, page, new Vector2(_panel.Right - Padding - pageSize.X, _panel.Y + 24), Color.White * 0.7f);
             if (finished)
-                UiDrawing.DrawHint(spriteBatch, new Vector2(_panel.Right - 110, _panel.Bottom - 14), "E", lastLine ? "Close" : "Next");
+                UiDrawing.DrawHint(spriteBatch, new Vector2(_panel.Right - 110, _panel.Bottom - 14), Controls.KeyNameFor(GameAction.Use), lastLine ? "Close" : "Next");
         }
     }
 }

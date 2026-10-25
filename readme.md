@@ -4,15 +4,21 @@
 
 JumpScape is a 2D platformer built with [MonoGame](https://monogame.net/) and C#. Climb from the ground up
 through floating platforms to reach the exit door. Watch out for frogs and ghosts (or knock them out with a
-glowing orb), and for platforms that crumble under your feet. Some doors are locked, so find the key first.
+glowing orb), spikes, and platforms that crumble under your feet. Some doors are locked, so find the key
+first, and look out for hidden gems on the way.
 
 ## Features
 
 - Ten levels that start easy and get harder (see [Levels](#levels) below), plus a JSON level format for
   making your own, with autocomplete and error checking in VS Code ([Levels/README.md](Levels/README.md)).
-  An automated player has finished every level, so each one is known to be possible.
+  An automated player has finished every level and collected every gem, so each one is known to be
+  possible ([Running the checks](#running-the-checks)).
+- Jumps that feel fair: tap jump for a little hop or hold it for a full jump, and a jump still works just
+  after you walk off an edge or just before you land.
 - Levels can have several areas joined by glowing portal doors, like a dark red nether or a night sky.
-- Frogs that patrol platforms, ghosts that chase you, crumbling platforms, and locked doors with keys.
+- Frogs that patrol platforms, ghosts that chase you, spikes, crumbling platforms, and locked doors with keys.
+- Checkpoint flags in the longer levels: after touching one, you can come back to it when you die.
+- Hidden gems in every level, and gold, silver and bronze medals for finishing quickly.
 - Throw glowing orbs at enemies by clicking where you want them to go.
 - Pip, a friendly explorer, explains the controls in Level 1 and gives tips in later levels.
 - Race your best run: after you finish a level, a see-through ghost replays your fastest run while a
@@ -25,12 +31,13 @@ glowing orb), and for platforms that crumble under your feet. Some doors are loc
     game) and **unlock all levels**.
   - Graphics: a 30 or 60 FPS limit, fullscreen and VSync.
   - Audio: game volume, music volume and mute.
-  - A list of the controls, and **Reset** to start over (it asks first).
+  - **Controls**, where you can choose your own keys, and **Reset** to start over (it asks first).
 - Your progress and settings are saved. **Play** continues with the next level you haven't finished.
-- A level picker with the name, best time and a short description of each level. Finished levels get a
-  star, the next one to play glows, and later levels stay locked until you finish the one before.
-- Wooden menus throughout: pause (resume, restart the level, see the controls), game over, and a level
-  complete screen with your time and a **Next level** button.
+- A level picker with the name, best time, medal, gems and a short description of each level, and the total
+  of all your best times. Finished levels get a star, the next one to play glows, and later levels stay
+  locked until you finish the one before.
+- Wooden menus throughout: pause (resume, restart the level, change your keys), game over, and a level
+  complete screen with your time, medal, gems and a **Next level** button.
 - A soft, blurred forest behind each level that scrolls slowly as you climb, plus dust puffs, a little
   bounce when walking, and hints like **[E] Open** next to doors.
 - Levels are designed for 1920×1080 and scaled to fit any window. A window of a different shape shows a bit
@@ -76,13 +83,17 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | Action                 | Keys                                    |
 | ---------------------- | --------------------------------------- |
 | Move                   | Arrow keys or A / D                     |
-| Jump                   | Space, W or Up arrow                    |
+| Jump                   | Space, W or Up arrow (hold for a higher jump) |
 | Use the door, talk     | E                                       |
 | Select inventory slot  | 1, 2, 3                                 |
 | Drop the selected key  | Q                                       |
 | Throw an orb           | Left mouse button (aim with the mouse)  |
 | Pause / back           | Esc                                     |
 | Menus                  | Arrow keys or W / S, Enter or Space, or the mouse |
+
+You can choose your own keys for moving, jumping, using doors and dropping keys under
+**Settings → Controls** (also in the pause menu): click a box and press the key you want. The hints in the
+game and what Pip says follow your keys.
 
 ## Levels
 
@@ -93,10 +104,10 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 | 3     | Crumbling Path  | Platforms that break under your feet.                                        |
 | 4     | The Key         | A locked exit. Climb up and back to fetch the key.                           |
 | 5     | Ghost Garden    | Ghosts that chase you, and a double jump.                                    |
-| 6     | Leap of Faith   | Long jumps between narrow platforms.                                         |
+| 6     | Leap of Faith   | Long jumps between narrow platforms, spikes and the first checkpoint.        |
 | 7     | Into the Nether | A portal to the nether, where the key is.                                    |
 | 8     | Twin Keys       | Two keys, a locked portal and a night sky.                                   |
-| 9     | Sky Tower       | A tall climb with everything so far.                                         |
+| 9     | Sky Tower       | A tall climb with everything so far, and two checkpoints.                    |
 | 10    | The Gauntlet    | The finale: the nether for the key, then the longest climb.                  |
 
 ## How to play
@@ -122,6 +133,13 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
   Active power-ups show under your hearts, with a bar for the time left.
 - Crumbling platforms start shaking when you land on them, break after three seconds and come back five
   seconds later.
+- Spikes take a whole heart and bounce you away.
+- Touch a checkpoint flag to make it green. If you die after that, **Back to checkpoint** brings you back
+  there with full health, and everything you collected stays collected. A run that used a checkpoint
+  doesn't count as a best time.
+- Each level hides two or three gems, shown in the top-right corner. Gems count when you finish the level,
+  and ones you found before show as see-through.
+- Finish fast for a medal. The level picker shows the gold, silver and bronze times for each level.
 - Press **E** next to Pip to talk. **E** (or Enter, Space or a click) shows the next line, and **Esc** ends
   the conversation. The game waits while you talk.
 - Your time is shown at the top. Finish faster than before to set a new best; the ghost of your best run
@@ -131,8 +149,8 @@ with `osx-arm64` (Apple Silicon Mac), `osx-x64` (Intel Mac) or `linux-x64`.
 
 ## Saved data
 
-Settings and progress are saved as small files: `settings.json`, `progress.json`, and one
-`best-run-levelN.bin` per level with your fastest run:
+Settings (including your keys) and progress (finished levels and found gems) are saved as small files:
+`settings.json`, `progress.json`, and one `best-run-levelN.bin` per level with your fastest run:
 
 - Windows: `%APPDATA%\JumpScape\`
 - macOS and Linux: `~/.config/JumpScape/`
@@ -153,10 +171,35 @@ Content/
   Content.mgcb            List of every image, sound and font the game uses
   Fonts/ Graphics/ Sounds/
 Levels/                   Level files (LevelN.json), their schema, and a guide (Levels/README.md)
+Tests/                    The automated checks, including the automated player
 ```
 
 The images, sounds and font are built by the MonoGame content pipeline. If you add a new asset, add it to
 `Content/Content.mgcb`, either by hand or with the MGCB Editor (`dotnet mgcb-editor Content/Content.mgcb`).
+
+## Running the checks
+
+The `Tests` project drives the game frame by frame with made-up key presses and mouse clicks, and checks
+that everything works. It opens a small window while it runs and never touches your own saved games.
+
+```bash
+dotnet run --project Tests
+```
+
+runs every check (about 230) and saves screenshots in `Tests/bin/Debug/net8.0/screenshots`.
+
+```bash
+dotnet run --project Tests -- --levels
+```
+
+lets an automated player play every level: once collecting every gem, and once straight to the exit, which
+must beat the level's gold time. Add level numbers to play only some, like `--levels 3,7`.
+
+```bash
+dotnet run --project Tests -- --overview
+```
+
+saves a picture of every area of every level, tall enough to show the whole climb.
 
 ## License
 

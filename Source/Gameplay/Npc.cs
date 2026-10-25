@@ -85,7 +85,7 @@ namespace JumpScape.Gameplay
         public void DrawPrompt(SpriteBatch spriteBatch, Player player)
         {
             if (CanTalkTo(player))
-                UiDrawing.DrawHint(spriteBatch, new Vector2(Bounds.Center.X, Bounds.Y - 10), "E", "Talk to " + Name);
+                UiDrawing.DrawHint(spriteBatch, new Vector2(Bounds.Center.X, Bounds.Y - 10), Controls.KeyNameFor(GameAction.Use), "Talk to " + Name);
         }
     }
 }

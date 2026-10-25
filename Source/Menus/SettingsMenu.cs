@@ -4,7 +4,6 @@ using System.Globalization;
 using JumpScape.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Menus
 {
@@ -241,7 +240,7 @@ namespace JumpScape.Menus
             if (Input.MenuDown)
                 _selected = _selected < 0 ? 0 : (_selected + 1) % count;
 
-            int direction = (Input.WasPressed(Keys.Right) || Input.WasPressed(Keys.D) ? 1 : 0) - (Input.WasPressed(Keys.Left) || Input.WasPressed(Keys.A) ? 1 : 0);
+            int direction = (Input.MenuRight ? 1 : 0) - (Input.MenuLeft ? 1 : 0);
             if (direction != 0 && _selected >= 0 && _selected < _options.Count)
             {
                 Option option = _options[_selected];

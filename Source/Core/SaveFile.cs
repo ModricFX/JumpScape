@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JumpScape.Core
 {
@@ -13,7 +14,11 @@ namespace JumpScape.Core
         public static string Folder { get; private set; } = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JumpScape");
 
-        private static readonly JsonSerializerOptions Options = new JsonSerializerOptions { WriteIndented = true };
+        private static readonly JsonSerializerOptions Options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }, // Keys are saved by name, like "Space".
+        };
 
         public static T Load<T>(string fileName) where T : new()
         {

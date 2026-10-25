@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -32,6 +33,15 @@ namespace JumpScape.Core
 
         public static bool WasPressed(Keys key) => _keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
 
+        /// <summary>True while any of the player's keys for the action is held.</summary>
+        public static bool IsDown(GameAction action) => Controls.KeysFor(action).Any(IsDown);
+
+        /// <summary>True in the frame one of the player's keys for the action was pressed.</summary>
+        public static bool WasPressed(GameAction action) => Controls.KeysFor(action).Any(WasPressed);
+
+        /// <summary>A key pressed this frame, or <see cref="Keys.None"/>. Used when the player picks a new key.</summary>
+        public static Keys PressedKey => _keyboard.GetPressedKeys().FirstOrDefault(key => _previousKeyboard.IsKeyUp(key));
+
         public static bool IsMouseDown => _mouse.LeftButton == ButtonState.Pressed;
 
         public static bool WasClicked => IsMouseDown && _previousMouse.LeftButton == ButtonState.Released;
@@ -43,6 +53,10 @@ namespace JumpScape.Core
         public static bool MenuUp => WasPressed(Keys.Up) || WasPressed(Keys.W);
 
         public static bool MenuDown => WasPressed(Keys.Down) || WasPressed(Keys.S);
+
+        public static bool MenuLeft => WasPressed(Keys.Left) || WasPressed(Keys.A);
+
+        public static bool MenuRight => WasPressed(Keys.Right) || WasPressed(Keys.D);
 
         public static bool MenuConfirm => WasPressed(Keys.Enter) || WasPressed(Keys.Space);
 

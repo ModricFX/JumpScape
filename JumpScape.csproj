@@ -21,6 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The checks in Tests/ are a separate project. -->
+    <Compile Remove="Tests/**" />
+    <None Remove="Tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Level files are read at runtime, so ship them next to the executable. -->
     <None Update="Levels/Level*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

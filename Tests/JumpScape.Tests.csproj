@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The game's code is compiled into the tests, so they can look at its private fields. -->
+    <Compile Include="../Source/**/*.cs" Link="Game/%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="../Levels/Level*.json" Link="Levels/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.6" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MonoGameContentReference Include="../Content/Content.mgcb" />
+  </ItemGroup>
+</Project>

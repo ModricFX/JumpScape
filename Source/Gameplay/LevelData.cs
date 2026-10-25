@@ -28,6 +28,38 @@ namespace JumpScape.Gameplay
     /// <summary>A friendly character the player can talk to, and the lines it says one after another.</summary>
     public sealed record NpcInfo(Vector2 Position, string Name, List<string> Lines);
 
+    /// <summary>A row of spikes; <see cref="Position"/> is its top-left corner.</summary>
+    public sealed record SpikesInfo(Vector2 Position, int Length);
+
+    public enum Medal
+    {
+        None,
+        Bronze,
+        Silver,
+        Gold,
+    }
+
+    /// <summary>Target times in seconds: finishing at or under one of them earns that medal.</summary>
+    public sealed record MedalTimes(float Gold, float Silver, float Bronze)
+    {
+        public Medal For(float seconds)
+        {
+            return seconds <= Gold ? Medal.Gold : seconds <= Silver ? Medal.Silver : seconds <= Bronze ? Medal.Bronze : Medal.None;
+        }
+
+        /// <summary>The time to beat for the next better medal, or null for gold.</summary>
+        public float? NextTarget(Medal medal)
+        {
+            return medal switch
+            {
+                Medal.None => Bronze,
+                Medal.Bronze => Silver,
+                Medal.Silver => Gold,
+                _ => null,
+            };
+        }
+    }
+
     /// <summary>One part of a level with its own sky, platforms, enemies, items and doors.</summary>
     public sealed class AreaData
     {
@@ -52,6 +84,9 @@ namespace JumpScape.Gameplay
         public List<Vector2> KeyPositions { get; } = new List<Vector2>();
         public List<DoorInfo> Doors { get; } = new List<DoorInfo>();
         public List<NpcInfo> Npcs { get; } = new List<NpcInfo>();
+        public List<Vector2> Checkpoints { get; } = new List<Vector2>();
+        public List<SpikesInfo> Spikes { get; } = new List<SpikesInfo>();
+        public List<Vector2> Gems { get; } = new List<Vector2>();
     }
 
     /// <summary>
@@ -96,6 +131,12 @@ namespace JumpScape.Gameplay
 
         /// <summary>A sentence or two about the level, shown in the level picker. May be null.</summary>
         public string Description { get; private set; }
+
+        /// <summary>Target times for the medals, or null if the level has none.</summary>
+        public MedalTimes Medals { get; private set; }
+
+        /// <summary>How many gems are hidden in the whole level.</summary>
+        public int GemCount => Areas.Sum(area => area.Gems.Count);
 
         /// <summary>"Level 3" or "Level 3: Crumbling Path".</summary>
         public string Title => Name == null ? $"Level {Number}" : $"Level {Number}: {Name}";
@@ -153,6 +194,12 @@ namespace JumpScape.Gameplay
                 throw new InvalidDataException($"{fileName}: a level needs at least one area.");
 
             var level = new LevelData(number) { Name = file.Name, Description = file.Description, PlayerSpawn = new Vector2(file.Spawn.X, file.Spawn.Y) };
+            if (file.Medals is MedalsJson medals)
+            {
+                if (!(medals.Gold > 0 && medals.Gold <= medals.Silver && medals.Silver <= medals.Bronze))
+                    throw new InvalidDataException($"{fileName}: the medal times should go from fastest to slowest: gold, then silver, then bronze.");
+                level.Medals = new MedalTimes(medals.Gold, medals.Silver, medals.Bronze);
+            }
             foreach (AreaJson area in file.Areas)
                 level.Areas.Add(ToAreaData(area, fileName));
 
@@ -200,6 +247,12 @@ namespace JumpScape.Gameplay
                 area.PowerUps.Add(new PowerUpInfo(new Vector2(powerUp.X, powerUp.Y), powerUp.Type));
             foreach (NpcJson npc in json.Npcs)
                 area.Npcs.Add(new NpcInfo(new Vector2(npc.X, npc.Y), npc.Name, new List<string>(npc.Lines)));
+            foreach (PointJson checkpoint in json.Checkpoints)
+                area.Checkpoints.Add(new Vector2(checkpoint.X, checkpoint.Y));
+            foreach (SpikesJson spikes in json.Spikes)
+                area.Spikes.Add(new SpikesInfo(new Vector2(spikes.X, spikes.Y), (int)spikes.Length));
+            foreach (PointJson gem in json.Gems)
+                area.Gems.Add(new Vector2(gem.X, gem.Y));
             return area;
         }
 

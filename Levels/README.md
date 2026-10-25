@@ -18,6 +18,7 @@ example: *Level11.json, line 14: "lenght" isn't a setting a platform can have. C
   "$schema": "level.schema.json",
   "name": "Frog Hill",
   "description": "Two steps and a frog. The level picker shows this text.",
+  "medals": { "gold": 10, "silver": 15, "bronze": 25 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -29,6 +30,9 @@ example: *Level11.json, line 14: "lenght" isn't a setting a platform can have. C
       ],
       "doors": [
         { "x": 1700, "y": "groundY-135" }
+      ],
+      "gems": [
+        { "x": 680, "y": "groundY-640" }
       ]
     }
   ]
@@ -62,6 +66,7 @@ Any number can also be written as text using these words, optionally followed by
 | `areas`       | The parts of the level. Most levels have one area, called `main`.                               |
 | `name`        | The level's title, shown when it starts and in the level picker. Optional.                     |
 | `description` | A sentence or two about the level, shown in the level picker. Optional.                        |
+| `medals`      | Target times in seconds: `{ "gold": 20, "silver": 30, "bronze": 50 }`. Optional.               |
 
 Each area has a `name` and lists of things. Every list is optional.
 
@@ -74,6 +79,9 @@ Each area has a `name` and lists of things. Every list is optional.
 | `ghosts`    | `x`, `y`, `radius`                                     | Ghosts that chase the player when they come within `radius` pixels. |
 | `powerUps`  | `x`, `y`, `type`                                       | `type` is `"health"`, `"doubleJump"` or `"highJump"`. |
 | `npcs`      | `x`, `y`, `name`, `lines`                              | Friendly characters the player talks to with E. `lines` is a list of what they say, one entry at a time. Place them anywhere above a platform; they stand on the platform below. |
+| `checkpoints` | `x`, `y`                                             | Flags, 64×120 px. After touching one, the player can come back to it after dying. To stand one on a platform at `groundY-N`, put it at `groundY-(N+120)`. |
+| `spikes`    | `x`, `y`, `length`                                     | A row of spikes, 30 px tall and 30 px per spike. Touching them costs a heart. To put them on a platform at `groundY-N`, use `groundY-(N+30)`. |
+| `gems`      | `x`, `y`                                               | Hidden gems, 36×36 px. They count when the level is finished. The player can reach one about 330 px above the platform they stand on by jumping. |
 
 A platform at `groundY-63` sits exactly on top of the ground. Anything between that and `groundY` overlaps
 the grass and looks broken.
@@ -123,6 +131,10 @@ door.
 
 The text can use accented letters (č, š, ž, é, ...) and curly quotes.
 
+Players can choose their own keys, so name keys with these placeholders instead of writing "E" or "Space":
+`{left}`, `{right}`, `{jump}`, `{use}` and `{drop}`. For example, `"Press {use} at the door."` shows as
+"Press E at the door." with the usual keys. The level's `description` can use them too.
+
 ## Useful sizes
 
 - The player is 91×148 px, jumps about 370 px high and can cover about 200 px sideways in one jump.
@@ -132,11 +144,28 @@ The text can use accented letters (č, š, ž, é, ...) and curly quotes.
   one should not hang over the edge the player jumps from, or the jump hits it and falls short.
 - A platform less than 150 px above another one (counting from its top) blocks walking along the one
   below; the player has to jump onto it, like a step.
+- Don't put spikes where a player who falls has no way out except through them.
 - The door is 123×140 px. To stand it on a platform at `groundY-N`, put the door at `groundY-(N+135)`.
 - A frog is about 60 px wide and walks back and forth across its whole platform.
 - To float a power-up where the player can grab it while standing on a platform at `groundY-N`, put it at
   about `groundY-(N+90)`.
 - With high jump the player jumps about 580 px; with double jump, about 715 px in total.
+
+## Checking a level
+
+The automated player in `Tests` can play your level from start to finish, collecting every gem, and tell
+you which jumps are tight:
+
+```bash
+dotnet run --project Tests -- --levels 11
+```
+
+If it can't finish, it lists every part of every platform and where it could get to from there. A picture
+of the whole level helps too:
+
+```bash
+dotnet run --project Tests -- --overview
+```
 
 ## Best runs
 
@@ -150,3 +179,4 @@ its best run, because the ghost would no longer match. Changing only spacing, co
 - `Level4.json` has a key at the top and a locked door on the ground.
 - `Level7.json` shows areas and portals: the key for the exit is in the nether.
 - `Level8.json` has two keys and a locked portal to a second area.
+- `Level9.json` has checkpoints, spikes on a platform and gems high above the climb.

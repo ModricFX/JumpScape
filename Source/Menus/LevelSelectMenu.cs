@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using JumpScape.Core;
 using JumpScape.Gameplay;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Menus
 {
@@ -18,9 +18,9 @@ namespace JumpScape.Menus
     }
 
     /// <summary>
-    /// A grid of numbered crates on a wooden panel, one per level, plus a Back button. Finished levels get a star,
-    /// levels after the next unfinished one are locked, and the selected level's name, best time and description
-    /// are shown below the grid.
+    /// A grid of numbered crates on a wooden panel, one per level, plus a Back button. Finished levels get a star
+    /// and their best time and medal, levels after the next unfinished one are locked, and the selected level's
+    /// name, description, medal times and gems are shown below the grid.
     /// </summary>
     public sealed class LevelSelectMenu
     {
@@ -28,13 +28,14 @@ namespace JumpScape.Menus
         private const float TitleScale = 1.4f;
         private const float LogoScale = 0.384f;
         private const int PanelWidth = 1100;
-        private const int PanelTop = 215;
+        private const int PanelTop = 205;
         private const int Padding = 30;
         private const int BoxSize = 120;
         private const int Columns = 5;
         private const int Gap = 40;
         private const int StarSize = 46;
-        private const int InfoHeight = 155;
+        private const int InfoHeight = 190;
+        private const int MedalSize = 26;
         private const float LockedMessageTime = 1.5f;
 
         private static readonly Color Muted = new Color(210, 200, 185);
@@ -52,7 +53,9 @@ namespace JumpScape.Menus
         private readonly Rectangle _backButton;
         private readonly int _columns;
         private readonly string[] _titles;
-        private readonly string[] _bestTimes;
+        private readonly float?[] _bestTimes;
+        private readonly MedalTimes[] _medalTimes;
+        private readonly int[] _gemCounts;
         private readonly List<string>[] _descriptions;
         private int _selected;
         private int _shownLevel;
@@ -64,7 +67,9 @@ namespace JumpScape.Menus
             _levels = levels;
             _progress = progress;
             _titles = new string[levels.Count];
-            _bestTimes = new string[levels.Count];
+            _bestTimes = new float?[levels.Count];
+            _medalTimes = new MedalTimes[levels.Count];
+            _gemCounts = new int[levels.Count];
             _descriptions = new List<string>[levels.Count];
 
             float titleHeight = Assets.Font.LineSpacing * TitleScale;
@@ -77,7 +82,7 @@ namespace JumpScape.Menus
             int rows = Math.Max(1, (levels.Count + _columns - 1) / _columns);
             int gridWidth = _columns * BoxSize + (_columns - 1) * Gap;
             int left = VirtualScreen.Width / 2 - gridWidth / 2;
-            int gridTop = (int)(_summaryCenter.Y + Assets.SmallFont.LineSpacing / 2f + 35);
+            int gridTop = (int)(_summaryCenter.Y + Assets.SmallFont.LineSpacing / 2f + 28);
 
             _levelBoxes = new Rectangle[levels.Count];
             for (int i = 0; i < levels.Count; i++)
@@ -89,7 +94,7 @@ namespace JumpScape.Menus
 
             int backWidth = Assets.MenuButton.Width * 3 / 4;
             int backHeight = Assets.MenuButton.Height * 3 / 4;
-            _backButton = new Rectangle(VirtualScreen.Width / 2 - backWidth / 2, _info.Bottom + 25, backWidth, backHeight);
+            _backButton = new Rectangle(VirtualScreen.Width / 2 - backWidth / 2, _info.Bottom + 20, backWidth, backHeight);
             _panel = new Rectangle(VirtualScreen.Width / 2 - PanelWidth / 2, PanelTop, PanelWidth, _backButton.Bottom + Padding - PanelTop);
         }
 
@@ -140,17 +145,19 @@ namespace JumpScape.Menus
             {
                 _titles[i] = "Level " + _levels[i].ToString(CultureInfo.InvariantCulture);
                 _bestTimes[i] = null;
+                _medalTimes[i] = null;
+                _gemCounts[i] = 0;
                 _descriptions[i] = new List<string>();
                 try
                 {
                     LevelData level = LevelData.Load(_levels[i]);
                     _titles[i] = level.Title;
                     if (level.Description != null)
-                        _descriptions[i] = UiDrawing.WrapText(Assets.SmallFont, level.Description, descriptionWidth);
+                        _descriptions[i] = UiDrawing.WrapText(Assets.SmallFont, Controls.FillIn(level.Description), descriptionWidth);
 
-                    float? best = RunRecording.LoadBestTime(level.Number, level.ContentHash);
-                    if (best is float seconds)
-                        _bestTimes[i] = TimeSpan.FromSeconds(seconds).ToString(@"m\:ss", CultureInfo.InvariantCulture);
+                    _bestTimes[i] = RunRecording.LoadBestTime(level.Number, level.ContentHash);
+                    _medalTimes[i] = level.Medals;
+                    _gemCounts[i] = level.GemCount;
                 }
                 catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
                 {
@@ -194,8 +201,8 @@ namespace JumpScape.Menus
                 return;
             }
 
-            bool left = Input.WasPressed(Keys.Left) || Input.WasPressed(Keys.A);
-            bool right = Input.WasPressed(Keys.Right) || Input.WasPressed(Keys.D);
+            bool left = Input.MenuLeft;
+            bool right = Input.MenuRight;
 
             if (_selected == BackIndex)
             {
@@ -251,8 +258,7 @@ namespace JumpScape.Menus
             UiDrawing.DrawLogo(spriteBatch, LogoScale);
             UiDrawing.DrawPanel(spriteBatch, _panel);
             UiDrawing.DrawCenteredText(spriteBatch, Assets.Font, Title, _titleCenter, Color.White, TitleScale);
-            string summary = $"{CompletedCount} of {_levels.Count} levels finished";
-            UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, summary, _summaryCenter, Muted);
+            UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, Summary(), _summaryCenter, Muted);
 
             for (int i = 0; i < _levelBoxes.Length; i++)
                 DrawCrate(spriteBatch, i);
@@ -294,11 +300,43 @@ namespace JumpScape.Menus
                 spriteBatch.Draw(Assets.Star, star, Color.White);
             }
 
-            if (_bestTimes[index] != null)
+            if (_bestTimes[index] is float best)
             {
+                // The best time under the crate, with the medal it earned in front of it.
+                string text = FormatTime(best);
                 var below = new Vector2(_levelBoxes[index].Center.X, _levelBoxes[index].Bottom + 24);
-                UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, _bestTimes[index], below, Color.White * 0.85f);
+                Medal medal = MedalFor(index);
+                if (medal != Medal.None)
+                {
+                    below.X += MedalSize / 2f + 2;
+                    float textWidth = Assets.SmallFont.MeasureString(text).X;
+                    UiDrawing.DrawMedal(spriteBatch, new Vector2(below.X - textWidth / 2f - MedalSize / 2f - 6, below.Y + 2), MedalSize, medal);
+                }
+                UiDrawing.DrawCenteredText(spriteBatch, Assets.SmallFont, text, below, Color.White * 0.85f);
             }
+        }
+
+        private Medal MedalFor(int index)
+        {
+            return _bestTimes[index] is float best && _medalTimes[index] != null ? _medalTimes[index].For(best) : Medal.None;
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            var time = TimeSpan.FromSeconds(seconds);
+            return time.ToString(time.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>"4 of 10 levels finished  ·  Gems 7/27  ·  Best times add up to 3:12".</summary>
+        private string Summary()
+        {
+            string summary = $"{CompletedCount} of {_levels.Count} levels finished";
+            int gems = _gemCounts.Sum();
+            if (gems > 0)
+                summary += $"  ·  Gems {_levels.Sum(level => _progress.GemsFoundIn(level).Count)}/{gems}";
+            if (_bestTimes.Any(time => time != null))
+                summary += "  ·  Best times add up to " + FormatTime(_bestTimes.Sum(time => time ?? 0f));
+            return summary;
         }
 
         /// <summary>A small gold padlock centered on <paramref name="center"/>.</summary>
@@ -321,7 +359,7 @@ namespace JumpScape.Menus
             spriteBatch.Draw(Assets.Pixel, new Rectangle(body.Center.X - 2, body.Y + 7, 4, 9), dark);
         }
 
-        /// <summary>The selected level's name, whether it is finished or locked, and its description.</summary>
+        /// <summary>The selected level's name, whether it is finished or locked, its description, medal times and gems.</summary>
         private void DrawInfo(SpriteBatch spriteBatch)
         {
             spriteBatch.Draw(Assets.Pixel, _info, Color.Black * 0.3f);
@@ -348,7 +386,7 @@ namespace JumpScape.Menus
             }
             else if (IsFinished(index))
             {
-                status = _bestTimes[index] == null ? "Finished" : "Finished  -  best time " + _bestTimes[index];
+                status = _bestTimes[index] is float best ? "Finished  -  best time " + FormatTime(best) : "Finished";
             }
             else
             {
@@ -359,12 +397,43 @@ namespace JumpScape.Menus
             UiDrawing.DrawText(spriteBatch, Assets.SmallFont, status, statusPosition, statusColor);
             y += titleHeight + 8;
 
+            float bottomRow = _info.Bottom - 12 - Assets.SmallFont.LineSpacing;
             foreach (string line in _descriptions[index])
             {
-                if (y + Assets.SmallFont.LineSpacing > _info.Bottom - 8)
+                if (y + Assets.SmallFont.LineSpacing > bottomRow - 4)
                     break;
                 UiDrawing.DrawText(spriteBatch, Assets.SmallFont, line, new Vector2(_info.X + Padding, y), Muted);
                 y += Assets.SmallFont.LineSpacing;
+            }
+
+            DrawMedalTimes(spriteBatch, index, bottomRow);
+            if (_gemCounts[index] > 0)
+            {
+                // How many of the level's gems have been found, on the right of the bottom row.
+                string gems = $"Gems {_progress.GemsFoundIn(_levels[index]).Count}/{_gemCounts[index]}";
+                Vector2 size = Assets.SmallFont.MeasureString(gems);
+                var position = new Vector2(_info.Right - Padding - size.X, bottomRow);
+                Gem.DrawIcon(spriteBatch, new Vector2(position.X - 20, position.Y + size.Y / 2f), 24f);
+                UiDrawing.DrawText(spriteBatch, Assets.SmallFont, gems, position, Color.White);
+            }
+        }
+
+        /// <summary>The three medal times. The medals already earned are bright, the others faded.</summary>
+        private void DrawMedalTimes(SpriteBatch spriteBatch, int index, float y)
+        {
+            MedalTimes times = _medalTimes[index];
+            if (times == null)
+                return;
+
+            Medal earned = MedalFor(index);
+            float x = _info.X + Padding;
+            foreach ((Medal medal, float seconds) in new[] { (Medal.Gold, times.Gold), (Medal.Silver, times.Silver), (Medal.Bronze, times.Bronze) })
+            {
+                float opacity = earned >= medal ? 1f : 0.4f;
+                string text = FormatTime(seconds);
+                UiDrawing.DrawMedal(spriteBatch, new Vector2(x + MedalSize / 2f, y + Assets.SmallFont.LineSpacing / 2f + 2), MedalSize, medal, opacity);
+                UiDrawing.DrawText(spriteBatch, Assets.SmallFont, text, new Vector2(x + MedalSize + 8, y), Color.White * (0.4f + 0.6f * opacity));
+                x += MedalSize + 8 + Assets.SmallFont.MeasureString(text).X + 28;
             }
         }
     }

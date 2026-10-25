@@ -30,6 +30,9 @@ namespace JumpScape.Gameplay
         private const float HighJumpBoost = 1.25f; // About 1.5x as high.
         private const float HardLandingSpeed = 6f;
         private const float SquashDuration = 0.15f;
+        private const float CoyoteTime = 0.1f; // A jump still works this long after walking off an edge.
+        private const float JumpBufferTime = 0.12f; // A jump pressed this long before landing happens on landing.
+        private const float ShortHopCut = 0.45f; // Letting go of jump while rising keeps this much of the speed.
 
         private readonly SoundEffectInstance _walkingSound = Assets.PlayerWalking.CreateInstance();
         private readonly SoundEffectInstance _jumpSound = Assets.PlayerJump.CreateInstance();
@@ -47,6 +50,9 @@ namespace JumpScape.Gameplay
         private float _doubleJumpTimer;
         private float _highJumpTimer;
         private bool _usedAirJump;
+        private float _coyoteTimer;
+        private float _jumpBufferTimer;
+        private bool _isRisingFromJump;
         private float _walkTime;
         private float _squashTimer;
 
@@ -122,7 +128,7 @@ namespace JumpScape.Gameplay
             if (ReachedExit)
                 return;
 
-            HandleMovement();
+            HandleMovement(deltaTime);
             HandleInventoryKeys();
 
             foreach (KeyPickup key in keys)
@@ -131,7 +137,7 @@ namespace JumpScape.Gameplay
                     key.Collect();
             }
 
-            if (Input.WasPressed(Keys.Q) && IsOnGround && Inventory.SelectedItem == ItemType.Key)
+            if (Input.WasPressed(GameAction.DropKey) && IsOnGround && Inventory.SelectedItem == ItemType.Key)
                 DropKey(keys);
         }
 
@@ -147,15 +153,15 @@ namespace JumpScape.Gameplay
             keys.Add(new KeyPickup(new Vector2(x, bounds.Bottom - size.Y - 10)));
         }
 
-        private void HandleMovement()
+        private void HandleMovement(float deltaTime)
         {
-            bool left = Input.IsDown(Keys.Left) || Input.IsDown(Keys.A);
-            bool right = Input.IsDown(Keys.Right) || Input.IsDown(Keys.D);
+            bool left = Input.IsDown(GameAction.MoveLeft);
+            bool right = Input.IsDown(GameAction.MoveRight);
 
             // When both directions are held, the one pressed most recently wins.
-            if (Input.WasPressed(Keys.Left) || Input.WasPressed(Keys.A))
+            if (Input.WasPressed(GameAction.MoveLeft))
                 _lastPressedDirection = -1;
-            if (Input.WasPressed(Keys.Right) || Input.WasPressed(Keys.D))
+            if (Input.WasPressed(GameAction.MoveRight))
                 _lastPressedDirection = 1;
 
             int direction = left && right ? _lastPressedDirection : left ? -1 : right ? 1 : 0;
@@ -165,10 +171,31 @@ namespace JumpScape.Gameplay
                 Position += new Vector2(direction * WalkSpeed, 0);
             }
 
-            // Holding jump keeps jumping whenever the player lands. The mid-air jump needs a fresh key press.
-            bool jumpHeld = Input.IsDown(Keys.Space) || Input.IsDown(Keys.W) || Input.IsDown(Keys.Up);
-            bool jumpPressed = Input.WasPressed(Keys.Space) || Input.WasPressed(Keys.W) || Input.WasPressed(Keys.Up);
-            if (jumpHeld && IsOnGround)
+            HandleJump(deltaTime);
+
+            bool walking = direction != 0 && IsOnGround;
+            _walkTime = walking ? _walkTime + deltaTime : 0f;
+            if (walking && _walkingSound.State != SoundState.Playing)
+                PlaySound(_walkingSound);
+            else if (!walking && _walkingSound.State == SoundState.Playing)
+                _walkingSound.Stop();
+        }
+
+        /// <summary>
+        /// Jumps are forgiving: they still work just after walking off an edge (coyote time), and a press just
+        /// before landing jumps on landing (jump buffering). Holding jump keeps jumping whenever the player lands,
+        /// and letting go early makes a lower jump. The mid-air jump needs a fresh key press.
+        /// </summary>
+        private void HandleJump(float deltaTime)
+        {
+            bool jumpHeld = Input.IsDown(GameAction.Jump);
+            bool jumpPressed = Input.WasPressed(GameAction.Jump);
+
+            _coyoteTimer = IsOnGround ? CoyoteTime : Math.Max(0f, _coyoteTimer - deltaTime);
+            _jumpBufferTimer = jumpPressed ? JumpBufferTime : Math.Max(0f, _jumpBufferTimer - deltaTime);
+
+            bool wantsJump = _jumpBufferTimer > 0f || (jumpHeld && IsOnGround);
+            if (wantsJump && (IsOnGround || _coyoteTimer > 0f))
             {
                 Jump();
             }
@@ -178,17 +205,21 @@ namespace JumpScape.Gameplay
                 _usedAirJump = true;
             }
 
-            bool walking = direction != 0 && IsOnGround;
-            _walkTime = walking ? _walkTime + 1f / 60f : 0f;
-            if (walking && _walkingSound.State != SoundState.Playing)
-                PlaySound(_walkingSound);
-            else if (!walking && _walkingSound.State == SoundState.Playing)
-                _walkingSound.Stop();
+            // A short hop: letting go of jump on the way up cuts the jump short.
+            if (_isRisingFromJump && (_velocity.Y >= 0f || !jumpHeld))
+            {
+                if (_velocity.Y < 0f)
+                    _velocity.Y *= ShortHopCut;
+                _isRisingFromJump = false;
+            }
         }
 
         private void Jump()
         {
             _velocity.Y = HasHighJump ? JumpVelocity * HighJumpBoost : JumpVelocity;
+            _coyoteTimer = 0f;
+            _jumpBufferTimer = 0f;
+            _isRisingFromJump = true;
             IsOnGround = false;
             JustJumped = true;
             _walkingSound.Stop();
@@ -251,6 +282,28 @@ namespace JumpScape.Gameplay
         {
             ReachedExit = true;
             _walkingSound.Stop();
+        }
+
+        /// <summary>
+        /// Brings the player back to life at a checkpoint with full health, keeping what they carry.
+        /// A short moment of invincibility gives them time to look around.
+        /// </summary>
+        public void Respawn(Vector2 position)
+        {
+            Position = position;
+            IsDead = false;
+            IsOnGround = false;
+            _health = _maxHealth;
+            _velocity = Vector2.Zero;
+            _knockbackTimer = 0f;
+            _invincibilityTimer = InvincibilityDuration;
+            _deathRotation = 0f;
+            _doubleJumpTimer = 0f;
+            _highJumpTimer = 0f;
+            _usedAirJump = false;
+            _coyoteTimer = 0f;
+            _jumpBufferTimer = 0f;
+            _isRisingFromJump = false;
         }
 
         /// <summary>Puts the player somewhere else, standing still (used when going through a portal).</summary>
@@ -326,6 +379,7 @@ namespace JumpScape.Gameplay
             _velocity = new Vector2(pushDirection * KnockbackVelocity.X, KnockbackVelocity.Y);
             _knockbackTimer = KnockbackDuration;
             _invincibilityTimer = InvincibilityDuration;
+            _isRisingFromJump = false;
             IsOnGround = false;
             PlaySound(_hitSound);
 

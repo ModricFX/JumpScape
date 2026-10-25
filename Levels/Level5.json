@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "Ghost Garden",
   "description": "Ghosts drift between the platforms. Grab the double jump on the way up and keep an eye on where they float.",
+  "medals": { "gold": 25, "silver": 40, "bronze": 60 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -29,6 +30,11 @@
       "powerUps": [
         { "x": 1460, "y": "groundY-670", "type": "doubleJump" },
         { "x": 1030, "y": "groundY-1170", "type": "health" }
+      ],
+      "gems": [
+        { "x": 1850, "y": "groundY-1096" },
+        { "x": 1860, "y": "groundY-56" },
+        { "x": 260, "y": "groundY-1686" }
       ]
     }
   ]

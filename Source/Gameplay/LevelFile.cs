@@ -17,8 +17,11 @@ namespace JumpScape.Gameplay
         /// <summary>The level's title, shown in the level picker and when the level starts.</summary>
         public string Name { get; set; }
 
-        /// <summary>Notes for whoever edits the level. The game ignores it.</summary>
+        /// <summary>A sentence or two about the level, shown in the level picker.</summary>
         public string Description { get; set; }
+
+        /// <summary>Target times in seconds for gold, silver and bronze medals.</summary>
+        public MedalsJson Medals { get; set; }
 
         [JsonRequired]
         public PointJson Spawn { get; set; }
@@ -53,6 +56,27 @@ namespace JumpScape.Gameplay
         public List<GhostJson> Ghosts { get; set; } = new List<GhostJson>();
         public List<PowerUpJson> PowerUps { get; set; } = new List<PowerUpJson>();
         public List<NpcJson> Npcs { get; set; } = new List<NpcJson>();
+        public List<PointJson> Checkpoints { get; set; } = new List<PointJson>();
+        public List<SpikesJson> Spikes { get; set; } = new List<SpikesJson>();
+        public List<PointJson> Gems { get; set; } = new List<PointJson>();
+    }
+
+    internal sealed class MedalsJson
+    {
+        [JsonRequired]
+        public float Gold { get; set; }
+
+        [JsonRequired]
+        public float Silver { get; set; }
+
+        [JsonRequired]
+        public float Bronze { get; set; }
+    }
+
+    internal sealed class SpikesJson : PointJson
+    {
+        [JsonRequired]
+        public float Length { get; set; }
     }
 
     internal sealed class PlatformJson : PointJson

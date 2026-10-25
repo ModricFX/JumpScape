@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "Into the Nether",
   "description": "The key is on the other side of the glowing door. Brave the nether, then come back to unlock the exit.",
+  "medals": { "gold": 40, "silver": 65, "bronze": 100 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -17,6 +18,9 @@
       ],
       "doors": [
         { "x": 1700, "y": "groundY-135", "locked": true }
+      ],
+      "gems": [
+        { "x": 1150, "y": "groundY-796" }
       ]
     },
     {
@@ -43,6 +47,13 @@
       ],
       "powerUps": [
         { "x": 820, "y": "groundY-450", "type": "health" }
+      ],
+      "checkpoints": [
+        { "x": 760, "y": "groundY-480" }
+      ],
+      "gems": [
+        { "x": 1700, "y": "groundY-1116" },
+        { "x": 1860, "y": "groundY-56" }
       ]
     }
   ]

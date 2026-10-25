@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Microsoft.Xna.Framework.Input;
 
 namespace JumpScape.Core
 {
@@ -40,6 +42,9 @@ namespace JumpScape.Core
         /// <summary>Let the level picker start any level, not just the next unfinished one.</summary>
         public bool UnlockAllLevels { get; set; }
 
+        /// <summary>The keys for walking, jumping, using doors and dropping keys. See <see cref="Controls"/>.</summary>
+        public Dictionary<GameAction, Keys[]> KeyBindings { get; set; } = Controls.DefaultBindings();
+
         /// <summary>How many hearts the player starts a level with.</summary>
         [JsonIgnore]
         public int Hearts => ExtraHearts ? 5 : 3;
@@ -56,6 +61,7 @@ namespace JumpScape.Core
             MusicVolume = Math.Clamp(MusicVolume, 0, 100);
             if (Array.IndexOf(FrameRateOptions, FrameRateLimit) < 0)
                 FrameRateLimit = 60;
+            KeyBindings = Controls.Validate(KeyBindings);
             return this;
         }
     }

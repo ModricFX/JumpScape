@@ -40,27 +40,31 @@ namespace JumpScape.Menus
             DrawText(spriteBatch, font, text, center - font.MeasureString(text) * scale / 2f, color, scale);
         }
 
-        /// <summary>Splits text into lines no wider than <paramref name="maxWidth"/>, breaking between words.</summary>
+        /// <summary>
+        /// Splits text into lines no wider than <paramref name="maxWidth"/>, breaking between words.
+        /// A line break ("\n") in the text always starts a new line.
+        /// </summary>
         public static List<string> WrapText(SpriteFont font, string text, float maxWidth, float scale = 1f)
         {
             var lines = new List<string>();
-            string current = "";
-            foreach (string word in text.Split(' '))
+            foreach (string paragraph in text.Split('\n'))
             {
-                string candidate = current.Length == 0 ? word : current + " " + word;
-                if (current.Length > 0 && font.MeasureString(candidate).X * scale > maxWidth)
+                string current = "";
+                foreach (string word in paragraph.Split(' '))
                 {
-                    lines.Add(current);
-                    current = word;
+                    string candidate = current.Length == 0 ? word : current + " " + word;
+                    if (current.Length > 0 && font.MeasureString(candidate).X * scale > maxWidth)
+                    {
+                        lines.Add(current);
+                        current = word;
+                    }
+                    else
+                    {
+                        current = candidate;
+                    }
                 }
-                else
-                {
-                    current = candidate;
-                }
-            }
-
-            if (current.Length > 0)
                 lines.Add(current);
+            }
             return lines;
         }
 
@@ -76,6 +80,34 @@ namespace JumpScape.Menus
         public static Rectangle CenteredPanel(int width, int height)
         {
             return new Rectangle((VirtualScreen.Width - width) / 2, (VirtualScreen.Height - height) / 2, width, height);
+        }
+
+        /// <summary>A round gold, silver or bronze medal on a short ribbon, centered on <paramref name="center"/>.</summary>
+        public static void DrawMedal(SpriteBatch spriteBatch, Vector2 center, float size, Gameplay.Medal medal, float opacity = 1f)
+        {
+            if (medal == Gameplay.Medal.None)
+                return;
+
+            Color color = medal switch
+            {
+                Gameplay.Medal.Gold => new Color(255, 205, 60),
+                Gameplay.Medal.Silver => new Color(205, 210, 220),
+                _ => new Color(210, 130, 65),
+            };
+
+            // The ribbon: a red and a blue strip meeting above the medal.
+            var ribbonSize = new Vector2(size * 0.22f, size * 0.7f);
+            var ribbonOrigin = new Vector2(0.5f, 1f);
+            Vector2 top = center - new Vector2(0f, size * 0.3f);
+            spriteBatch.Draw(Assets.Pixel, top, null, new Color(200, 50, 50) * opacity, 0.45f, ribbonOrigin, ribbonSize, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Assets.Pixel, top, null, new Color(60, 90, 200) * opacity, -0.45f, ribbonOrigin, ribbonSize, SpriteEffects.None, 0f);
+
+            var origin = new Vector2(Assets.Circle.Width / 2f);
+            float scale = size / Assets.Circle.Width;
+            spriteBatch.Draw(Assets.Circle, center, null, Color.Black * (0.6f * opacity), 0f, origin, scale * 1.12f, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Assets.Circle, center, null, color * opacity, 0f, origin, scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Assets.Circle, center, null, Color.Black * (0.15f * opacity), 0f, origin, scale * 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Assets.Circle, center - new Vector2(size * 0.08f), null, Color.White * (0.45f * opacity), 0f, origin, scale * 0.25f, SpriteEffects.None, 0f);
         }
 
         /// <summary>A wooden panel, slightly darkened so text on it is easy to read.</summary>

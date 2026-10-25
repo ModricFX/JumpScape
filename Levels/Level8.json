@@ -2,6 +2,7 @@
   "$schema": "level.schema.json",
   "name": "Twin Keys",
   "description": "Two locked doors and two keys. The first key opens the glowing door; the second waits in the night sky.",
+  "medals": { "gold": 50, "silver": 80, "bronze": 125 },
   "spawn": { "x": 40, "y": "groundY-100" },
   "areas": [
     {
@@ -25,6 +26,13 @@
       ],
       "powerUps": [
         { "x": 620, "y": "groundY-690", "type": "health" }
+      ],
+      "checkpoints": [
+        { "x": 1130, "y": "groundY-320" }
+      ],
+      "gems": [
+        { "x": 1860, "y": "groundY-56" },
+        { "x": 700, "y": "groundY-936" }
       ]
     },
     {
@@ -55,6 +63,12 @@
       ],
       "powerUps": [
         { "x": 1070, "y": "groundY-570", "type": "health" }
+      ],
+      "checkpoints": [
+        { "x": 1010, "y": "groundY-600" }
+      ],
+      "gems": [
+        { "x": 1060, "y": "groundY-1486" }
       ]
     }
   ]
